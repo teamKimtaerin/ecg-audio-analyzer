@@ -63,6 +63,100 @@ class ModelManager:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     
+    def preload_models(self, 
+                      load_speaker: bool = True,
+                      load_whisperx: bool = True,
+                      load_emotion: bool = False,
+                      whisperx_model_size: str = "base") -> Dict[str, bool]:
+        """
+        Preload commonly used models to improve first-time performance
+        
+        Args:
+            load_speaker: Preload speaker diarization model
+            load_whisperx: Preload WhisperX model  
+            load_emotion: Preload emotion analysis model
+            whisperx_model_size: Size of WhisperX model to preload
+            
+        Returns:
+            Dictionary with loading status for each model
+        """
+        results = {}
+        self.logger.info("preloading_models", 
+                        speaker=load_speaker,
+                        whisperx=load_whisperx,
+                        emotion=load_emotion)
+        
+        # Preload speaker diarization model
+        if load_speaker:
+            try:
+                self.load_speaker_model()
+                results["speaker_model"] = True
+                self.logger.info("speaker_model_preloaded")
+            except Exception as e:
+                results["speaker_model"] = False
+                self.logger.error("speaker_model_preload_failed", error=str(e))
+        
+        # Preload WhisperX model
+        if load_whisperx:
+            try:
+                self.load_whisperx_model(model_size=whisperx_model_size)
+                results["whisperx_model"] = True
+                self.logger.info("whisperx_model_preloaded", model_size=whisperx_model_size)
+            except Exception as e:
+                results["whisperx_model"] = False
+                self.logger.error("whisperx_model_preload_failed", error=str(e))
+        
+        # Preload emotion model
+        if load_emotion:
+            try:
+                self.load_emotion_model()
+                results["emotion_model"] = True
+                self.logger.info("emotion_model_preloaded")
+            except Exception as e:
+                results["emotion_model"] = False
+                self.logger.error("emotion_model_preload_failed", error=str(e))
+        
+        return results
+    
+    def warmup_models(self) -> Dict[str, float]:
+        """
+        Warm up loaded models with dummy data to ensure optimal performance
+        
+        Returns:
+            Dictionary with warmup times for each model
+        """
+        warmup_times = {}
+        self.logger.info("warming_up_models")
+        
+        # Warm up WhisperX model if loaded
+        for key, model in self._model_cache.items():
+            if key.startswith("whisperx_"):
+                try:
+                    import time
+                    import numpy as np
+                    
+                    start_time = time.time()
+                    
+                    # Create dummy audio (1 second of silence at 16kHz)
+                    dummy_audio = np.zeros(16000, dtype=np.float32)
+                    
+                    # Run inference to warm up
+                    result = model.transcribe(dummy_audio, batch_size=1)
+                    
+                    warmup_time = time.time() - start_time
+                    warmup_times[key] = warmup_time
+                    
+                    self.logger.info("model_warmed_up", 
+                                   model=key,
+                                   warmup_time=warmup_time)
+                                   
+                except Exception as e:
+                    self.logger.warning("model_warmup_failed", 
+                                      model=key,
+                                      error=str(e))
+        
+        return warmup_times
+    
     def get_model_info(self) -> Dict[str, Any]:
         """Get model manager information"""
         return {
@@ -190,7 +284,7 @@ class ModelManager:
         
         Args:
             model_size: WhisperX model size (tiny, base, small, medium, large-v2)
-            compute_type: Compute type (float16, float32, int8)
+            compute_type: Compute type (float16, float16, int8)
             language: Language code (None for auto-detection)
             
         Returns:

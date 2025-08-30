@@ -154,6 +154,11 @@ class PipelineManager:
         self.thread_pool = ThreadPoolExecutor(
             max_workers=processing_config.max_workers
         )
+        # Process pool for CPU-intensive tasks (better for ML inference)
+        cpu_cores = psutil.cpu_count(logical=False) or 4
+        self.process_pool = ProcessPoolExecutor(
+            max_workers=min(cpu_cores, processing_config.max_workers)
+        )
         
         # Progress tracking
         self.progress = PipelineProgress()
@@ -171,6 +176,9 @@ class PipelineManager:
                         total_stages=self.progress.total_stages,
                         gpu_workers=self.gpu_manager.max_concurrent_gpu_tasks,
                         thread_workers=processing_config.max_workers)
+        
+        # Initialize with optional model preloading
+        self._models_preloaded = False
     
     def _initialize_pipeline_stages(self) -> Dict[str, PipelineStage]:
         """Initialize pipeline stages configuration"""
@@ -243,6 +251,69 @@ class PipelineManager:
                 enable_caching=True
             )
         return self._speaker_diarizer
+    
+    async def preload_models(self, enable_warmup: bool = True) -> Dict[str, Any]:
+        """
+        Preload models to reduce first-time processing latency
+        
+        Args:
+            enable_warmup: Whether to warm up models with dummy data
+            
+        Returns:
+            Dictionary with preloading results and timing
+        """
+        if self._models_preloaded:
+            return {"status": "already_preloaded"}
+        
+        self.logger.info("preloading_pipeline_models", warmup=enable_warmup)
+        
+        start_time = time.time()
+        
+        try:
+            # Get model manager from services
+            from ..models.model_manager import get_model_manager
+            model_manager = get_model_manager()
+            
+            # Preload models in parallel using thread pool
+            loop = asyncio.get_event_loop()
+            
+            preload_results = await loop.run_in_executor(
+                self.thread_pool,
+                model_manager.preload_models,
+                True,  # load_speaker
+                True,  # load_whisperx
+                False  # load_emotion (optional)
+            )
+            
+            # Warm up models if requested
+            warmup_results = {}
+            if enable_warmup:
+                warmup_results = await loop.run_in_executor(
+                    self.thread_pool,
+                    model_manager.warmup_models
+                )
+            
+            preload_time = time.time() - start_time
+            self._models_preloaded = True
+            
+            self.logger.info("models_preloaded_successfully",
+                           preload_time=preload_time,
+                           models_loaded=list(preload_results.keys()),
+                           warmup_enabled=enable_warmup)
+            
+            return {
+                "status": "success",
+                "preload_time": preload_time,
+                "models": preload_results,
+                "warmup_times": warmup_results
+            }
+            
+        except Exception as e:
+            self.logger.error("model_preloading_failed", error=str(e))
+            return {
+                "status": "failed",
+                "error": str(e)
+            }
     
     def _update_progress(self, stage_name: str, percentage: float = None):
         """Update pipeline progress"""
@@ -563,6 +634,7 @@ class PipelineManager:
             
             # Shutdown thread pools
             self.thread_pool.shutdown(wait=True)
+            self.process_pool.shutdown(wait=True)
             
             # Clear GPU memory
             if torch.cuda.is_available():

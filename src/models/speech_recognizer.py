@@ -73,7 +73,7 @@ class SpeechRecognizer:
         Args:
             model_size: WhisperX model size (tiny, base, small, medium, large-v2)
             device: Device to use (None for auto-detection)
-            compute_type: Compute type (float16, float32, int8)
+            compute_type: Compute type (float16, float16, int8)
             language: Language code (None for auto-detection)
         """
         self.model_size = model_size
@@ -167,10 +167,11 @@ class SpeechRecognizer:
             if sample_rate != 16000:
                 audio_data = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=16000)
             
-            # Transcribe with WhisperX
+            # Transcribe with WhisperX - optimized batch size for CPU
+            batch_size = 32 if self.device != "cpu" else 16  # Larger batch for CPU with int8
             result = self.whisper_model.transcribe(
                 audio_data,
-                batch_size=16 if self.device != "cpu" else 8
+                batch_size=batch_size
             )
             
             # Detect language if not specified
@@ -310,10 +311,17 @@ class SpeechRecognizer:
             if y.dtype != np.float32:
                 y = y.astype(np.float32)
             
-            # Transcribe with WhisperX - optimized batch size
+            # VAD-based optimization: Use larger batch sizes for better throughput
+            batch_size = 16 if self.device != "cpu" else 8  # Optimized for VAD-based processing
+            
+            # Enable VAD preprocessing for better batch efficiency
             result = self.whisper_model.transcribe(
                 y,
-                batch_size=32 if self.device != "cpu" else 16  # Larger batch for better performance
+                batch_size=batch_size,
+                # VAD optimization - pre-filter non-speech segments
+                vad_filter=True,
+                # Chunk length optimization for CPU
+                chunk_length=30 if self.device == "cpu" else 20
             )
             
             # Detect language once for entire file

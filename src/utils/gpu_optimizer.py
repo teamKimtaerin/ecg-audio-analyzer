@@ -424,7 +424,7 @@ class GPUOptimizer:
             except Exception:
                 continue
         
-        # Rough estimation: 4 bytes per parameter (float32)
+        # Rough estimation: 4 bytes per parameter (float16)
         estimated_mb = (total_params * 4) / (1024**2)
         return estimated_mb
     
