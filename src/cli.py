@@ -34,6 +34,7 @@ def analyze(
     emotion_detection: bool = typer.Option(True, "--emotion-detection/--no-emotion", help="Enable emotion analysis"),
     language: str = typer.Option("en", "--language", help="Language code (en, auto)"),
     optimize_subtitles: bool = typer.Option(True, "--optimize-subtitles/--no-optimize", help="Optimize for subtitle generation"),
+    workers: int = typer.Option(4, "--workers", help="Number of parallel workers for CPU processing"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """
@@ -53,7 +54,8 @@ def analyze(
         enable_gpu=gpu,
         emotion_detection=emotion_detection,
         language=language,
-        optimize_for_subtitles=optimize_subtitles
+        optimize_for_subtitles=optimize_subtitles,
+        max_workers=workers
     )
     
     # Setup logging based on verbosity
