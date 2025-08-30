@@ -1,0 +1,168 @@
+# ECG Audio Analysis - AWS GPU Deployment Docker Compose
+# Optimized for AWS P3/G4 instances with NVIDIA GPU support
+
+version: '3.8'
+
+services:
+  ecg-audio-analyzer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gpu
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: ecg-audio-analyzer:gpu
+    container_name: ecg-audio-analyzer
+    restart: unless-stopped
+    
+    # GPU configuration
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    
+    # Resource limits optimized for AWS instances
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Environment variables
+    environment:
+      # Application settings
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app/src
+      
+      # Performance tuning
+      - OMP_NUM_THREADS=8
+      - MKL_NUM_THREADS=8
+      - OPENBLAS_NUM_THREADS=8
+      - TOKENIZERS_PARALLELISM=false
+      - TORCH_CUDNN_V8_API_ENABLED=1
+      - CUBLAS_WORKSPACE_CONFIG=:4096:8
+      
+      # AWS configuration (override via .env file)
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - ECG_S3_BUCKET=${ECG_S3_BUCKET:-ecg-audio-analysis-bucket}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      
+      # CloudWatch configuration
+      - CLOUDWATCH_NAMESPACE=ECG/AudioAnalysis
+      - CLOUDWATCH_ENABLED=true
+      - INSTANCE_ID=${INSTANCE_ID}
+      - INSTANCE_TYPE=${INSTANCE_TYPE}
+    
+    # Volume mounts for persistent data and logs
+    volumes:
+      - ecg_logs:/app/logs
+      - ecg_temp:/app/temp
+      - ecg_models:/app/models
+      - ecg_results:/app/results
+      - /var/log/ecg-audio-analyzer:/var/log/ecg-audio-analyzer
+    
+    # Network configuration
+    ports:
+      - "8080:8080"  # Health check endpoint
+    
+    # Health check
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    
+    # Logging configuration
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "/aws/ec2/ecg-audio-analyzer"
+        awslogs-region: "${AWS_DEFAULT_REGION:-us-east-1}"
+        awslogs-stream: "${INSTANCE_ID:-unknown}-docker"
+        awslogs-create-group: "true"
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # User mapping for security
+    user: "1000:1000"
+    
+    # Process limits
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      stack:
+        soft: 67108864
+        hard: 67108864
+    
+    # IPC mode for better GPU performance
+    ipc: host
+    
+    # Command override for different deployment scenarios
+    command: ["python", "main.py", "--gpu", "--workers", "4", "--aws-instance", "${INSTANCE_TYPE:-auto}", "--cloudwatch"]
+
+  # Optional: Monitoring sidecar container
+  monitoring:
+    image: prom/node-exporter:latest
+    container_name: ecg-monitoring
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "/aws/ec2/ecg-audio-analyzer"
+        awslogs-region: "${AWS_DEFAULT_REGION:-us-east-1}"
+        awslogs-stream: "${INSTANCE_ID:-unknown}-monitoring"
+        awslogs-create-group: "true"
+
+# Named volumes for data persistence
+volumes:
+  ecg_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecg-audio-analyzer/logs
+  
+  ecg_temp:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecg-audio-analyzer/temp
+  
+  ecg_models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecg-audio-analyzer/models
+  
+  ecg_results:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecg-audio-analyzer/results
+
+# Network configuration
+networks:
+  default:
+    driver: bridge

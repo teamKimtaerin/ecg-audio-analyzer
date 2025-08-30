@@ -1,0 +1,142 @@
+# ECG Audio Analysis - GPU-Optimized Docker Container
+# Multi-stage build for production deployment on AWS GPU instances
+
+# Stage 1: Base CUDA development environment
+FROM nvidia/cuda:11.8-devel-ubuntu20.04 AS base
+
+# Prevent interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Set CUDA environment variables
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.9 \
+    python3.9-dev \
+    python3.9-distutils \
+    python3-pip \
+    build-essential \
+    git \
+    curl \
+    wget \
+    unzip \
+    ffmpeg \
+    libsndfile1 \
+    libsndfile1-dev \
+    libfftw3-dev \
+    libatlas-base-dev \
+    libblas-dev \
+    liblapack-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libv4l-dev \
+    libxvidcore-dev \
+    libx264-dev \
+    libgtk-3-dev \
+    libatlas-base-dev \
+    gfortran \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Update alternatives to use Python 3.9
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+
+# Install pip for Python 3.9
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+    python3.9 get-pip.py && \
+    rm get-pip.py
+
+# Upgrade pip and install wheel
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Stage 2: Python dependencies installation
+FROM base AS dependencies
+
+# Set working directory
+WORKDIR /tmp/install
+
+# Copy requirements files
+COPY requirements.txt requirements-gpu.txt ./
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements-gpu.txt
+
+# Install additional performance libraries
+RUN pip3 install --no-cache-dir \
+    torch==2.0.1+cu118 \
+    torchaudio==2.0.2+cu118 \
+    torchvision==0.15.2+cu118 \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Install OpenSMILE
+RUN pip3 install --no-cache-dir opensmile
+
+# Stage 3: Production application
+FROM dependencies AS production
+
+# Create application user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set application directory
+WORKDIR /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/temp /app/models /app/results && \
+    chown -R appuser:appuser /app
+
+# Install application in development mode
+RUN pip3 install -e .
+
+# Set environment variables
+ENV PYTHONPATH=/app/src
+ENV CUDA_VISIBLE_DEVICES=0
+ENV OMP_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+ENV OPENBLAS_NUM_THREADS=4
+ENV TOKENIZERS_PARALLELISM=false
+
+# Performance optimizations
+ENV TORCH_CUDNN_V8_API_ENABLED=1
+ENV CUBLAS_WORKSPACE_CONFIG=:4096:8
+
+# AWS environment variables (will be overridden in production)
+ENV AWS_DEFAULT_REGION=us-east-1
+ENV ECG_S3_BUCKET=ecg-audio-analysis-bucket
+ENV LOG_LEVEL=INFO
+ENV ENVIRONMENT=production
+
+# Copy entrypoint and health check scripts
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/healthcheck.sh
+
+# Switch to non-root user
+USER appuser
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# Expose port for health checks
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+# Default command
+CMD ["python", "main.py", "--gpu", "--workers", "4", "--aws-instance", "auto", "--cloudwatch"]
