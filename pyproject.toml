@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecg-audio-analyzer"
+version = "1.0.0"
+description = "High-performance audio analysis for dynamic subtitle generation with speaker diarization and emotion analysis"
+authors = [
+    {name = "ECG Team", email = "team@ecg-audio.ai"}
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["audio", "analysis", "speaker-diarization", "emotion-detection", "subtitles", "gpu", "ml"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "pydub>=0.25.0",
+    "scipy>=1.10.0",
+    "scikit-learn>=1.3.0",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0",
+    "structlog>=23.1.0",
+    "rich>=13.3.0",
+    "typer>=0.9.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.1.0",
+    "asyncio-throttle>=1.0.2",
+    "psutil>=5.9.0",
+    "yt-dlp>=2023.7.6",
+    "ffmpeg-python>=0.2.0",
+]
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.26.0",
+    "botocore>=1.29.0",
+]
+gpu = [
+    "pyannote-audio>=3.0.0",
+    "speechbrain>=0.5.0", 
+    "datasets>=2.12.0",
+    "accelerate>=0.20.0",
+    "opensmile>=2.4.0",
+    "whisperx>=3.1.0",
+]
+dev = [
+    "pytest>=7.3.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.3.0",
+    "ruff>=0.0.270",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+all = [
+    "ecg-audio-analyzer[aws,gpu,dev]"
+]
+
+[project.urls]
+Homepage = "https://github.com/ecg-team/ecg-audio-analyzer"
+Documentation = "https://ecg-audio-analyzer.readthedocs.io/"
+Repository = "https://github.com/ecg-team/ecg-audio-analyzer.git"
+Issues = "https://github.com/ecg-team/ecg-audio-analyzer/issues"
+
+[project.scripts]
+ecg-analyze = "ecg_audio_analyzer.cli:main"
+ecg-audio-analyzer = "ecg_audio_analyzer.cli:main"
+
+[tool.setuptools]
+packages = ["ecg_audio_analyzer", "ecg_audio_analyzer.services", "ecg_audio_analyzer.utils", "ecg_audio_analyzer.models", "ecg_audio_analyzer.pipeline", "ecg_audio_analyzer.config"]
+
+[tool.setuptools.package-dir]
+"ecg_audio_analyzer" = "src"
+"ecg_audio_analyzer.services" = "src/services"
+"ecg_audio_analyzer.utils" = "src/utils" 
+"ecg_audio_analyzer.models" = "src/models"
+"ecg_audio_analyzer.pipeline" = "src/pipeline"
+"ecg_audio_analyzer.config" = "config"
+
+[tool.setuptools.package-data]
+"*" = ["*.yml", "*.yaml", "*.json", "*.md", "*.txt"]
+
+# Development tools configuration
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_paths = ["."]
+addopts = [
+    "--strict-markers",
+    "-v"
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests", 
+    "performance: Performance tests",
+    "slow: Slow running tests",
+    "gpu: Tests requiring GPU"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
