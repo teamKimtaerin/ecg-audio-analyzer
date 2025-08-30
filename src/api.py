@@ -26,6 +26,10 @@ class AnalysisConfig:
     # Output optimization
     optimize_for_subtitles: bool = True
     
+    # Performance optimization
+    max_workers: int = 4  # Number of parallel workers
+    optimize_cpu: bool = True  # Enable CPU optimizations
+    
     # Internal settings (optimized defaults)
     sample_rate: int = 16000  # Optimized for WhisperX
     segment_length: float = 5.0
@@ -189,6 +193,12 @@ async def analyze_audio(
     # Use default config if none provided
     if config is None:
         config = AnalysisConfig()
+    
+    # Apply CPU optimizations if enabled
+    if config.optimize_cpu and not config.enable_gpu:
+        from .utils.cpu_optimization import optimize_cpu_environment, configure_torch_threads
+        optimize_cpu_environment(max_threads=config.max_workers)
+        configure_torch_threads(num_threads=config.max_workers)
     
     logger = get_logger().bind_context(
         service="public_api",

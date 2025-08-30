@@ -1,8 +1,8 @@
 # ECG Audio Analysis - GPU-Optimized Docker Container
 # Multi-stage build for production deployment on AWS GPU instances
 
-# Stage 1: Base CUDA development environment
-FROM nvidia/cuda:11.8-devel-ubuntu20.04 AS base
+# Stage 1: Base CUDA development environment  
+FROM nvidia/cuda:12.9.1-devel-ubuntu20.04 AS base
 
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -75,10 +75,10 @@ RUN pip3 install --no-cache-dir -r requirements-gpu.txt
 
 # Install additional performance libraries
 RUN pip3 install --no-cache-dir \
-    torch==2.0.1+cu118 \
-    torchaudio==2.0.2+cu118 \
-    torchvision==0.15.2+cu118 \
-    --index-url https://download.pytorch.org/whl/cu118
+    torch==2.1.2+cu121 \
+    torchaudio==2.1.2+cu121 \
+    torchvision==0.16.2+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
 
 # Install OpenSMILE
 RUN pip3 install --no-cache-dir opensmile
