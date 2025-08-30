@@ -4,6 +4,7 @@ Audio Cleaner - Simple audio preprocessing for improved analysis quality
 
 import os
 import tempfile
+import io
 from pathlib import Path
 import numpy as np
 import librosa
@@ -32,16 +33,18 @@ class AudioCleaner:
     
     def clean_audio(self, 
                    input_path: Union[str, Path], 
-                   output_path: Optional[Union[str, Path]] = None) -> str:
+                   output_path: Optional[Union[str, Path]] = None,
+                   return_buffer: bool = False) -> Union[str, Tuple[np.ndarray, int]]:
         """
         Clean and optimize audio for analysis
         
         Args:
             input_path: Path to input audio file
             output_path: Path for output file (optional, creates temp file if None)
+            return_buffer: If True, return (audio_array, sample_rate) instead of file path
             
         Returns:
-            Path to cleaned audio file
+            Path to cleaned audio file OR (audio_array, sample_rate) if return_buffer=True
         """
         input_path = Path(input_path)
         
@@ -61,7 +64,15 @@ class AudioCleaner:
             # Load and process audio
             processed_audio, sr = self._process_audio_file(input_path)
             
-            # Save processed audio
+            # Return buffer directly if requested (memory optimization)
+            if return_buffer:
+                duration = len(processed_audio) / sr
+                self.logger.info("audio_cleaning_completed_memory", 
+                               duration=duration,
+                               sample_rate=sr)
+                return processed_audio, sr
+            
+            # Save processed audio to file
             sf.write(str(output_path), processed_audio, sr, format='WAV')
             
             # Validate result
@@ -77,6 +88,19 @@ class AudioCleaner:
         except Exception as e:
             self.logger.error("audio_cleaning_failed", error=str(e))
             raise
+    
+    def clean_audio_to_memory(self, input_path: Union[str, Path]) -> Tuple[np.ndarray, int]:
+        """
+        Clean audio and return processed audio data in memory (no temp file)
+        Optimized for memory-efficient processing
+        
+        Args:
+            input_path: Path to input audio file
+            
+        Returns:
+            Tuple of (audio_array, sample_rate)
+        """
+        return self.clean_audio(input_path, return_buffer=True)
     
     def _process_audio_file(self, input_path: Path) -> Tuple[np.ndarray, int]:
         """
@@ -214,6 +238,121 @@ class AudioCleaner:
             
         except:
             return 0.5  # Default moderate score
+    
+    def clean_audio_to_memory(self, input_path: Union[str, Path]) -> Tuple[np.ndarray, int]:
+        """
+        Clean audio and return processed audio data in memory (no temp file)
+        
+        Args:
+            input_path: Path to input audio file
+            
+        Returns:
+            Tuple of (processed_audio_data, sample_rate)
+        """
+        input_path = Path(input_path)
+        
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+        
+        self.logger.info("cleaning_audio_to_memory", input_file=str(input_path))
+        
+        try:
+            # Load and process audio directly in memory
+            processed_audio, sr = self._process_audio_file(input_path)
+            
+            self.logger.info("audio_cleaning_to_memory_completed", 
+                           duration=len(processed_audio) / sr,
+                           sample_rate=sr)
+            
+            return processed_audio, sr
+            
+        except Exception as e:
+            self.logger.error("audio_cleaning_to_memory_failed", error=str(e))
+            raise
+    
+    def clean_audio_from_memory(self, 
+                               audio_data: np.ndarray, 
+                               sample_rate: int,
+                               output_path: Optional[Union[str, Path]] = None) -> str:
+        """
+        Clean audio data already loaded in memory
+        
+        Args:
+            audio_data: Audio data as numpy array
+            sample_rate: Sample rate of audio
+            output_path: Path for output file (optional, creates temp file if None)
+            
+        Returns:
+            Path to cleaned audio file
+        """
+        self.logger.info("cleaning_audio_from_memory")
+        
+        try:
+            # Process audio that's already in memory
+            processed_audio = self._process_memory_audio(audio_data, sample_rate)
+            
+            # Create output path if not provided
+            if output_path is None:
+                output_path = self._create_temp_output_path(Path("memory_audio"))
+            else:
+                output_path = Path(output_path)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save processed audio
+            sf.write(str(output_path), processed_audio, self.target_sr, format='WAV')
+            
+            # Validate result
+            file_info = self._validate_output(output_path)
+            
+            self.logger.info("audio_cleaning_from_memory_completed", 
+                           output_file=str(output_path),
+                           duration=file_info["duration"])
+            
+            return str(output_path)
+            
+        except Exception as e:
+            self.logger.error("audio_cleaning_from_memory_failed", error=str(e))
+            raise
+    
+    def _process_memory_audio(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Process audio data that's already in memory
+        
+        Args:
+            audio_data: Audio data as numpy array
+            sample_rate: Current sample rate
+            
+        Returns:
+            Processed audio data
+        """
+        try:
+            # Convert to mono if needed
+            if len(audio_data.shape) > 1:
+                audio_data = librosa.to_mono(audio_data.T)
+            
+            # Resample if needed
+            if sample_rate != self.target_sr:
+                audio_data = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=self.target_sr)
+            
+            # Ensure correct data type
+            if audio_data.dtype != np.float32:
+                audio_data = audio_data.astype(np.float32)
+            
+            # Normalize audio levels
+            audio_data = librosa.util.normalize(audio_data)
+            
+            # Remove silence at beginning/end
+            audio_data, _ = librosa.effects.trim(audio_data, top_db=30)
+            
+            self.logger.info("memory_audio_processed", 
+                           duration=len(audio_data) / self.target_sr,
+                           sample_rate=self.target_sr)
+            
+            return audio_data
+            
+        except Exception as e:
+            self.logger.error("memory_audio_processing_failed", error=str(e))
+            raise
 
 
 def clean_audio_file(input_path: Union[str, Path], 

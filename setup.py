@@ -38,6 +38,7 @@ setup(
         "typer>=0.9.0",
         "python-dotenv>=1.0.0",
         "toml>=0.10.2",
+        "whisperx>=3.0.0",
     ],
     extras_require={
         "gpu": [

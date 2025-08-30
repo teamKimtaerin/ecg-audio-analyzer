@@ -31,7 +31,8 @@ class SpeakerDiarizer:
                  model_name: str = "pyannote/speaker-diarization-3.1",
                  min_speakers: int = 2,
                  max_speakers: int = 4,
-                 device: Optional[str] = None):
+                 device: Optional[str] = None,
+                 optimize_for_cpu: bool = True):
         """
         Initialize speaker diarizer
         
@@ -40,10 +41,12 @@ class SpeakerDiarizer:
             min_speakers: Minimum number of speakers
             max_speakers: Maximum number of speakers  
             device: Device to use (None for auto-detection)
+            optimize_for_cpu: Enable CPU-specific optimizations
         """
         self.model_name = model_name
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
+        self.optimize_for_cpu = optimize_for_cpu
         
         # Get model manager
         self.model_manager = get_model_manager(device=device)
@@ -82,6 +85,7 @@ class SpeakerDiarizer:
                      sample_rate: int = 16000) -> List[SpeakerSegment]:
         """
         Perform speaker diarization on audio file
+        Automatically uses chunked processing for long audio files (>7.5 minutes)
         
         Args:
             audio_path: Path to audio file
@@ -97,11 +101,39 @@ class SpeakerDiarizer:
                         file=str(audio_path),
                         sample_rate=sample_rate)
         
+        # Check audio duration to decide processing strategy
         try:
-            # Apply diarization pipeline with speaker constraints
-            diarization = self.pipeline(str(audio_path), 
-                                      min_speakers=self.min_speakers,
-                                      max_speakers=self.max_speakers)
+            import librosa
+            y, sr = librosa.load(str(audio_path), sr=None)
+            total_duration = len(y) / sr
+            
+            # Use chunked processing for audio longer than 7.5 minutes
+            if total_duration > 450.0:  # 7.5 minutes
+                self.logger.info("using_chunked_processing_for_long_audio", duration=total_duration)
+                return self.diarize_audio_chunked(audio_path, sample_rate=sample_rate)
+            else:
+                self.logger.info("using_regular_processing_for_short_audio", duration=total_duration)
+        except Exception as e:
+            self.logger.warning("duration_check_failed", error=str(e))
+        
+        try:
+            # Apply CPU-optimized diarization pipeline
+            if self.optimize_for_cpu and self.device == "cpu":
+                # Use faster segmentation for CPU
+                diarization = self.pipeline(
+                    str(audio_path), 
+                    min_speakers=self.min_speakers,
+                    max_speakers=self.max_speakers,
+                    # CPU optimizations
+                    num_speakers=None,  # Let it auto-detect for speed
+                    min_duration_on=2.0,  # Longer minimum to reduce computation
+                    min_duration_off=1.0   # Faster transitions
+                )
+            else:
+                # Standard processing
+                diarization = self.pipeline(str(audio_path), 
+                                          min_speakers=self.min_speakers,
+                                          max_speakers=self.max_speakers)
             
             # Convert to our format
             segments = []
@@ -341,5 +373,237 @@ class SpeakerDiarizer:
                 )
             else:
                 merged.append(current)
+        
+        return merged
+    
+    def diarize_audio_chunked(self, 
+                            audio_path: Union[str, Path],
+                            chunk_duration: float = 300.0,  # 5 minutes per chunk
+                            overlap_duration: float = 30.0,  # 30 seconds overlap
+                            sample_rate: int = 16000) -> List[SpeakerSegment]:
+        """
+        Perform speaker diarization on long audio using parallel chunk processing
+        
+        Args:
+            audio_path: Path to audio file
+            chunk_duration: Duration of each chunk in seconds
+            overlap_duration: Overlap between chunks in seconds
+            sample_rate: Target sample rate
+            
+        Returns:
+            List of speaker segments from all chunks combined
+        """
+        self._load_model()
+        
+        audio_path = Path(audio_path)
+        self.logger.info("starting_chunked_diarization", 
+                        file=str(audio_path),
+                        chunk_duration=chunk_duration,
+                        overlap=overlap_duration)
+        
+        try:
+            # Get audio duration first
+            import librosa
+            y, sr = librosa.load(str(audio_path), sr=None)
+            total_duration = len(y) / sr
+            
+            # If audio is short, use regular diarization
+            if total_duration <= chunk_duration * 1.5:
+                self.logger.info("audio_too_short_for_chunking", duration=total_duration)
+                return self.diarize_audio(audio_path, sample_rate)
+            
+            # Calculate chunk boundaries
+            chunks = self._calculate_chunk_boundaries(total_duration, chunk_duration, overlap_duration)
+            self.logger.info("chunked_processing", 
+                           total_duration=total_duration,
+                           num_chunks=len(chunks))
+            
+            # Process chunks in parallel (using ThreadPoolExecutor for I/O bound operations)
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            import tempfile
+            import os
+            
+            all_segments = []
+            
+            with ThreadPoolExecutor(max_workers=min(4, len(chunks))) as executor:
+                # Submit chunk processing tasks
+                future_to_chunk = {}
+                
+                for i, (start_time, end_time) in enumerate(chunks):
+                    # Create temporary chunk file
+                    chunk_duration_actual = end_time - start_time
+                    
+                    future = executor.submit(
+                        self._process_audio_chunk,
+                        audio_path, start_time, chunk_duration_actual, sample_rate, i
+                    )
+                    future_to_chunk[future] = (i, start_time, end_time)
+                
+                # Collect results as they complete
+                for future in as_completed(future_to_chunk):
+                    chunk_idx, start_time, end_time = future_to_chunk[future]
+                    
+                    try:
+                        chunk_segments = future.result()
+                        
+                        # Adjust segment timestamps to global timeline
+                        adjusted_segments = []
+                        for segment in chunk_segments:
+                            adjusted_segment = SpeakerSegment(
+                                start=segment.start + start_time,
+                                end=segment.end + start_time,
+                                speaker=f"{segment.speaker}_chunk{chunk_idx}",  # Temporary unique ID
+                                confidence=segment.confidence
+                            )
+                            adjusted_segments.append(adjusted_segment)
+                        
+                        all_segments.extend(adjusted_segments)
+                        
+                    except Exception as e:
+                        self.logger.error("chunk_processing_failed", 
+                                        chunk_idx=chunk_idx,
+                                        error=str(e))
+            
+            # Sort all segments by start time
+            all_segments.sort(key=lambda x: x.start)
+            
+            # Merge overlapping segments and reconcile speaker IDs across chunks
+            merged_segments = self._merge_chunk_segments(all_segments, overlap_duration)
+            
+            # Apply final optimizations
+            merged_segments = self.filter_short_segments(merged_segments, min_duration=2.0)
+            merged_segments = self.merge_adjacent_segments(merged_segments, max_gap=1.0)
+            
+            self.logger.info("chunked_diarization_completed",
+                           total_chunks=len(chunks),
+                           final_segments=len(merged_segments),
+                           unique_speakers=len(set(s.speaker for s in merged_segments)))
+            
+            return merged_segments
+            
+        except Exception as e:
+            self.logger.error("chunked_diarization_failed", error=str(e))
+            # Fallback to regular diarization
+            return self.diarize_audio(audio_path, sample_rate)
+    
+    def _calculate_chunk_boundaries(self, 
+                                  total_duration: float, 
+                                  chunk_duration: float, 
+                                  overlap_duration: float) -> List[tuple]:
+        """Calculate chunk start/end times with overlap"""
+        chunks = []
+        current_start = 0.0
+        
+        while current_start < total_duration:
+            chunk_end = min(current_start + chunk_duration, total_duration)
+            chunks.append((current_start, chunk_end))
+            
+            # Move to next chunk with overlap
+            current_start = chunk_end - overlap_duration
+            
+            # Prevent infinite loop
+            if chunk_end >= total_duration:
+                break
+        
+        return chunks
+    
+    def _process_audio_chunk(self, 
+                           audio_path: Union[str, Path], 
+                           start_time: float, 
+                           duration: float, 
+                           sample_rate: int,
+                           chunk_idx: int) -> List[SpeakerSegment]:
+        """Process a single audio chunk"""
+        try:
+            import tempfile
+            import librosa
+            import soundfile as sf
+            
+            # Load chunk audio
+            y, sr = librosa.load(
+                str(audio_path), 
+                sr=sample_rate,
+                offset=start_time,
+                duration=duration
+            )
+            
+            # Create temporary file for chunk
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                sf.write(temp_file.name, y, sample_rate)
+                
+                try:
+                    # Apply diarization to chunk
+                    diarization = self.pipeline(temp_file.name,
+                                              min_speakers=self.min_speakers,
+                                              max_speakers=self.max_speakers)
+                    
+                    # Convert to segments
+                    segments = []
+                    for turn, _, speaker in diarization.itertracks(yield_label=True):
+                        segment = SpeakerSegment(
+                            start=turn.start,
+                            end=turn.end,
+                            speaker=speaker,
+                            confidence=1.0
+                        )
+                        segments.append(segment)
+                    
+                    return segments
+                    
+                finally:
+                    # Clean up temporary file
+                    import os
+                    try:
+                        os.unlink(temp_file.name)
+                    except:
+                        pass
+                        
+        except Exception as e:
+            self.logger.error("chunk_processing_error", 
+                            chunk_idx=chunk_idx,
+                            start_time=start_time,
+                            error=str(e))
+            return []
+    
+    def _merge_chunk_segments(self, 
+                            all_segments: List[SpeakerSegment], 
+                            overlap_duration: float) -> List[SpeakerSegment]:
+        """Merge segments from different chunks and reconcile speaker IDs"""
+        if not all_segments:
+            return []
+        
+        # Simple speaker ID reconciliation (could be improved with speaker embeddings)
+        # For now, just remove chunk suffixes and merge based on temporal proximity
+        
+        # Remove chunk identifiers from speaker names
+        for segment in all_segments:
+            if "_chunk" in segment.speaker:
+                segment.speaker = segment.speaker.split("_chunk")[0]
+        
+        # Sort by start time
+        all_segments.sort(key=lambda x: x.start)
+        
+        # Merge overlapping segments from different chunks
+        merged = []
+        for segment in all_segments:
+            # Check if this segment overlaps with any existing merged segment
+            merged_with_existing = False
+            
+            for i, existing in enumerate(merged):
+                # Check for overlap
+                if (segment.start < existing.end and segment.end > existing.start and
+                    segment.speaker == existing.speaker):
+                    # Merge segments
+                    merged[i] = SpeakerSegment(
+                        start=min(existing.start, segment.start),
+                        end=max(existing.end, segment.end),
+                        speaker=existing.speaker,
+                        confidence=max(existing.confidence, segment.confidence)
+                    )
+                    merged_with_existing = True
+                    break
+            
+            if not merged_with_existing:
+                merged.append(segment)
         
         return merged
