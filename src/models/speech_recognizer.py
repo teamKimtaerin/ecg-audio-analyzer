@@ -1,794 +1,693 @@
 """
-Speech Recognizer - Real speech-to-text using WhisperX
+Speech Recognizer - Refactored speech-to-text using WhisperX
+Fixed issues that were causing speaker_diarizer.py failures
 """
 
 import whisperx
 import torch
-import torchaudio
-import librosa
 import numpy as np
+import librosa
 from typing import List, Dict, Any, Optional, Union, Tuple
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from contextlib import contextmanager
+import warnings
 from ..utils.logger import get_logger
 from .model_manager import get_model_manager
 
+# Suppress warnings that can clutter logs
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="whisperx")
+
+
 @dataclass
 class SpeechResult:
-    """Speech recognition result"""
+    """Speech recognition result with enhanced error handling"""
     text: str
     confidence: float
     language: Optional[str] = None
     word_segments: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
     
     @classmethod
     def from_whisperx_result(cls, result: Dict[str, Any]) -> 'SpeechResult':
-        """Create SpeechResult from WhisperX output"""
-        # WhisperX returns segments with word-level timestamps
-        segments = result.get("segments", [])
-        
-        # Combine all text from segments
-        full_text = " ".join([seg.get("text", "").strip() for seg in segments]).strip()
-        
-        # Calculate average confidence if available
-        confidences = []
-        word_segments = []
-        
-        for seg in segments:
-            # Segment-level confidence
-            if "confidence" in seg:
-                confidences.append(seg["confidence"])
+        """Create SpeechResult from WhisperX output with robust error handling"""
+        try:
+            # Handle both dict and list formats from WhisperX
+            if isinstance(result, dict):
+                segments = result.get("segments", [])
+            elif isinstance(result, list):
+                segments = result
+                result = {"segments": segments}
+            else:
+                return cls(text="", confidence=0.0, error="Invalid result format")
             
-            # Word-level information
-            words = seg.get("words", [])
-            for word in words:
-                word_segments.append({
-                    "word": word.get("word", ""),
-                    "start": word.get("start", 0.0),
-                    "end": word.get("end", 0.0),
-                    "confidence": word.get("confidence", 0.0)
-                })
-        
-        avg_confidence = np.mean(confidences) if confidences else 0.0
-        language = result.get("language", None)
-        
-        return cls(
-            text=full_text,
-            confidence=float(avg_confidence),
-            language=language,
-            word_segments=word_segments if word_segments else None
-        )
+            # Safely extract text from segments
+            text_parts = []
+            confidences = []
+            word_segments = []
+            
+            for seg in segments:
+                # Handle segment text
+                seg_text = seg.get("text", "").strip()
+                if seg_text:
+                    text_parts.append(seg_text)
+                
+                # Handle confidence
+                if "confidence" in seg and seg["confidence"] is not None:
+                    confidences.append(float(seg["confidence"]))
+                
+                # Extract word-level information safely
+                words = seg.get("words", [])
+                for word in words:
+                    if isinstance(word, dict):
+                        word_info = {
+                            "word": str(word.get("word", "")).strip(),
+                            "start": float(word.get("start", 0.0)),
+                            "end": float(word.get("end", 0.0)),
+                            "confidence": float(word.get("confidence", 0.0))
+                        }
+                        # Only add valid words
+                        if word_info["word"] and word_info["end"] > word_info["start"]:
+                            word_segments.append(word_info)
+            
+            # Combine text
+            full_text = " ".join(text_parts).strip()
+            
+            # Calculate average confidence
+            avg_confidence = float(np.mean(confidences)) if confidences else 0.0
+            
+            # Get language
+            language = result.get("language")
+            if language and not isinstance(language, str):
+                language = str(language)
+            
+            return cls(
+                text=full_text,
+                confidence=avg_confidence,
+                language=language,
+                word_segments=word_segments if word_segments else None
+            )
+            
+        except Exception as e:
+            return cls(
+                text="",
+                confidence=0.0,
+                error=f"Failed to parse result: {str(e)}"
+            )
+    
+    @classmethod
+    def empty(cls, error: Optional[str] = None) -> 'SpeechResult':
+        """Create an empty result with optional error message"""
+        return cls(text="", confidence=0.0, error=error)
 
 
 class SpeechRecognizer:
-    """Real speech-to-text using WhisperX"""
+    """Refactored speech-to-text using WhisperX with improved stability"""
+    
+    # Model size mappings for validation
+    VALID_MODEL_SIZES = ["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"]
     
     def __init__(self, 
                  model_size: str = "base",
                  device: Optional[str] = None,
                  compute_type: str = "float16",
-                 language: Optional[str] = None):
+                 language: Optional[str] = None,
+                 enable_alignment: bool = True,
+                 enable_acoustics: bool = False):  # Disabled by default for stability
         """
-        Initialize speech recognizer
+        Initialize speech recognizer with validation
         
         Args:
-            model_size: WhisperX model size (tiny, base, small, medium, large-v2)
+            model_size: WhisperX model size
             device: Device to use (None for auto-detection)
-            compute_type: Compute type (float16, float16, int8)
+            compute_type: Compute type
             language: Language code (None for auto-detection)
+            enable_alignment: Whether to use alignment model
+            enable_acoustics: Whether to perform acoustic analysis (can cause issues)
         """
+        # Validate model size
+        if model_size not in self.VALID_MODEL_SIZES:
+            model_size = "base"
+        
         self.model_size = model_size
         self.language = language
-        self.compute_type = compute_type
+        self.enable_alignment = enable_alignment
+        self.enable_acoustics = enable_acoustics
         
-        # Get model manager
+        # Initialize model manager and device
         self.model_manager = get_model_manager(device=device)
-        self.device = self.model_manager.get_device()
+        self.device = self._get_safe_device()
         
-        # Use CPU compute type if on CPU
-        if self.device == "cpu":
-            self.compute_type = "float32"
+        # Set compute type based on device
+        self.compute_type = self._get_safe_compute_type(compute_type)
         
+        # Initialize logger
         self.logger = get_logger().bind_context(
             service="speech_recognizer",
             model=f"whisperx-{model_size}",
-            device=self.device
+            device=self.device,
+            compute_type=self.compute_type
         )
         
-        # Models will be loaded on first use
+        # Model state
         self.whisper_model = None
-        self.alignment_model = None
-        self.alignment_metadata = None
+        self.alignment_models = {}  # Cache per language
+        self._model_lock = False  # Prevent concurrent model loading
+    
+    def _get_safe_device(self) -> str:
+        """Get device with fallback to CPU if GPU fails"""
+        try:
+            device = self.model_manager.get_device()
+            if device == "cuda" and not torch.cuda.is_available():
+                return "cpu"
+            return device
+        except Exception:
+            return "cpu"
+    
+    def _get_safe_compute_type(self, requested_type: str) -> str:
+        """Get appropriate compute type for device"""
+        if self.device == "cpu":
+            return "int8"  # Better CPU performance
+        elif self.device == "cuda":
+            # Check GPU capability
+            if torch.cuda.is_available():
+                capability = torch.cuda.get_device_capability()
+                if capability[0] >= 7:  # Volta or newer
+                    return "float16"
+                else:
+                    return "float32"
+        return "float32"
+    
+    @contextmanager
+    def _model_loading_lock(self):
+        """Prevent concurrent model loading"""
+        if self._model_lock:
+            yield False
+        else:
+            self._model_lock = True
+            try:
+                yield True
+            finally:
+                self._model_lock = False
+    
+    def _load_whisper_model(self) -> bool:
+        """Load WhisperX model with error recovery"""
+        if self.whisper_model is not None:
+            return True
         
-    def _load_models(self):
-        """Load WhisperX models"""
-        if self.whisper_model is None:
-            self.logger.info("loading_whisperx_model")
+        with self._model_loading_lock() as acquired:
+            if not acquired:
+                self.logger.warning("model_loading_in_progress")
+                return False
             
             try:
-                # Load WhisperX model
-                self.whisper_model = whisperx.load_model(
-                    self.model_size,
-                    device=self.device,
-                    compute_type=self.compute_type,
-                    language=self.language
-                )
-                
-                self.logger.info("whisperx_model_loaded", 
+                self.logger.info("loading_whisperx_model", 
                                model_size=self.model_size,
                                device=self.device,
                                compute_type=self.compute_type)
                 
-            except Exception as e:
-                self.logger.error("failed_to_load_whisperx_model", error=str(e))
-                raise
-    
-    def _load_alignment_model(self, language_code: str):
-        """Load alignment model for better word-level timestamps"""
-        try:
-            if self.alignment_model is None or getattr(self, '_last_language', None) != language_code:
-                self.logger.info("loading_alignment_model", language=language_code)
-                
-                self.alignment_model, self.alignment_metadata = whisperx.load_align_model(
-                    language_code=language_code,
-                    device=self.device
+                # Load with error handling
+                self.whisper_model = whisperx.load_model(
+                    self.model_size,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                    language=self.language,
+                    threads=4 if self.device == "cpu" else 1
                 )
-                self._last_language = language_code
                 
-                self.logger.info("alignment_model_loaded", language=language_code)
+                self.logger.info("whisperx_model_loaded")
+                return True
                 
+            except Exception as e:
+                self.logger.error("whisperx_model_loading_failed", error=str(e))
+                
+                # Try fallback to CPU
+                if self.device != "cpu":
+                    self.logger.info("falling_back_to_cpu")
+                    self.device = "cpu"
+                    self.compute_type = "int8"
+                    
+                    try:
+                        self.whisper_model = whisperx.load_model(
+                            self.model_size,
+                            device="cpu",
+                            compute_type="int8",
+                            language=self.language,
+                            threads=4
+                        )
+                        self.logger.info("whisperx_model_loaded_cpu_fallback")
+                        return True
+                    except Exception as e2:
+                        self.logger.error("cpu_fallback_failed", error=str(e2))
+                
+                return False
+    
+    def _load_alignment_model(self, language_code: str) -> bool:
+        """Load alignment model for a specific language"""
+        if not self.enable_alignment:
+            return False
+        
+        # Check cache
+        if language_code in self.alignment_models:
+            return self.alignment_models[language_code] is not None
+        
+        try:
+            self.logger.info("loading_alignment_model", language=language_code)
+            
+            model, metadata = whisperx.load_align_model(
+                language_code=language_code,
+                device=self.device
+            )
+            
+            self.alignment_models[language_code] = (model, metadata)
+            self.logger.info("alignment_model_loaded", language=language_code)
+            return True
+            
         except Exception as e:
-            self.logger.warning("failed_to_load_alignment_model", 
-                              language=language_code,
+            self.logger.warning("alignment_model_failed", 
+                              language=language_code, 
                               error=str(e))
-            self.alignment_model = None
-            self.alignment_metadata = None
+            self.alignment_models[language_code] = None
+            return False
     
     def transcribe_audio_segment(self, 
-                               audio_data: np.ndarray, 
-                               sample_rate: int = 16000) -> SpeechResult:
+                                audio_data: np.ndarray, 
+                                sample_rate: int = 16000) -> SpeechResult:
         """
-        Transcribe audio segment to text
+        Transcribe audio segment with improved error handling
+        """
+        # Validate input
+        if audio_data is None or len(audio_data) == 0:
+            return SpeechResult.empty("Empty audio data")
         
-        Args:
-            audio_data: Audio data as numpy array
-            sample_rate: Sample rate of audio
-            
-        Returns:
-            SpeechResult with transcription
-        """
-        self._load_models()
+        # Load model if needed
+        if not self._load_whisper_model():
+            return SpeechResult.empty("Failed to load model")
         
         try:
-            # Ensure audio is float32 and correct sample rate
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
+            # Prepare audio
+            audio_data = self._prepare_audio(audio_data, sample_rate)
             
-            # WhisperX expects 16kHz audio
-            if sample_rate != 16000:
-                audio_data = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=16000)
+            # Transcribe with WhisperX
+            result = self._transcribe_with_whisperx(audio_data)
             
-            # Transcribe with WhisperX - optimized batch size for CPU
-            batch_size = 32 if self.device != "cpu" else 16  # Larger batch for CPU with int8
+            if result is None:
+                return SpeechResult.empty("Transcription failed")
+            
+            # Align if enabled and available
+            if self.enable_alignment:
+                result = self._align_transcription(result, audio_data)
+            
+            # Convert to SpeechResult
+            speech_result = SpeechResult.from_whisperx_result(result)
+            
+            # Add acoustic analysis if enabled (and safe)
+            if self.enable_acoustics and speech_result.word_segments:
+                speech_result = self._add_acoustic_features_safe(
+                    speech_result, audio_data, 16000
+                )
+            
+            return speech_result
+            
+        except Exception as e:
+            self.logger.error("transcription_failed", error=str(e))
+            return SpeechResult.empty(f"Transcription error: {str(e)}")
+    
+    def _prepare_audio(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """Prepare audio for transcription"""
+        # Ensure float32
+        if audio_data.dtype != np.float32:
+            audio_data = audio_data.astype(np.float32)
+        
+        # Normalize if needed
+        max_val = np.abs(audio_data).max()
+        if max_val > 1.0:
+            audio_data = audio_data / max_val
+        
+        # Resample to 16kHz if needed
+        if sample_rate != 16000:
+            audio_data = librosa.resample(
+                audio_data, 
+                orig_sr=sample_rate, 
+                target_sr=16000
+            )
+        
+        return audio_data
+    
+    def _transcribe_with_whisperx(self, audio_data: np.ndarray) -> Optional[Dict[str, Any]]:
+        """Perform WhisperX transcription with error handling"""
+        try:
+            # Adaptive batch size
+            if self.device == "cpu":
+                batch_size = 8
+            else:
+                # Check available GPU memory
+                if torch.cuda.is_available():
+                    mem_free = torch.cuda.get_device_properties(0).total_memory
+                    if mem_free > 8 * 1024**3:  # 8GB+
+                        batch_size = 32
+                    else:
+                        batch_size = 16
+                else:
+                    batch_size = 16
+            
+            # Transcribe
             result = self.whisper_model.transcribe(
                 audio_data,
                 batch_size=batch_size
             )
             
-            # Detect language if not specified
-            detected_language = result.get("language", "en")
+            return result
             
-            # Load alignment model for better word-level timestamps
-            if self.alignment_model is None:
-                self._load_alignment_model(detected_language)
+        except torch.cuda.OutOfMemoryError:
+            self.logger.warning("gpu_oom_during_transcription")
+            torch.cuda.empty_cache()
             
-            # Align whisper output for better word-level timestamps
-            if self.alignment_model is not None:
-                try:
-                    result = whisperx.align(
-                        result["segments"], 
-                        self.alignment_model, 
-                        self.alignment_metadata,
-                        audio_data, 
-                        self.device,
-                        return_char_alignments=False
-                    )
-                except Exception as e:
-                    self.logger.warning("alignment_failed", error=str(e))
-                    # Continue with unaligned result
-            
-            # Convert to SpeechResult
-            speech_result = SpeechResult.from_whisperx_result(result)
-            speech_result.language = detected_language
-            
-            # Perform acoustic analysis on word segments
-            if speech_result.word_segments and audio_data is not None:
-                self.logger.info("starting_acoustic_analysis", word_count=len(speech_result.word_segments))
-                speech_result.word_segments = self._analyze_words_acoustics(
-                    speech_result.word_segments, audio_data, sample_rate
+            # Retry with smaller batch
+            try:
+                result = self.whisper_model.transcribe(
+                    audio_data,
+                    batch_size=4
                 )
-                self.logger.info("acoustic_analysis_completed", 
-                               processed_words=len(speech_result.word_segments))
+                return result
+            except Exception as e:
+                self.logger.error("transcription_retry_failed", error=str(e))
+                return None
+                
+        except Exception as e:
+            self.logger.error("whisperx_transcription_error", error=str(e))
+            return None
+    
+    def _align_transcription(self, result: Dict[str, Any], audio_data: np.ndarray) -> Dict[str, Any]:
+        """Align transcription with audio"""
+        try:
+            language = result.get("language", "en")
             
+            if not self._load_alignment_model(language):
+                return result
+            
+            model, metadata = self.alignment_models[language]
+            
+            aligned_result = whisperx.align(
+                result["segments"],
+                model,
+                metadata,
+                audio_data,
+                self.device,
+                return_char_alignments=False
+            )
+            
+            # Preserve language info
+            aligned_result["language"] = language
+            return aligned_result
+            
+        except Exception as e:
+            self.logger.warning("alignment_failed", error=str(e))
+            return result
+    
+    def _add_acoustic_features_safe(self, 
+                                   speech_result: SpeechResult,
+                                   audio_data: np.ndarray,
+                                   sample_rate: int) -> SpeechResult:
+        """Add acoustic features with safety checks"""
+        try:
+            # Only process if we have valid word segments
+            if not speech_result.word_segments:
+                return speech_result
+            
+            # Limit processing to prevent memory issues
+            max_words = 100
+            if len(speech_result.word_segments) > max_words:
+                self.logger.warning("too_many_words_for_acoustics", 
+                                  count=len(speech_result.word_segments))
+                return speech_result
+            
+            # Process acoustics
+            enhanced_segments = []
+            for word in speech_result.word_segments[:max_words]:
+                enhanced_word = self._analyze_word_safe(
+                    word, audio_data, sample_rate
+                )
+                enhanced_segments.append(enhanced_word)
+            
+            speech_result.word_segments = enhanced_segments
             return speech_result
             
         except Exception as e:
-            self.logger.error("speech_recognition_failed", error=str(e))
-            # Return empty result as fallback
-            return SpeechResult(
-                text="",
-                confidence=0.0,
-                language=self.language or "en"
-            )
+            self.logger.warning("acoustic_analysis_skipped", error=str(e))
+            return speech_result
     
-    def transcribe_audio_file(self, 
-                            audio_path: Union[str, Path],
-                            start_time: float = 0.0,
-                            duration: Optional[float] = None,
-                            sample_rate: int = 16000) -> SpeechResult:
-        """
-        Transcribe audio file segment to text
+    def _analyze_word_safe(self, 
+                          word_data: Dict[str, Any],
+                          audio_data: np.ndarray,
+                          sample_rate: int) -> Dict[str, Any]:
+        """Analyze single word with safety checks"""
+        enhanced_word = word_data.copy()
         
-        Args:
-            audio_path: Path to audio file
-            start_time: Start time in seconds
-            duration: Duration in seconds (None for full file)
-            sample_rate: Target sample rate
-            
-        Returns:
-            SpeechResult with transcription
-        """
         try:
-            # Load audio segment
-            y, sr = librosa.load(
-                str(audio_path), 
-                sr=sample_rate,
-                offset=start_time,
-                duration=duration
-            )
+            start = word_data.get("start", 0.0)
+            end = word_data.get("end", 0.0)
             
-            return self.transcribe_audio_segment(y, sr)
+            if end <= start:
+                # Invalid timing
+                enhanced_word.update({
+                    "volume_db": -60.0,
+                    "pitch_hz": 0.0
+                })
+                return enhanced_word
             
-        except Exception as e:
-            self.logger.error("audio_file_transcription_failed", 
-                            file=str(audio_path),
-                            start_time=start_time,
-                            duration=duration,
-                            error=str(e))
-            return SpeechResult(
-                text="",
-                confidence=0.0,
-                language=self.language or "en"
-            )
+            # Extract word audio
+            start_sample = int(start * sample_rate)
+            end_sample = int(end * sample_rate)
+            
+            # Bounds check
+            start_sample = max(0, min(start_sample, len(audio_data) - 1))
+            end_sample = max(start_sample + 1, min(end_sample, len(audio_data)))
+            
+            word_audio = audio_data[start_sample:end_sample]
+            
+            # Simple acoustic features
+            if len(word_audio) > 0:
+                # Volume (RMS in dB)
+                rms = np.sqrt(np.mean(word_audio ** 2))
+                volume_db = 20 * np.log10(max(rms, 1e-8))
+                
+                # Simple pitch estimation (zero-crossing rate)
+                zcr = np.sum(np.abs(np.diff(np.sign(word_audio)))) / (2 * len(word_audio))
+                pitch_hz = zcr * sample_rate / 2  # Rough approximation
+                
+                enhanced_word.update({
+                    "volume_db": float(volume_db),
+                    "pitch_hz": float(pitch_hz)
+                })
+            else:
+                enhanced_word.update({
+                    "volume_db": -60.0,
+                    "pitch_hz": 0.0
+                })
+                
+        except Exception:
+            enhanced_word.update({
+                "volume_db": -60.0,
+                "pitch_hz": 0.0
+            })
+        
+        return enhanced_word
     
-    def batch_transcribe_segments(self, 
-                                audio_path: Union[str, Path],
-                                segments: List[Tuple[float, float]],
-                                sample_rate: int = 16000) -> List[SpeechResult]:
+    def batch_transcribe_segments(self,
+                                 audio_path: Union[str, Path],
+                                 segments: List[Tuple[float, float]],
+                                 sample_rate: int = 16000) -> List[SpeechResult]:
         """
-        Transcribe multiple audio segments using optimized batch processing
-        
-        This method transcribes the entire audio file once and then maps
-        the results to the provided segments, significantly improving performance.
-        
-        Args:
-            audio_path: Path to audio file
-            segments: List of (start_time, end_time) tuples
-            sample_rate: Target sample rate
-            
-        Returns:
-            List of SpeechResults mapped to input segments
+        Optimized batch transcription with proper error handling
         """
-        self.logger.info("batch_speech_recognition_optimized", 
-                        file=str(audio_path),
+        if not segments:
+            return []
+        
+        self.logger.info("batch_transcription_start", 
                         segments_count=len(segments))
         
         try:
-            # Step 1: Load entire audio file for analysis
+            # Load and prepare audio once
             audio_data, sr = librosa.load(str(audio_path), sr=sample_rate)
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
+            audio_data = self._prepare_audio(audio_data, sr)
             
-            # Step 2: Transcribe entire audio file once
-            full_transcription = self._transcribe_full_audio(audio_path, sample_rate)
-            
-            # Step 3: Map transcription results to segments with acoustic analysis
-            results = self._map_transcription_to_segments_with_acoustics(
-                full_transcription, segments, audio_data, sample_rate
-            )
-            
-            self.logger.info("batch_speech_recognition_completed",
-                           segments_processed=len(results),
-                           total_words=sum(len(r.text.split()) for r in results if r.text))
-            
-            return results
-            
-        except Exception as e:
-            self.logger.error("batch_speech_recognition_failed", error=str(e))
-            # Fallback to individual segment processing if batch fails
-            return self._fallback_individual_processing(audio_path, segments, sample_rate)
-    
-    def _transcribe_full_audio(self, audio_path: Union[str, Path], sample_rate: int = 16000) -> Dict[str, Any]:
-        """
-        Transcribe entire audio file using WhisperX
-        
-        Args:
-            audio_path: Path to audio file
-            sample_rate: Target sample rate
-            
-        Returns:
-            Full WhisperX transcription result with word-level timestamps
-        """
-        self._load_models()
-        
-        try:
-            # Load entire audio file
-            y, sr = librosa.load(str(audio_path), sr=sample_rate)
-            
-            if y.dtype != np.float32:
-                y = y.astype(np.float32)
-            
-            # VAD-based optimization: Use larger batch sizes for better throughput
-            batch_size = 16 if self.device != "cpu" else 8  # Optimized for VAD-based processing
-            
-            # Transcribe with WhisperX optimized parameters
-            result = self.whisper_model.transcribe(
-                y,
-                batch_size=batch_size
-            )
-            
-            # Detect language once for entire file
-            detected_language = result.get("language", "en")
-            self.logger.info("language_detected", language=detected_language)
-            
-            # Load alignment model once
-            if self.alignment_model is None:
-                self._load_alignment_model(detected_language)
-            
-            # Align for word-level timestamps
-            if self.alignment_model is not None:
-                try:
-                    result = whisperx.align(
-                        result["segments"], 
-                        self.alignment_model, 
-                        self.alignment_metadata,
-                        y, 
-                        self.device,
-                        return_char_alignments=False
-                    )
-                    result["language"] = detected_language
-                except Exception as e:
-                    self.logger.warning("alignment_failed_full_audio", error=str(e))
-                    result["language"] = detected_language
-            
-            return result
-            
-        except Exception as e:
-            self.logger.error("full_audio_transcription_failed", error=str(e))
-            raise
-    
-    def _map_transcription_to_segments(self, 
-                                     full_result: Dict[str, Any], 
-                                     segments: List[Tuple[float, float]]) -> List[SpeechResult]:
-        """
-        Map full transcription results to speaker segments
-        
-        Args:
-            full_result: WhisperX transcription result for entire audio
-            segments: List of (start_time, end_time) tuples
-            
-        Returns:
-            List of SpeechResult objects mapped to segments
-        """
-        try:
-            # Extract all word-level segments from WhisperX result
-            all_words = []
-            for segment in full_result.get("segments", []):
-                for word in segment.get("words", []):
-                    all_words.append({
-                        "word": word.get("word", "").strip(),
-                        "start": word.get("start", 0.0),
-                        "end": word.get("end", 0.0),
-                        "confidence": word.get("confidence", 0.0)
-                    })
-            
-            # Map words to speaker segments
-            results = []
-            for start_time, end_time in segments:
-                # Find words that overlap with this segment
-                segment_words = []
-                for word in all_words:
-                    word_start = word["start"]
-                    word_end = word["end"]
-                    
-                    # Check if word overlaps with segment (with small tolerance)
-                    if (word_start < end_time and word_end > start_time):
-                        segment_words.append(word)
-                
-                # Combine words into text
-                text = " ".join([w["word"] for w in segment_words]).strip()
-                
-                # Calculate average confidence
-                avg_confidence = np.mean([w["confidence"] for w in segment_words]) if segment_words else 0.0
-                
-                # Create SpeechResult
-                result = SpeechResult(
-                    text=text,
-                    confidence=float(avg_confidence),
-                    language=full_result.get("language", "en"),
-                    word_segments=segment_words if segment_words else None
+            # Choose strategy based on segment count
+            if len(segments) < 5:
+                # For few segments, process individually
+                return self._process_segments_individually(
+                    audio_data, segments, sample_rate
                 )
-                results.append(result)
-            
-            return results
-            
-        except Exception as e:
-            self.logger.error("transcription_mapping_failed", error=str(e))
-            # Return empty results as fallback
-            return [SpeechResult(text="", confidence=0.0) for _ in segments]
-    
-    def _map_transcription_to_segments_with_acoustics(self, 
-                                                    full_result: Dict[str, Any], 
-                                                    segments: List[Tuple[float, float]],
-                                                    audio_data: np.ndarray,
-                                                    sample_rate: int = 16000) -> List[SpeechResult]:
-        """
-        Map full transcription results to speaker segments with acoustic analysis
-        
-        Args:
-            full_result: WhisperX transcription result for entire audio
-            segments: List of (start_time, end_time) tuples
-            audio_data: Full audio data for acoustic analysis
-            sample_rate: Sample rate of audio
-            
-        Returns:
-            List of SpeechResult objects with acoustic features
-        """
-        try:
-            # Extract all word-level segments from WhisperX result
-            all_words = []
-            for segment in full_result.get("segments", []):
-                for word in segment.get("words", []):
-                    all_words.append({
-                        "word": word.get("word", "").strip(),
-                        "start": word.get("start", 0.0),
-                        "end": word.get("end", 0.0),
-                        "confidence": word.get("confidence", 0.0)
-                    })
-            
-            # Map words to speaker segments with acoustic analysis
-            results = []
-            for start_time, end_time in segments:
-                # Find words that overlap with this segment
-                segment_words = []
-                for word in all_words:
-                    word_start = word["start"]
-                    word_end = word["end"]
-                    
-                    # Check if word overlaps with segment (with small tolerance)
-                    if (word_start < end_time and word_end > start_time):
-                        # Extract word audio and analyze acoustics
-                        word_audio = self._extract_word_audio(
-                            audio_data, word_start, word_end, sample_rate
-                        )
-                        acoustic_features = self._analyze_word_acoustics(word_audio, sample_rate)
-                        
-                        # Add acoustic features to word
-                        enhanced_word = word.copy()
-                        enhanced_word.update(acoustic_features)
-                        
-                        segment_words.append(enhanced_word)
-                
-                # Combine words into text
-                text = " ".join([w["word"] for w in segment_words]).strip()
-                
-                # Calculate average confidence
-                avg_confidence = np.mean([w["confidence"] for w in segment_words]) if segment_words else 0.0
-                
-                # Create SpeechResult with enhanced word segments
-                result = SpeechResult(
-                    text=text,
-                    confidence=float(avg_confidence),
-                    language=full_result.get("language", "en"),
-                    word_segments=segment_words if segment_words else None
+            else:
+                # For many segments, use full transcription approach
+                return self._process_segments_batch(
+                    audio_data, segments, sample_rate
                 )
-                results.append(result)
-            
-            return results
-            
+                
         except Exception as e:
-            self.logger.error("transcription_acoustic_mapping_failed", error=str(e))
-            # Fallback to basic mapping without acoustics
-            return self._map_transcription_to_segments(full_result, segments)
+            self.logger.error("batch_transcription_failed", error=str(e))
+            # Return empty results
+            return [SpeechResult.empty(f"Batch error: {str(e)}") 
+                   for _ in segments]
     
-    def _fallback_individual_processing(self, 
-                                      audio_path: Union[str, Path],
+    def _process_segments_individually(self,
+                                      audio_data: np.ndarray,
                                       segments: List[Tuple[float, float]],
-                                      sample_rate: int = 16000) -> List[SpeechResult]:
-        """
-        Fallback method: process segments individually (original approach)
-        
-        Args:
-            audio_path: Path to audio file
-            segments: List of (start_time, end_time) tuples
-            sample_rate: Target sample rate
-            
-        Returns:
-            List of SpeechResults
-        """
-        self.logger.warning("using_fallback_individual_processing")
-        
+                                      sample_rate: int) -> List[SpeechResult]:
+        """Process segments one by one"""
         results = []
+        
         for start_time, end_time in segments:
-            duration = end_time - start_time
-            result = self.transcribe_audio_file(
-                audio_path=audio_path,
-                start_time=start_time,
-                duration=duration,
-                sample_rate=sample_rate
-            )
+            # Extract segment audio
+            start_sample = int(start_time * sample_rate)
+            end_sample = int(end_time * sample_rate)
+            
+            # Bounds check
+            start_sample = max(0, min(start_sample, len(audio_data) - 1))
+            end_sample = max(start_sample + 1, min(end_sample, len(audio_data)))
+            
+            segment_audio = audio_data[start_sample:end_sample]
+            
+            # Transcribe
+            result = self.transcribe_audio_segment(segment_audio, sample_rate)
+            results.append(result)
+        
+        return results
+    
+    def _process_segments_batch(self,
+                               audio_data: np.ndarray,
+                               segments: List[Tuple[float, float]],
+                               sample_rate: int) -> List[SpeechResult]:
+        """Process all segments using full transcription"""
+        # Load model first
+        if not self._load_whisper_model():
+            return [SpeechResult.empty("Model loading failed") for _ in segments]
+        
+        try:
+            # Transcribe full audio
+            full_result = self._transcribe_with_whisperx(audio_data)
+            
+            if full_result is None:
+                return [SpeechResult.empty("Full transcription failed") 
+                       for _ in segments]
+            
+            # Align if enabled
+            if self.enable_alignment:
+                full_result = self._align_transcription(full_result, audio_data)
+            
+            # Map to segments
+            return self._map_to_segments(full_result, segments)
+            
+        except Exception as e:
+            self.logger.error("batch_processing_error", error=str(e))
+            return [SpeechResult.empty(f"Batch error: {str(e)}") 
+                   for _ in segments]
+    
+    def _map_to_segments(self,
+                        full_result: Dict[str, Any],
+                        segments: List[Tuple[float, float]]) -> List[SpeechResult]:
+        """Map full transcription to time segments"""
+        # Extract all words with timing
+        all_words = []
+        
+        for segment in full_result.get("segments", []):
+            words = segment.get("words", [])
+            for word in words:
+                if isinstance(word, dict) and "start" in word and "end" in word:
+                    all_words.append({
+                        "word": str(word.get("word", "")).strip(),
+                        "start": float(word.get("start", 0.0)),
+                        "end": float(word.get("end", 0.0)),
+                        "confidence": float(word.get("confidence", 0.0))
+                    })
+        
+        # Map words to segments
+        results = []
+        language = full_result.get("language", "en")
+        
+        for start_time, end_time in segments:
+            # Find overlapping words
+            segment_words = []
+            
+            for word in all_words:
+                word_mid = (word["start"] + word["end"]) / 2
+                # Check if word center is within segment
+                if start_time <= word_mid <= end_time:
+                    segment_words.append(word)
+            
+            # Create result
+            if segment_words:
+                text = " ".join([w["word"] for w in segment_words])
+                confidence = np.mean([w["confidence"] for w in segment_words])
+                
+                result = SpeechResult(
+                    text=text,
+                    confidence=float(confidence),
+                    language=language,
+                    word_segments=segment_words
+                )
+            else:
+                result = SpeechResult.empty()
+            
             results.append(result)
         
         return results
     
     def get_transcription_summary(self, results: List[SpeechResult]) -> Dict[str, Any]:
-        """
-        Get summary statistics for transcription results
-        
-        Args:
-            results: List of SpeechResults
-            
-        Returns:
-            Dictionary with transcription statistics
-        """
+        """Get summary statistics with error handling"""
         if not results:
-            return {}
+            return {
+                "total_segments": 0,
+                "transcribed_segments": 0,
+                "empty_segments": 0,
+                "success_rate": 0.0,
+                "average_confidence": 0.0,
+                "total_words": 0,
+                "errors": []
+            }
         
-        # Calculate statistics
-        total_segments = len(results)
-        non_empty_results = [r for r in results if r.text.strip()]
-        empty_segments = total_segments - len(non_empty_results)
+        # Collect statistics
+        total = len(results)
+        transcribed = [r for r in results if r.text.strip()]
+        errors = [r.error for r in results if r.error]
         
-        avg_confidence = np.mean([r.confidence for r in non_empty_results]) if non_empty_results else 0.0
-        total_words = sum(len(r.text.split()) for r in non_empty_results)
+        # Calculate metrics
+        success_rate = len(transcribed) / total if total > 0 else 0.0
+        avg_confidence = np.mean([r.confidence for r in transcribed]) if transcribed else 0.0
+        total_words = sum(len(r.text.split()) for r in transcribed)
         
-        # Language detection
+        # Language statistics
         languages = [r.language for r in results if r.language]
-        dominant_language = max(set(languages), key=languages.count) if languages else None
+        language_dist = {}
+        if languages:
+            for lang in set(languages):
+                language_dist[lang] = languages.count(lang)
         
         return {
-            "total_segments": total_segments,
-            "transcribed_segments": len(non_empty_results),
-            "empty_segments": empty_segments,
-            "success_rate": len(non_empty_results) / total_segments if total_segments > 0 else 0.0,
+            "total_segments": total,
+            "transcribed_segments": len(transcribed),
+            "empty_segments": total - len(transcribed),
+            "success_rate": float(success_rate),
             "average_confidence": float(avg_confidence),
             "total_words": total_words,
-            "dominant_language": dominant_language,
-            "language_distribution": {
-                lang: languages.count(lang) 
-                for lang in set(languages)
-            } if languages else {}
+            "dominant_language": max(language_dist, key=language_dist.get) if language_dist else None,
+            "language_distribution": language_dist,
+            "errors": errors[:10]  # Limit error list
         }
     
-    def _extract_word_audio(self, audio_data: np.ndarray, start_time: float, end_time: float, sample_rate: int = 16000) -> np.ndarray:
-        """Extract audio segment for a specific word"""
+    def cleanup(self):
+        """Clean up resources"""
         try:
-            start_sample = int(start_time * sample_rate)
-            end_sample = int(end_time * sample_rate)
+            # Clear model references
+            self.whisper_model = None
+            self.alignment_models.clear()
             
-            # Ensure valid indices
-            start_sample = max(0, start_sample)
-            end_sample = min(len(audio_data), end_sample)
+            # Clear GPU cache if using CUDA
+            if self.device == "cuda" and torch.cuda.is_available():
+                torch.cuda.empty_cache()
             
-            if start_sample >= end_sample:
-                return np.zeros(int(0.1 * sample_rate), dtype=np.float32)  # Return 0.1s of silence
-                
-            return audio_data[start_sample:end_sample].astype(np.float32)
-        except Exception as e:
-            self.logger.warning("word_audio_extraction_failed", error=str(e))
-            return np.zeros(int(0.1 * sample_rate), dtype=np.float32)
-    
-    def _analyze_word_acoustics(self, word_audio: np.ndarray, sample_rate: int = 16000) -> Dict[str, float]:
-        """
-        Analyze acoustic features of a word segment using GPU acceleration
-        
-        Args:
-            word_audio: Audio data for the word
-            sample_rate: Sample rate of audio
-            
-        Returns:
-            Dict with volume_db, pitch_hz, harmonics_ratio, spectral_centroid
-        """
-        try:
-            # Ensure minimum length
-            if len(word_audio) < sample_rate * 0.05:  # At least 50ms
-                return {
-                    "volume_db": -60.0,
-                    "pitch_hz": 0.0,
-                    "harmonics_ratio": 0.0,
-                    "spectral_centroid": 0.0
-                }
-            
-            # Convert to torch tensor and move to device
-            audio_tensor = torch.from_numpy(word_audio).to(self.device)
-            
-            # Calculate volume (RMS to dB)
-            volume_db = self._calculate_rms_db(audio_tensor)
-            
-            # Calculate STFT for frequency analysis
-            stft = torch.stft(
-                audio_tensor, 
-                n_fft=512, 
-                hop_length=128,
-                win_length=400,
-                window=torch.hann_window(400).to(self.device),
-                return_complex=True
-            )
-            magnitude = torch.abs(stft)
-            
-            # Calculate acoustic features
-            pitch_hz = self._estimate_f0_gpu(magnitude, sample_rate)
-            harmonics_ratio = self._calculate_harmonics_ratio(magnitude)
-            spectral_centroid = self._calculate_spectral_centroid_gpu(magnitude, sample_rate)
-            
-            return {
-                "volume_db": float(volume_db),
-                "pitch_hz": float(pitch_hz),
-                "harmonics_ratio": float(harmonics_ratio),
-                "spectral_centroid": float(spectral_centroid)
-            }
+            self.logger.info("cleanup_completed")
             
         except Exception as e:
-            self.logger.warning("acoustic_analysis_failed", error=str(e))
-            return {
-                "volume_db": -60.0,
-                "pitch_hz": 0.0,
-                "harmonics_ratio": 0.0,
-                "spectral_centroid": 0.0
-            }
-    
-    def _analyze_words_acoustics(self, word_segments: List[Dict[str, Any]], 
-                                audio_data: np.ndarray, sample_rate: int = 16000) -> List[Dict[str, Any]]:
-        """
-        Analyze acoustic features for multiple word segments
-        
-        Args:
-            word_segments: List of word segment dictionaries
-            audio_data: Full audio data array
-            sample_rate: Sample rate of audio
-            
-        Returns:
-            List of word segments enhanced with acoustic data
-        """
-        enhanced_segments = []
-        
-        for word_data in word_segments:
-            try:
-                # Extract timing information
-                start_time = word_data.get('start', 0.0)
-                end_time = word_data.get('end', 0.0)
-                
-                # Extract audio segment for this word
-                start_sample = int(start_time * sample_rate)
-                end_sample = int(end_time * sample_rate)
-                
-                # Ensure valid bounds
-                start_sample = max(0, start_sample)
-                end_sample = min(len(audio_data), end_sample)
-                
-                if start_sample < end_sample:
-                    word_audio = audio_data[start_sample:end_sample]
-                    acoustic_features = self._analyze_word_acoustics(word_audio, sample_rate)
-                    
-                    # Merge original data with acoustic features
-                    enhanced_word = word_data.copy()
-                    enhanced_word.update(acoustic_features)
-                    enhanced_segments.append(enhanced_word)
-                else:
-                    # Invalid segment - add with default values
-                    enhanced_word = word_data.copy()
-                    enhanced_word.update({
-                        "volume_db": -60.0,
-                        "pitch_hz": 0.0,
-                        "harmonics_ratio": 0.0,
-                        "spectral_centroid": 0.0
-                    })
-                    enhanced_segments.append(enhanced_word)
-                    
-            except Exception as e:
-                self.logger.warning("word_acoustic_analysis_failed", 
-                                  word=word_data.get('word', ''), error=str(e))
-                # Add word with default acoustic values
-                enhanced_word = word_data.copy()
-                enhanced_word.update({
-                    "volume_db": -60.0,
-                    "pitch_hz": 0.0,
-                    "harmonics_ratio": 0.0,
-                    "spectral_centroid": 0.0
-                })
-                enhanced_segments.append(enhanced_word)
-        
-        return enhanced_segments
-    
-    def _calculate_rms_db(self, audio_tensor: torch.Tensor) -> torch.Tensor:
-        """Calculate RMS volume in decibels"""
-        rms = torch.sqrt(torch.mean(audio_tensor ** 2))
-        # Convert to dB with floor to prevent log(0)
-        rms_db = 20 * torch.log10(torch.clamp(rms, min=1e-8))
-        return rms_db
-    
-    def _estimate_f0_gpu(self, magnitude: torch.Tensor, sample_rate: int) -> torch.Tensor:
-        """Estimate fundamental frequency using autocorrelation on GPU"""
-        try:
-            # Convert to power spectrum
-            power_spectrum = magnitude ** 2
-            
-            # Sum across time frames
-            avg_spectrum = torch.mean(power_spectrum, dim=1)
-            
-            # Find peak frequency (simplified F0 estimation)
-            freqs = torch.linspace(0, sample_rate // 2, avg_spectrum.shape[0]).to(self.device)
-            
-            # Focus on human vocal range (80-400 Hz)
-            vocal_range_mask = (freqs >= 80) & (freqs <= 400)
-            if not vocal_range_mask.any():
-                return torch.tensor(0.0)
-            
-            vocal_spectrum = avg_spectrum[vocal_range_mask]
-            vocal_freqs = freqs[vocal_range_mask]
-            
-            # Find peak in vocal range
-            peak_idx = torch.argmax(vocal_spectrum)
-            f0 = vocal_freqs[peak_idx]
-            
-            return f0
-            
-        except Exception:
-            return torch.tensor(0.0)
-    
-    def _calculate_harmonics_ratio(self, magnitude: torch.Tensor) -> torch.Tensor:
-        """Calculate harmonics-to-noise ratio"""
-        try:
-            # Convert to power spectrum
-            power_spectrum = magnitude ** 2
-            
-            # Sum across time frames
-            avg_spectrum = torch.mean(power_spectrum, dim=1)
-            
-            # Simple HNR approximation: ratio of peak to mean energy
-            peak_energy = torch.max(avg_spectrum)
-            mean_energy = torch.mean(avg_spectrum)
-            
-            if mean_energy > 0:
-                hnr = peak_energy / mean_energy
-                # Normalize to 0-1 range
-                hnr_normalized = torch.clamp(hnr / 10.0, 0, 1)
-                return hnr_normalized
-            else:
-                return torch.tensor(0.0)
-                
-        except Exception:
-            return torch.tensor(0.0)
-    
-    def _calculate_spectral_centroid_gpu(self, magnitude: torch.Tensor, sample_rate: int) -> torch.Tensor:
-        """Calculate spectral centroid on GPU"""
-        try:
-            # Power spectrum
-            power_spectrum = magnitude ** 2
-            
-            # Sum across time frames
-            avg_spectrum = torch.mean(power_spectrum, dim=1)
-            
-            # Frequency bins
-            freqs = torch.linspace(0, sample_rate // 2, avg_spectrum.shape[0]).to(self.device)
-            
-            # Calculate weighted average frequency (spectral centroid)
-            total_energy = torch.sum(avg_spectrum)
-            if total_energy > 0:
-                centroid = torch.sum(freqs * avg_spectrum) / total_energy
-                return centroid
-            else:
-                return torch.tensor(0.0)
-                
-        except Exception:
-            return torch.tensor(0.0)
+            self.logger.error("cleanup_failed", error=str(e))
