@@ -73,8 +73,8 @@ class SpeakerDiarizer:
                 try:
                     self.pipeline.instantiate({
                         "clustering": {
+                            "method": "centroid",
                             "min_cluster_size": self.min_speakers,
-                            "max_num_speakers": self.max_speakers,
                         }
                     })
                 except Exception as e:
@@ -125,9 +125,7 @@ class SpeakerDiarizer:
                     min_speakers=self.min_speakers,
                     max_speakers=self.max_speakers,
                     # CPU optimizations
-                    num_speakers=None,  # Let it auto-detect for speed
-                    min_duration_on=2.0,  # Longer minimum to reduce computation
-                    min_duration_off=1.0   # Faster transitions
+                    num_speakers=None  # Let it auto-detect for speed
                 )
             else:
                 # Standard processing
@@ -229,28 +227,82 @@ class SpeakerDiarizer:
                 features_per_segment.append(segment_features)
                 segment_times.append((start_time, end_time))
             
-            # Simple clustering based on spectral centroid
+            # Enhanced clustering for better speaker separation
             if len(features_per_segment) > 0:
                 features_array = np.array(features_per_segment)
                 
-                # Use spectral centroid as primary feature for speaker separation
-                centroids = features_array[:, 0]  # spectral centroid mean
-                median_centroid = np.median(centroids)
+                # Use multiple features for clustering
+                from sklearn.cluster import KMeans
+                from sklearn.preprocessing import StandardScaler
                 
-                # Assign speakers based on spectral centroid
-                for i, (start_time, end_time) in enumerate(segment_times):
-                    if i < len(centroids):
-                        speaker_id = "speaker_01" if centroids[i] <= median_centroid else "speaker_02"
-                        confidence = 0.6 + 0.3 * abs(centroids[i] - median_centroid) / (np.max(centroids) - np.min(centroids))
-                        confidence = min(0.95, max(0.3, confidence))
-                        
-                        segment = SpeakerSegment(
-                            start=start_time,
-                            end=end_time,
-                            speaker=speaker_id,
-                            confidence=confidence
-                        )
-                        segments.append(segment)
+                # Normalize features
+                scaler = StandardScaler()
+                normalized_features = scaler.fit_transform(features_array)
+                
+                # Determine optimal number of speakers (2-4)
+                n_clusters = min(4, max(2, len(features_per_segment) // 5))
+                
+                try:
+                    # K-means clustering
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                    cluster_labels = kmeans.fit_predict(normalized_features)
+                    
+                    # Assign speakers based on clusters
+                    for i, (start_time, end_time) in enumerate(segment_times):
+                        if i < len(cluster_labels):
+                            speaker_id = f"speaker_{cluster_labels[i]:02d}"
+                            
+                            # Calculate confidence based on distance to cluster center
+                            cluster_center = kmeans.cluster_centers_[cluster_labels[i]]
+                            distance = np.linalg.norm(normalized_features[i] - cluster_center)
+                            max_distance = np.max([np.linalg.norm(feat - center) 
+                                                 for feat in normalized_features 
+                                                 for center in kmeans.cluster_centers_])
+                            confidence = 0.9 - 0.4 * (distance / (max_distance + 1e-8))
+                            confidence = min(0.95, max(0.3, confidence))
+                            
+                            segment = SpeakerSegment(
+                                start=start_time,
+                                end=end_time,
+                                speaker=speaker_id,
+                                confidence=confidence
+                            )
+                            segments.append(segment)
+                            
+                except ImportError:
+                    # Fallback to simple spectral centroid clustering
+                    centroids = features_array[:, 0]  # spectral centroid mean
+                    
+                    # Use percentiles for better separation
+                    p33 = np.percentile(centroids, 33)
+                    p67 = np.percentile(centroids, 67)
+                    
+                    for i, (start_time, end_time) in enumerate(segment_times):
+                        if i < len(centroids):
+                            if centroids[i] <= p33:
+                                speaker_id = "speaker_01"
+                            elif centroids[i] <= p67:
+                                speaker_id = "speaker_02"
+                            else:
+                                speaker_id = "speaker_03"
+                            
+                            confidence = 0.6 + 0.3 * abs(centroids[i] - np.mean(centroids)) / (np.std(centroids) + 1e-8)
+                            confidence = min(0.95, max(0.3, confidence))
+                            
+                            segment = SpeakerSegment(
+                                start=start_time,
+                                end=end_time,
+                                speaker=speaker_id,
+                                confidence=confidence
+                            )
+                            segments.append(segment)
+            
+            # Apply post-processing to fallback results
+            if len(segments) > 2:
+                # Simple segment merging for fallback
+                segments = self.merge_adjacent_segments(segments, max_gap=2.0)
+                # Remove very short segments
+                segments = [s for s in segments if s.duration >= 1.0]
             
             self.logger.info("fallback_diarization_completed",
                            segments_count=len(segments))

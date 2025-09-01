@@ -213,7 +213,7 @@ class PipelineManager:
             "acoustic_analysis": PipelineStage(
                 name="acoustic_analysis",
                 service="acoustic_analyzer",
-                required=False,  # Optional for MVP
+                required=True,  # Optional for MVP
                 gpu_intensive=False,
                 parallel_capable=True,
                 estimated_time_ratio=0.8,
@@ -223,7 +223,7 @@ class PipelineManager:
                 name="result_synthesis",
                 service="result_synthesizer",
                 required=True,
-                gpu_intensive=False,
+                gpu_intensive=True,
                 parallel_capable=False,
                 estimated_time_ratio=0.2,
                 dependencies=["speaker_diarization"]

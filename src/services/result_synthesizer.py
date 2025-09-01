@@ -7,6 +7,7 @@ Memory-efficient synthesis with streaming JSON generation and comprehensive vali
 
 import json
 import time
+import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union, Tuple
 from dataclasses import dataclass, asdict
@@ -524,3 +525,138 @@ class ResultSynthesizer:
             stats = self.export_json(result, output_path, prettify)
             
             return result, stats
+    
+    def calculate_acoustic_statistics(self, timeline_segments: List[TimelineSegment]) -> Dict[str, Any]:
+        """
+        Calculate global acoustic statistics from timeline segments for dynamic subtitles
+        
+        Args:
+            timeline_segments: List of timeline segments with word-level acoustic data
+            
+        Returns:
+            Dict containing volume_statistics, pitch_statistics, harmonics_statistics
+        """
+        try:
+            # Collect all word-level acoustic data
+            all_volumes = []
+            all_pitches = []
+            all_harmonics = []
+            all_spectral_centroids = []
+            
+            for segment in timeline_segments:
+                # Extract word acoustic data from segment
+                if hasattr(segment, 'speech_result') and segment.speech_result:
+                    word_segments = getattr(segment.speech_result, 'word_segments', [])
+                    if word_segments:
+                        for word in word_segments:
+                            if isinstance(word, dict):
+                                # Volume data
+                                volume_db = word.get('volume_db')
+                                if volume_db is not None and volume_db > -60:  # Filter out silence
+                                    all_volumes.append(volume_db)
+                                
+                                # Pitch data
+                                pitch_hz = word.get('pitch_hz')
+                                if pitch_hz is not None and pitch_hz > 0:
+                                    all_pitches.append(pitch_hz)
+                                
+                                # Harmonics data
+                                harmonics_ratio = word.get('harmonics_ratio')
+                                if harmonics_ratio is not None and harmonics_ratio > 0:
+                                    all_harmonics.append(harmonics_ratio)
+                                
+                                # Spectral centroid data
+                                spectral_centroid = word.get('spectral_centroid')
+                                if spectral_centroid is not None and spectral_centroid > 0:
+                                    all_spectral_centroids.append(spectral_centroid)
+            
+            # Calculate statistics
+            statistics = {}
+            
+            if all_volumes:
+                statistics['volume_statistics'] = self._calculate_volume_stats(all_volumes)
+            
+            if all_pitches:
+                statistics['pitch_statistics'] = self._calculate_pitch_stats(all_pitches)
+            
+            if all_harmonics:
+                statistics['harmonics_statistics'] = self._calculate_harmonics_stats(all_harmonics)
+            
+            if all_spectral_centroids:
+                statistics['spectral_statistics'] = self._calculate_spectral_stats(all_spectral_centroids)
+            
+            self.logger.info("acoustic_statistics_calculated",
+                           volume_samples=len(all_volumes),
+                           pitch_samples=len(all_pitches),
+                           harmonics_samples=len(all_harmonics))
+            
+            return statistics
+            
+        except Exception as e:
+            self.logger.error("acoustic_statistics_calculation_failed", error=str(e))
+            return {}
+    
+    def _calculate_volume_stats(self, volumes: List[float]) -> Dict[str, float]:
+        """Calculate volume statistics for dynamic subtitle font sizing"""
+        volumes_array = np.array(volumes)
+        
+        return {
+            "global_min_db": float(np.min(volumes_array)),
+            "global_max_db": float(np.max(volumes_array)),
+            "global_mean_db": float(np.mean(volumes_array)),
+            "global_std_db": float(np.std(volumes_array)),
+            "baseline_db": float(np.percentile(volumes_array, 50)),  # Median for normal font size
+            "whisper_threshold_db": float(np.percentile(volumes_array, 25)),  # 25th percentile for small font
+            "loud_threshold_db": float(np.percentile(volumes_array, 75)),  # 75th percentile for large font
+            "very_loud_threshold_db": float(np.percentile(volumes_array, 90))  # 90th percentile for extra large
+        }
+    
+    def _calculate_pitch_stats(self, pitches: List[float]) -> Dict[str, Any]:
+        """Calculate pitch statistics for dynamic subtitle font weight/width"""
+        pitches_array = np.array(pitches)
+        
+        # Define vocal ranges
+        low_pitch_threshold = np.percentile(pitches_array, 33)   # Bottom third - heavy/wide font
+        high_pitch_threshold = np.percentile(pitches_array, 67)  # Top third - light/narrow font
+        
+        return {
+            "global_min_hz": float(np.min(pitches_array)),
+            "global_max_hz": float(np.max(pitches_array)),
+            "global_mean_hz": float(np.mean(pitches_array)),
+            "global_std_hz": float(np.std(pitches_array)),
+            "baseline_range": {
+                "min_hz": float(low_pitch_threshold),
+                "max_hz": float(high_pitch_threshold)
+            },
+            "low_pitch_threshold_hz": float(low_pitch_threshold),    # Heavy+wide font
+            "high_pitch_threshold_hz": float(high_pitch_threshold),  # Light+narrow font
+            "vocal_range_hz": float(np.max(pitches_array) - np.min(pitches_array))
+        }
+    
+    def _calculate_harmonics_stats(self, harmonics: List[float]) -> Dict[str, float]:
+        """Calculate harmonics statistics for voice quality assessment"""
+        harmonics_array = np.array(harmonics)
+        
+        return {
+            "global_min_ratio": float(np.min(harmonics_array)),
+            "global_max_ratio": float(np.max(harmonics_array)),
+            "global_mean_ratio": float(np.mean(harmonics_array)),
+            "global_std_ratio": float(np.std(harmonics_array)),
+            "baseline_ratio": float(np.percentile(harmonics_array, 50)),  # Median
+            "clear_voice_threshold": float(np.percentile(harmonics_array, 75)),  # Clear, harmonic voice
+            "rough_voice_threshold": float(np.percentile(harmonics_array, 25))   # Rough, noisy voice
+        }
+    
+    def _calculate_spectral_stats(self, spectral_centroids: List[float]) -> Dict[str, float]:
+        """Calculate spectral centroid statistics for voice brightness"""
+        spectral_array = np.array(spectral_centroids)
+        
+        return {
+            "global_min_hz": float(np.min(spectral_array)),
+            "global_max_hz": float(np.max(spectral_array)),
+            "global_mean_hz": float(np.mean(spectral_array)),
+            "global_std_hz": float(np.std(spectral_array)),
+            "baseline_hz": float(np.percentile(spectral_array, 50)),     # Median brightness
+            "bright_threshold_hz": float(np.percentile(spectral_array, 75)),  # Bright voice
+            "dark_threshold_hz": float(np.percentile(spectral_array, 25))     # Dark voice
+        }

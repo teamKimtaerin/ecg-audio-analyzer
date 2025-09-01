@@ -18,9 +18,9 @@ class SpeakerDiarizationConfig:
     
     # Processing parameters
     min_speakers: int = 1
-    max_speakers: int = 10
-    segmentation_onset: float = 0.5
-    segmentation_offset: float = 0.5
+    max_speakers: int = 4  # Speed optimized - prevent over-clustering
+    segmentation_onset: float = 0.4  # Less sensitive for speed
+    segmentation_offset: float = 0.4  # Less sensitive for speed
     
     # GPU optimization
     device: str = "cuda:0"
@@ -28,10 +28,10 @@ class SpeakerDiarizationConfig:
     enable_fp16: bool = True           # Half precision for speed
     
     # Performance tuning
-    clustering_method: str = "centroid"
-    min_segment_duration: float = 0.5  # Minimum 500ms segments
+    clustering_method: str = "centroid"  # Faster method for speed optimization
+    min_segment_duration: float = 1.0  # Longer segments for stability
     min_speakers_count: int = 1
-    max_speakers_count: int = 8
+    max_speakers_count: int = 4
     
     # Quality settings
     voice_activity_detection: bool = True
