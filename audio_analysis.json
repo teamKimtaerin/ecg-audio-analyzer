@@ -1,0 +1,218 @@
+{
+  "file_info": {
+    "filename": "test-caption-with-intention.wav",
+    "duration": 22.0,
+    "sample_rate": 16000,
+    "channels": 1,
+    "format": "wav"
+  },
+  "analysis_metadata": {
+    "pyannote_version": "3.1",
+    "whisperx_version": "3.1.1",
+    "librosa_version": "0.10.1",
+    "processed_at": "2025-08-28T13:55:00Z"
+  },
+  "speakers": [
+    {
+      "speaker_id": "SPEAKER_00",
+      "confidence": 0.95,
+      "total_speech_duration": 5.1,
+      "segments": [
+        {
+          "segment_id": "seg_001",
+          "start": 1.0,
+          "end": 2.6,
+          "confidence": 0.92,
+          "text": "Hello, this is a test",
+          "words": [
+            {
+              "word": "Hello",
+              "start": 1.0,
+              "end": 1.3,
+              "confidence": 0.98,
+              "volume_db": -15.2,
+              "pitch_hz": 185.4,
+              "harmonics_ratio": 0.72,
+              "spectral_centroid": 1250.0
+            },
+            {
+              "word": "this",
+              "start": 1.3,
+              "end": 1.6,
+              "confidence": 0.96,
+              "volume_db": -14.8,
+              "pitch_hz": 178.2,
+              "harmonics_ratio": 0.68,
+              "spectral_centroid": 1180.0
+            },
+            {
+              "word": "is",
+              "start": 1.6,
+              "end": 1.9,
+              "confidence": 0.94,
+              "volume_db": -16.1,
+              "pitch_hz": 192.1,
+              "harmonics_ratio": 0.71,
+              "spectral_centroid": 1320.0
+            },
+            {
+              "word": "a",
+              "start": 1.9,
+              "end": 2.2,
+              "confidence": 0.92,
+              "volume_db": -17.3,
+              "pitch_hz": 188.9,
+              "harmonics_ratio": 0.69,
+              "spectral_centroid": 1290.0
+            },
+            {
+              "word": "test",
+              "start": 2.2,
+              "end": 2.6,
+              "confidence": 0.97,
+              "volume_db": -14.5,
+              "pitch_hz": 182.6,
+              "harmonics_ratio": 0.74,
+              "spectral_centroid": 1230.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.88,
+      "total_speech_duration": 4.8,
+      "segments": [
+        {
+          "segment_id": "seg_002",
+          "start": 6.0,
+          "end": 7.8,
+          "confidence": 0.89,
+          "text": "I'M SPEAKING VERY LOUDLY!",
+          "words": [
+            {
+              "word": "I'M",
+              "start": 6.0,
+              "end": 6.4,
+              "confidence": 0.91,
+              "volume_db": -8.2,
+              "pitch_hz": 220.5,
+              "harmonics_ratio": 0.58,
+              "spectral_centroid": 1680.0
+            },
+            {
+              "word": "SPEAKING",
+              "start": 6.4,
+              "end": 6.8,
+              "confidence": 0.94,
+              "volume_db": -7.8,
+              "pitch_hz": 235.1,
+              "harmonics_ratio": 0.55,
+              "spectral_centroid": 1820.0
+            },
+            {
+              "word": "VERY",
+              "start": 6.8,
+              "end": 7.2,
+              "confidence": 0.96,
+              "volume_db": -7.1,
+              "pitch_hz": 242.3,
+              "harmonics_ratio": 0.52,
+              "spectral_centroid": 1950.0
+            },
+            {
+              "word": "LOUDLY!",
+              "start": 7.2,
+              "end": 7.8,
+              "confidence": 0.93,
+              "volume_db": -6.5,
+              "pitch_hz": 238.7,
+              "harmonics_ratio": 0.54,
+              "spectral_centroid": 1890.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.91,
+      "total_speech_duration": 3.0,
+      "segments": [
+        {
+          "segment_id": "seg_003",
+          "start": 11.0,
+          "end": 13.0,
+          "confidence": 0.87,
+          "text": "I'm whispering very quietly...",
+          "words": [
+            {
+              "word": "I'm",
+              "start": 11.0,
+              "end": 11.4,
+              "confidence": 0.85,
+              "volume_db": -28.5,
+              "pitch_hz": 142.8,
+              "harmonics_ratio": 0.83,
+              "spectral_centroid": 850.0
+            },
+            {
+              "word": "whispering",
+              "start": 11.4,
+              "end": 11.9,
+              "confidence": 0.82,
+              "volume_db": -29.1,
+              "pitch_hz": 138.2,
+              "harmonics_ratio": 0.85,
+              "spectral_centroid": 820.0
+            },
+            {
+              "word": "very",
+              "start": 11.9,
+              "end": 12.3,
+              "confidence": 0.88,
+              "volume_db": -30.2,
+              "pitch_hz": 135.6,
+              "harmonics_ratio": 0.87,
+              "spectral_centroid": 790.0
+            },
+            {
+              "word": "quietly...",
+              "start": 12.3,
+              "end": 13.0,
+              "confidence": 0.86,
+              "volume_db": -31.8,
+              "pitch_hz": 133.1,
+              "harmonics_ratio": 0.89,
+              "spectral_centroid": 760.0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "volume_statistics": {
+    "global_min_db": -31.8,
+    "global_max_db": -6.5,
+    "global_mean_db": -17.2,
+    "baseline_db": -15.0,
+    "whisper_threshold_db": -25.0,
+    "loud_threshold_db": -10.0
+  },
+  "pitch_statistics": {
+    "global_min_hz": 133.1,
+    "global_max_hz": 242.3,
+    "global_mean_hz": 186.4,
+    "baseline_range": {
+      "min_hz": 160.0,
+      "max_hz": 200.0
+    }
+  },
+  "harmonics_statistics": {
+    "global_min_ratio": 0.52,
+    "global_max_ratio": 0.89,
+    "global_mean_ratio": 0.71,
+    "baseline_ratio": 0.70
+  }
+}

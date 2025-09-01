@@ -4,6 +4,7 @@ Speech Recognizer - Real speech-to-text using WhisperX
 
 import whisperx
 import torch
+import torchaudio
 import librosa
 import numpy as np
 from typing import List, Dict, Any, Optional, Union, Tuple
@@ -200,6 +201,15 @@ class SpeechRecognizer:
             speech_result = SpeechResult.from_whisperx_result(result)
             speech_result.language = detected_language
             
+            # Perform acoustic analysis on word segments
+            if speech_result.word_segments and audio_data is not None:
+                self.logger.info("starting_acoustic_analysis", word_count=len(speech_result.word_segments))
+                speech_result.word_segments = self._analyze_words_acoustics(
+                    speech_result.word_segments, audio_data, sample_rate
+                )
+                self.logger.info("acoustic_analysis_completed", 
+                               processed_words=len(speech_result.word_segments))
+            
             return speech_result
             
         except Exception as e:
@@ -274,11 +284,18 @@ class SpeechRecognizer:
                         segments_count=len(segments))
         
         try:
-            # Step 1: Transcribe entire audio file once
+            # Step 1: Load entire audio file for analysis
+            audio_data, sr = librosa.load(str(audio_path), sr=sample_rate)
+            if audio_data.dtype != np.float32:
+                audio_data = audio_data.astype(np.float32)
+            
+            # Step 2: Transcribe entire audio file once
             full_transcription = self._transcribe_full_audio(audio_path, sample_rate)
             
-            # Step 2: Map transcription results to segments
-            results = self._map_transcription_to_segments(full_transcription, segments)
+            # Step 3: Map transcription results to segments with acoustic analysis
+            results = self._map_transcription_to_segments_with_acoustics(
+                full_transcription, segments, audio_data, sample_rate
+            )
             
             self.logger.info("batch_speech_recognition_completed",
                            segments_processed=len(results),
@@ -314,14 +331,10 @@ class SpeechRecognizer:
             # VAD-based optimization: Use larger batch sizes for better throughput
             batch_size = 16 if self.device != "cpu" else 8  # Optimized for VAD-based processing
             
-            # Enable VAD preprocessing for better batch efficiency
+            # Transcribe with WhisperX optimized parameters
             result = self.whisper_model.transcribe(
                 y,
-                batch_size=batch_size,
-                # VAD optimization - pre-filter non-speech segments
-                vad_filter=True,
-                # Chunk length optimization for CPU
-                chunk_length=30 if self.device == "cpu" else 20
+                batch_size=batch_size
             )
             
             # Detect language once for entire file
@@ -414,6 +427,80 @@ class SpeechRecognizer:
             # Return empty results as fallback
             return [SpeechResult(text="", confidence=0.0) for _ in segments]
     
+    def _map_transcription_to_segments_with_acoustics(self, 
+                                                    full_result: Dict[str, Any], 
+                                                    segments: List[Tuple[float, float]],
+                                                    audio_data: np.ndarray,
+                                                    sample_rate: int = 16000) -> List[SpeechResult]:
+        """
+        Map full transcription results to speaker segments with acoustic analysis
+        
+        Args:
+            full_result: WhisperX transcription result for entire audio
+            segments: List of (start_time, end_time) tuples
+            audio_data: Full audio data for acoustic analysis
+            sample_rate: Sample rate of audio
+            
+        Returns:
+            List of SpeechResult objects with acoustic features
+        """
+        try:
+            # Extract all word-level segments from WhisperX result
+            all_words = []
+            for segment in full_result.get("segments", []):
+                for word in segment.get("words", []):
+                    all_words.append({
+                        "word": word.get("word", "").strip(),
+                        "start": word.get("start", 0.0),
+                        "end": word.get("end", 0.0),
+                        "confidence": word.get("confidence", 0.0)
+                    })
+            
+            # Map words to speaker segments with acoustic analysis
+            results = []
+            for start_time, end_time in segments:
+                # Find words that overlap with this segment
+                segment_words = []
+                for word in all_words:
+                    word_start = word["start"]
+                    word_end = word["end"]
+                    
+                    # Check if word overlaps with segment (with small tolerance)
+                    if (word_start < end_time and word_end > start_time):
+                        # Extract word audio and analyze acoustics
+                        word_audio = self._extract_word_audio(
+                            audio_data, word_start, word_end, sample_rate
+                        )
+                        acoustic_features = self._analyze_word_acoustics(word_audio, sample_rate)
+                        
+                        # Add acoustic features to word
+                        enhanced_word = word.copy()
+                        enhanced_word.update(acoustic_features)
+                        
+                        segment_words.append(enhanced_word)
+                
+                # Combine words into text
+                text = " ".join([w["word"] for w in segment_words]).strip()
+                
+                # Calculate average confidence
+                avg_confidence = np.mean([w["confidence"] for w in segment_words]) if segment_words else 0.0
+                
+                # Create SpeechResult with enhanced word segments
+                result = SpeechResult(
+                    text=text,
+                    confidence=float(avg_confidence),
+                    language=full_result.get("language", "en"),
+                    word_segments=segment_words if segment_words else None
+                )
+                results.append(result)
+            
+            return results
+            
+        except Exception as e:
+            self.logger.error("transcription_acoustic_mapping_failed", error=str(e))
+            # Fallback to basic mapping without acoustics
+            return self._map_transcription_to_segments(full_result, segments)
+    
     def _fallback_individual_processing(self, 
                                       audio_path: Union[str, Path],
                                       segments: List[Tuple[float, float]],
@@ -482,3 +569,226 @@ class SpeechRecognizer:
                 for lang in set(languages)
             } if languages else {}
         }
+    
+    def _extract_word_audio(self, audio_data: np.ndarray, start_time: float, end_time: float, sample_rate: int = 16000) -> np.ndarray:
+        """Extract audio segment for a specific word"""
+        try:
+            start_sample = int(start_time * sample_rate)
+            end_sample = int(end_time * sample_rate)
+            
+            # Ensure valid indices
+            start_sample = max(0, start_sample)
+            end_sample = min(len(audio_data), end_sample)
+            
+            if start_sample >= end_sample:
+                return np.zeros(int(0.1 * sample_rate), dtype=np.float32)  # Return 0.1s of silence
+                
+            return audio_data[start_sample:end_sample].astype(np.float32)
+        except Exception as e:
+            self.logger.warning("word_audio_extraction_failed", error=str(e))
+            return np.zeros(int(0.1 * sample_rate), dtype=np.float32)
+    
+    def _analyze_word_acoustics(self, word_audio: np.ndarray, sample_rate: int = 16000) -> Dict[str, float]:
+        """
+        Analyze acoustic features of a word segment using GPU acceleration
+        
+        Args:
+            word_audio: Audio data for the word
+            sample_rate: Sample rate of audio
+            
+        Returns:
+            Dict with volume_db, pitch_hz, harmonics_ratio, spectral_centroid
+        """
+        try:
+            # Ensure minimum length
+            if len(word_audio) < sample_rate * 0.05:  # At least 50ms
+                return {
+                    "volume_db": -60.0,
+                    "pitch_hz": 0.0,
+                    "harmonics_ratio": 0.0,
+                    "spectral_centroid": 0.0
+                }
+            
+            # Convert to torch tensor and move to device
+            audio_tensor = torch.from_numpy(word_audio).to(self.device)
+            
+            # Calculate volume (RMS to dB)
+            volume_db = self._calculate_rms_db(audio_tensor)
+            
+            # Calculate STFT for frequency analysis
+            stft = torch.stft(
+                audio_tensor, 
+                n_fft=512, 
+                hop_length=128,
+                win_length=400,
+                window=torch.hann_window(400).to(self.device),
+                return_complex=True
+            )
+            magnitude = torch.abs(stft)
+            
+            # Calculate acoustic features
+            pitch_hz = self._estimate_f0_gpu(magnitude, sample_rate)
+            harmonics_ratio = self._calculate_harmonics_ratio(magnitude)
+            spectral_centroid = self._calculate_spectral_centroid_gpu(magnitude, sample_rate)
+            
+            return {
+                "volume_db": float(volume_db),
+                "pitch_hz": float(pitch_hz),
+                "harmonics_ratio": float(harmonics_ratio),
+                "spectral_centroid": float(spectral_centroid)
+            }
+            
+        except Exception as e:
+            self.logger.warning("acoustic_analysis_failed", error=str(e))
+            return {
+                "volume_db": -60.0,
+                "pitch_hz": 0.0,
+                "harmonics_ratio": 0.0,
+                "spectral_centroid": 0.0
+            }
+    
+    def _analyze_words_acoustics(self, word_segments: List[Dict[str, Any]], 
+                                audio_data: np.ndarray, sample_rate: int = 16000) -> List[Dict[str, Any]]:
+        """
+        Analyze acoustic features for multiple word segments
+        
+        Args:
+            word_segments: List of word segment dictionaries
+            audio_data: Full audio data array
+            sample_rate: Sample rate of audio
+            
+        Returns:
+            List of word segments enhanced with acoustic data
+        """
+        enhanced_segments = []
+        
+        for word_data in word_segments:
+            try:
+                # Extract timing information
+                start_time = word_data.get('start', 0.0)
+                end_time = word_data.get('end', 0.0)
+                
+                # Extract audio segment for this word
+                start_sample = int(start_time * sample_rate)
+                end_sample = int(end_time * sample_rate)
+                
+                # Ensure valid bounds
+                start_sample = max(0, start_sample)
+                end_sample = min(len(audio_data), end_sample)
+                
+                if start_sample < end_sample:
+                    word_audio = audio_data[start_sample:end_sample]
+                    acoustic_features = self._analyze_word_acoustics(word_audio, sample_rate)
+                    
+                    # Merge original data with acoustic features
+                    enhanced_word = word_data.copy()
+                    enhanced_word.update(acoustic_features)
+                    enhanced_segments.append(enhanced_word)
+                else:
+                    # Invalid segment - add with default values
+                    enhanced_word = word_data.copy()
+                    enhanced_word.update({
+                        "volume_db": -60.0,
+                        "pitch_hz": 0.0,
+                        "harmonics_ratio": 0.0,
+                        "spectral_centroid": 0.0
+                    })
+                    enhanced_segments.append(enhanced_word)
+                    
+            except Exception as e:
+                self.logger.warning("word_acoustic_analysis_failed", 
+                                  word=word_data.get('word', ''), error=str(e))
+                # Add word with default acoustic values
+                enhanced_word = word_data.copy()
+                enhanced_word.update({
+                    "volume_db": -60.0,
+                    "pitch_hz": 0.0,
+                    "harmonics_ratio": 0.0,
+                    "spectral_centroid": 0.0
+                })
+                enhanced_segments.append(enhanced_word)
+        
+        return enhanced_segments
+    
+    def _calculate_rms_db(self, audio_tensor: torch.Tensor) -> torch.Tensor:
+        """Calculate RMS volume in decibels"""
+        rms = torch.sqrt(torch.mean(audio_tensor ** 2))
+        # Convert to dB with floor to prevent log(0)
+        rms_db = 20 * torch.log10(torch.clamp(rms, min=1e-8))
+        return rms_db
+    
+    def _estimate_f0_gpu(self, magnitude: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        """Estimate fundamental frequency using autocorrelation on GPU"""
+        try:
+            # Convert to power spectrum
+            power_spectrum = magnitude ** 2
+            
+            # Sum across time frames
+            avg_spectrum = torch.mean(power_spectrum, dim=1)
+            
+            # Find peak frequency (simplified F0 estimation)
+            freqs = torch.linspace(0, sample_rate // 2, avg_spectrum.shape[0]).to(self.device)
+            
+            # Focus on human vocal range (80-400 Hz)
+            vocal_range_mask = (freqs >= 80) & (freqs <= 400)
+            if not vocal_range_mask.any():
+                return torch.tensor(0.0)
+            
+            vocal_spectrum = avg_spectrum[vocal_range_mask]
+            vocal_freqs = freqs[vocal_range_mask]
+            
+            # Find peak in vocal range
+            peak_idx = torch.argmax(vocal_spectrum)
+            f0 = vocal_freqs[peak_idx]
+            
+            return f0
+            
+        except Exception:
+            return torch.tensor(0.0)
+    
+    def _calculate_harmonics_ratio(self, magnitude: torch.Tensor) -> torch.Tensor:
+        """Calculate harmonics-to-noise ratio"""
+        try:
+            # Convert to power spectrum
+            power_spectrum = magnitude ** 2
+            
+            # Sum across time frames
+            avg_spectrum = torch.mean(power_spectrum, dim=1)
+            
+            # Simple HNR approximation: ratio of peak to mean energy
+            peak_energy = torch.max(avg_spectrum)
+            mean_energy = torch.mean(avg_spectrum)
+            
+            if mean_energy > 0:
+                hnr = peak_energy / mean_energy
+                # Normalize to 0-1 range
+                hnr_normalized = torch.clamp(hnr / 10.0, 0, 1)
+                return hnr_normalized
+            else:
+                return torch.tensor(0.0)
+                
+        except Exception:
+            return torch.tensor(0.0)
+    
+    def _calculate_spectral_centroid_gpu(self, magnitude: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        """Calculate spectral centroid on GPU"""
+        try:
+            # Power spectrum
+            power_spectrum = magnitude ** 2
+            
+            # Sum across time frames
+            avg_spectrum = torch.mean(power_spectrum, dim=1)
+            
+            # Frequency bins
+            freqs = torch.linspace(0, sample_rate // 2, avg_spectrum.shape[0]).to(self.device)
+            
+            # Calculate weighted average frequency (spectral centroid)
+            total_energy = torch.sum(avg_spectrum)
+            if total_energy > 0:
+                centroid = torch.sum(freqs * avg_spectrum) / total_energy
+                return centroid
+            else:
+                return torch.tensor(0.0)
+                
+        except Exception:
+            return torch.tensor(0.0)
