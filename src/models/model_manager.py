@@ -259,13 +259,23 @@ class ModelManager:
                 use_auth_token=self.hf_token if self.hf_token else None
             )
             
-            # Move model to device
-            model = model.to(torch.device(self.device))
+            # Move model to device with fallback
+            device_to_use = self.device
+            try:
+                model = model.to(torch.device(device_to_use))
+            except Exception as e:
+                if "CUDA" in str(e) and device_to_use == "cuda":
+                    self.logger.warning("cuda_failed_for_emotion_model_fallback_to_cpu", error=str(e))
+                    device_to_use = "cpu"
+                    model = model.to(torch.device(device_to_use))
+                else:
+                    raise
+            
             model.eval()  # Set to evaluation mode
             
             self.logger.info("emotion_model_loaded", 
                            model_name=model_name, 
-                           device=self.device)
+                           device=device_to_use)
             
             return self._cache_model(model_key, (tokenizer, model))
             
