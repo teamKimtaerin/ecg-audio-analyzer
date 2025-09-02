@@ -27,6 +27,7 @@ from ..models.output_models import (
     create_empty_analysis_result
 )
 from ..utils.logger import get_logger
+from ..utils.duration_validator import DurationValidator
 from ...config.base_settings import BaseConfig, ProcessingConfig
 from ...config.aws_settings import AWSConfig
 from ...config.model_configs import SpeakerDiarizationConfig
@@ -147,6 +148,9 @@ class PipelineManager:
         self.speaker_config = speaker_config or SpeakerDiarizationConfig()
         
         self.logger = get_logger().bind_context(component="pipeline_manager")
+        
+        # Initialize duration validator for timeline validation
+        self.duration_validator = DurationValidator()
         
         # Resource management
         self.gpu_manager = GPUResourceManager(
@@ -387,7 +391,7 @@ class PipelineManager:
             
             return result
     
-    async def _run_whisperx_pipeline(self, audio_path: Path) -> Dict[str, Any]:
+    async def _run_whisperx_pipeline(self, audio_path: Path, expected_duration: Optional[float] = None) -> Dict[str, Any]:
         """Run WhisperX integrated pipeline (transcription + speaker diarization)"""
         self._update_progress("whisperx_pipeline")
         
@@ -397,7 +401,7 @@ class PipelineManager:
                 
                 pipeline = self._get_whisperx_pipeline()
                 
-                # Run WhisperX pipeline with improved speaker settings
+                # Run WhisperX pipeline with improved speaker settings and duration validation
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(
                     self.thread_pool,
@@ -405,7 +409,8 @@ class PipelineManager:
                     audio_path,
                     2,  # min_speakers (optimized)
                     6,  # max_speakers (increased for better accuracy)
-                    16000  # sample_rate
+                    16000,  # sample_rate
+                    expected_duration  # Pass expected duration for validation
                 )
                 
                 if result and "segments" in result:
@@ -473,6 +478,55 @@ class PipelineManager:
         
         return result
     
+    async def _validate_timeline_coverage(self, whisperx_result: Dict[str, Any], expected_duration: Optional[float], source_str: str):
+        """Validate timeline coverage and detect gaps"""
+        if not expected_duration or not whisperx_result.get("segments"):
+            return
+            
+        try:
+            self.logger.info("validating_timeline_coverage", 
+                           expected_duration=expected_duration,
+                           segments_count=len(whisperx_result["segments"]))
+            
+            # Check if WhisperX already detected gaps
+            if "timeline_gaps" in whisperx_result:
+                gaps = whisperx_result["timeline_gaps"]
+                if gaps:
+                    total_gap_duration = sum(gap["gap_duration"] for gap in gaps)
+                    gap_percentage = (total_gap_duration / expected_duration) * 100
+                    
+                    self.logger.warning("timeline_gaps_detected_in_pipeline",
+                                      source=source_str,
+                                      gap_count=len(gaps),
+                                      total_gap_duration=total_gap_duration,
+                                      gap_percentage=round(gap_percentage, 2))
+                    
+                    # Add gap information to progress tracking
+                    self.progress.warnings_count += len(gaps)
+                else:
+                    self.logger.info("timeline_coverage_validated", 
+                                   coverage_complete=True)
+            
+            # Additional validation using duration validator
+            segments = whisperx_result["segments"]
+            gaps = self.duration_validator.detect_timeline_gaps(
+                [{"start_time": seg.get("start", 0), "end_time": seg.get("end", 0)} 
+                 for seg in segments],
+                expected_duration
+            )
+            
+            if gaps and "timeline_gaps" not in whisperx_result:
+                # Add gaps that weren't detected by WhisperX
+                whisperx_result["additional_gaps"] = gaps
+                total_gap_duration = sum(gap["gap_duration"] for gap in gaps)
+                self.logger.warning("additional_timeline_gaps_detected",
+                                  additional_gaps=len(gaps),
+                                  total_additional_gap_duration=total_gap_duration)
+                
+        except Exception as e:
+            self.logger.error("timeline_validation_failed", error=str(e))
+            self.progress.error_count += 1
+    
     async def process_single(self, 
                            source: Union[str, Path],
                            output_path: Optional[Path] = None) -> CompleteAnalysisResult:
@@ -505,13 +559,27 @@ class PipelineManager:
                         duration=0.0
                     )
                 
+                # Log duration validation results
+                if hasattr(extraction_result, 'original_duration') and extraction_result.original_duration:
+                    self.logger.info("duration_validation_summary",
+                                   original_duration=extraction_result.original_duration,
+                                   extracted_duration=extraction_result.duration,
+                                   validation_passed=extraction_result.duration_validation_passed,
+                                   difference=extraction_result.duration_difference)
+                
                 # Stage 2: WhisperX Pipeline (transcription + speaker diarization)
-                whisperx_result = await self._run_whisperx_pipeline(extraction_result.output_path)
+                # Pass original duration for validation
+                expected_duration = getattr(extraction_result, 'original_duration', extraction_result.duration)
+                whisperx_result = await self._run_whisperx_pipeline(extraction_result.output_path, expected_duration)
+                
                 if not whisperx_result or "segments" not in whisperx_result:
                     return create_empty_analysis_result(
                         filename=Path(source_str).name,
-                        duration=extraction_result.duration_seconds or 0.0
+                        duration=expected_duration or 0.0
                     )
+                
+                # Stage 2.5: Timeline validation and gap detection
+                await self._validate_timeline_coverage(whisperx_result, expected_duration, source_str)
                 
                 # For MVP: Create basic result (emotion analysis and acoustic features will be added later)
                 self._update_progress("result_synthesis")
