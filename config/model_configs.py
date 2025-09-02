@@ -18,20 +18,32 @@ class SpeakerDiarizationConfig:
     
     # Processing parameters
     min_speakers: int = 1
-    max_speakers: int = 10
-    segmentation_onset: float = 0.5
-    segmentation_offset: float = 0.5
+    max_speakers: int = 4  # Increased for better 3-speaker detection (slight flexibility)
+    segmentation_onset: float = 0.65  # More selective speech detection
+    segmentation_offset: float = 0.65  # More selective speech detection
     
     # GPU optimization
     device: str = "cuda:0"
     batch_size: int = 8
     enable_fp16: bool = True           # Half precision for speed
     
-    # Performance tuning
-    clustering_method: str = "centroid"
-    min_segment_duration: float = 0.5  # Minimum 500ms segments
+    # Performance tuning (balanced accuracy + speed)
+    clustering_method: str = "centroid"  # Faster method for speed optimization
+    min_segment_duration: float = 1.5  # Reduced for faster processing
     min_speakers_count: int = 1
-    max_speakers_count: int = 8
+    max_speakers_count: int = 3
+    min_cluster_size: int = 2  # Prevent single-segment speakers
+    min_speaker_duration: float = 5.0  # Reduced threshold for faster processing
+    
+    # Speed optimization flags
+    enable_fast_mode: bool = True  # Enable faster but slightly less accurate processing
+    chunk_size_seconds: float = 30.0  # Process in smaller chunks
+    
+    # Enhanced mode specific parameters (optimized for 3-speaker detection)
+    enhanced_mode_similarity_threshold: float = 0.7  # Lower threshold for better 3-speaker separation
+    enhanced_mode_min_segment_duration: float = 1.0  # Shorter segments for better resolution
+    enhanced_mode_clustering_threshold: float = 0.6  # More aggressive clustering for 3 speakers
+    enhanced_mode_noise_reduction: float = 0.05  # 5% threshold for enhanced accuracy
     
     # Quality settings
     voice_activity_detection: bool = True

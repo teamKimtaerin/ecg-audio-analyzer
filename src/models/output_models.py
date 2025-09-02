@@ -5,7 +5,7 @@ Comprehensive models for the high-performance audio analysis metadata output
 
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, validator, model_validator
 from enum import Enum
 
 
@@ -224,7 +224,7 @@ class CompleteAnalysisResult(BaseModel):
     timeline: List[TimelineSegment] = Field(default_factory=list, description="Timeline segments")
     performance_stats: PerformanceStats = Field(..., description="Performance statistics")
     
-    @root_validator
+    @model_validator(mode='before')
     def validate_timeline_consistency(cls, values):
         """Validate timeline segments are consistent"""
         timeline = values.get('timeline', [])

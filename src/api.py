@@ -70,6 +70,19 @@ class SpeakerInfo:
     age_group: Optional[str] = None
 
 
+@dataclass
+class WordSegment:
+    """Individual word with acoustic analysis for dynamic subtitles"""
+    word: str
+    start: float
+    end: float
+    confidence: float
+    volume_db: Optional[float] = None
+    pitch_hz: Optional[float] = None
+    harmonics_ratio: Optional[float] = None
+    spectral_centroid: Optional[float] = None
+
+
 @dataclass 
 class AudioSegment:
     """Individual audio segment with analysis results"""
@@ -79,7 +92,8 @@ class AudioSegment:
     speaker: SpeakerInfo
     emotion: Optional[EmotionInfo] = None
     acoustic_features: Optional[AcousticFeatures] = None
-    text: Optional[str] = None  # For future speech-to-text integration
+    text: Optional[str] = None
+    words: Optional[List[WordSegment]] = None  # Word-level acoustic data for dynamic subtitles
     
 
 @dataclass
@@ -104,6 +118,12 @@ class AnalysisResult:
     
     # Additional data
     metadata: Dict[str, Any]
+    
+    # Dynamic subtitle statistics (global acoustic baselines)
+    volume_statistics: Optional[Dict[str, float]] = None
+    pitch_statistics: Optional[Dict[str, Any]] = None
+    harmonics_statistics: Optional[Dict[str, float]] = None
+    spectral_statistics: Optional[Dict[str, float]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -147,10 +167,33 @@ class AnalysisResult:
                         "mfcc_mean": seg.acoustic_features.mfcc_mean,
                     } if seg.acoustic_features else None,
                     "text": seg.text,
+                    "words": [
+                        {
+                            "word": word.word,
+                            "start": word.start,
+                            "end": word.end,
+                            "confidence": word.confidence,
+                            "volume_db": word.volume_db,
+                            "pitch_hz": word.pitch_hz,
+                            "harmonics_ratio": word.harmonics_ratio,
+                            "spectral_centroid": word.spectral_centroid
+                        }
+                        for word in seg.words
+                    ] if seg.words else None,
                 }
                 for seg in self.segments
             ]
         }
+        
+        # Add global acoustic statistics for dynamic subtitles
+        if self.volume_statistics:
+            result["volume_statistics"] = self.volume_statistics
+        if self.pitch_statistics:
+            result["pitch_statistics"] = self.pitch_statistics
+        if self.harmonics_statistics:
+            result["harmonics_statistics"] = self.harmonics_statistics
+        if self.spectral_statistics:
+            result["spectral_statistics"] = self.spectral_statistics
         
         # Add subtitle optimization data if available
         if hasattr(self, 'subtitle_data') and self.subtitle_data:
@@ -285,6 +328,7 @@ async def _process_audio_with_real_models(
     import librosa
     import numpy as np
     from collections import Counter
+    from pathlib import Path
     from .models.emotion_analyzer import EmotionAnalyzer
     from .models.speech_recognizer import WhisperXPipeline
     from .utils.output_manager import get_output_manager
@@ -295,10 +339,10 @@ async def _process_audio_with_real_models(
     audio_cleaner = AudioCleaner(target_sr=config.sample_rate)
     
     # Clean audio (creates temporary file optimized for analysis)
-    cleaned_audio_path = audio_cleaner.clean_audio(input_path)
+    cleaned_audio_path = audio_cleaner.process(input_path, "temp")
     logger.info("audio_preprocessed", cleaned_path=cleaned_audio_path)
     
-    # Initialize models
+    # Initialize models with optimized configurations
     logger.info("initializing_models")
     emotion_analyzer = EmotionAnalyzer(device="cuda" if config.enable_gpu else "cpu") if config.emotion_detection else None
     whisperx_pipeline = WhisperXPipeline(
@@ -328,10 +372,10 @@ async def _process_audio_with_real_models(
     
     @dataclass
     class SpeakerSegment:
-        start: float
-        end: float
+        start_time: float
+        end_time: float
         duration: float
-        speaker: str
+        speaker_id: str
         confidence: float
     
     speaker_segments = []
@@ -346,10 +390,10 @@ async def _process_audio_with_real_models(
         
         # Create SpeakerSegment for compatibility
         speaker_seg = SpeakerSegment(
-            start=start_time,
-            end=end_time,
+            start_time=start_time,
+            end_time=end_time,
             duration=duration,
-            speaker=speaker_id,
+            speaker_id=speaker_id,
             confidence=0.9  # WhisperX provides high quality diarization
         )
         speaker_segments.append(speaker_seg)
@@ -369,9 +413,10 @@ async def _process_audio_with_real_models(
     if config.emotion_detection and emotion_analyzer:
         logger.info("performing_emotion_analysis")
         try:
-            segment_tuples = [(seg.start, seg.end) for seg in speaker_segments]
-            emotion_results = emotion_analyzer.batch_analyze_segments(
-                cleaned_audio_path, segment_tuples, config.sample_rate
+            # Create segments in the format expected by EmotionAnalyzer
+            segment_tuples = [(seg.start_time, seg.end_time, seg.speaker_id) for seg in speaker_segments]
+            emotion_results = emotion_analyzer.analyze_batch(
+                Path(cleaned_audio_path), segment_tuples
             )
             logger.info("emotion_analysis_completed", results_count=len(emotion_results))
         except Exception as e:
@@ -387,8 +432,8 @@ async def _process_audio_with_real_models(
         y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
         
         for seg in speaker_segments:
-            start_sample = int(seg.start * sr)
-            end_sample = int(seg.end * sr)
+            start_sample = int(seg.start_time * sr)
+            end_sample = int(seg.end_time * sr)
             segment_audio = y[start_sample:end_sample]
             
             try:
@@ -428,9 +473,9 @@ async def _process_audio_with_real_models(
         if i < len(emotion_results) and config.emotion_detection:
             emotion_result = emotion_results[i]
             emotion_info = EmotionInfo(
-                emotion=emotion_result.emotion,
+                emotion=emotion_result.primary.value,  # Convert enum to string
                 confidence=emotion_result.confidence,
-                probabilities=emotion_result.probabilities
+                probabilities=emotion_result.all_scores.model_dump()  # Convert pydantic model to dict
             )
         
         # Get acoustic features
@@ -438,27 +483,46 @@ async def _process_audio_with_real_models(
         if i < len(acoustic_features_list) and config.acoustic_features:
             acoustic_features = acoustic_features_list[i]
         
-        # Get speech recognition result
+        # Get speech recognition result and word-level acoustic data
         text = None
+        words = None
         if i < len(speech_results):
             speech_result = speech_results[i]
             text = speech_result.text if speech_result.text.strip() else None
+            
+            # Extract word-level acoustic data for dynamic subtitles
+            if speech_result.word_segments:
+                words = []
+                for word_data in speech_result.word_segments:
+                    if isinstance(word_data, dict):
+                        word_segment = WordSegment(
+                            word=word_data.get("word", ""),
+                            start=word_data.get("start", 0.0),
+                            end=word_data.get("end", 0.0),
+                            confidence=word_data.get("confidence", 0.0),
+                            volume_db=word_data.get("volume_db"),
+                            pitch_hz=word_data.get("pitch_hz"),
+                            harmonics_ratio=word_data.get("harmonics_ratio"),
+                            spectral_centroid=word_data.get("spectral_centroid")
+                        )
+                        words.append(word_segment)
         
         # Create speaker info
         speaker_info = SpeakerInfo(
-            speaker_id=speaker_seg.speaker,
+            speaker_id=speaker_seg.speaker_id,
             confidence=speaker_seg.confidence
         )
         
         # Create segment
         segment = AudioSegment(
-            start_time=speaker_seg.start,
-            end_time=speaker_seg.end,
+            start_time=speaker_seg.start_time,
+            end_time=speaker_seg.end_time,
             duration=speaker_seg.duration,
             speaker=speaker_info,
             emotion=emotion_info,
             acoustic_features=acoustic_features,
-            text=text
+            text=text,
+            words=words
         )
         
         segments.append(segment)
@@ -520,6 +584,83 @@ async def _process_audio_with_real_models(
         actual_duration = len(y) / sr
         logger.info("duration_calculated_from_audio_fallback", duration=actual_duration)
     
+    # Calculate global acoustic statistics for dynamic subtitles
+    volume_stats = None
+    pitch_stats = None
+    harmonics_stats = None
+    spectral_stats = None
+    
+    try:
+        # Collect all word-level acoustic data
+        all_volumes = []
+        all_pitches = []
+        all_harmonics = []
+        all_spectral_centroids = []
+        
+        for segment in segments:
+            if segment.words:
+                for word in segment.words:
+                    if word.volume_db is not None and word.volume_db > -60:
+                        all_volumes.append(word.volume_db)
+                    if word.pitch_hz is not None and word.pitch_hz > 0:
+                        all_pitches.append(word.pitch_hz)
+                    if word.harmonics_ratio is not None and word.harmonics_ratio > 0:
+                        all_harmonics.append(word.harmonics_ratio)
+                    if word.spectral_centroid is not None and word.spectral_centroid > 0:
+                        all_spectral_centroids.append(word.spectral_centroid)
+        
+        # Calculate statistics using numpy
+        import numpy as np
+        
+        if all_volumes:
+            volumes_array = np.array(all_volumes)
+            volume_stats = {
+                "global_min_db": float(np.min(volumes_array)),
+                "global_max_db": float(np.max(volumes_array)),
+                "global_mean_db": float(np.mean(volumes_array)),
+                "baseline_db": float(np.percentile(volumes_array, 50)),
+                "whisper_threshold_db": float(np.percentile(volumes_array, 25)),
+                "loud_threshold_db": float(np.percentile(volumes_array, 75))
+            }
+        
+        if all_pitches:
+            pitches_array = np.array(all_pitches)
+            pitch_stats = {
+                "global_min_hz": float(np.min(pitches_array)),
+                "global_max_hz": float(np.max(pitches_array)),
+                "global_mean_hz": float(np.mean(pitches_array)),
+                "baseline_range": {
+                    "min_hz": float(np.percentile(pitches_array, 33)),
+                    "max_hz": float(np.percentile(pitches_array, 67))
+                }
+            }
+        
+        if all_harmonics:
+            harmonics_array = np.array(all_harmonics)
+            harmonics_stats = {
+                "global_min_ratio": float(np.min(harmonics_array)),
+                "global_max_ratio": float(np.max(harmonics_array)),
+                "global_mean_ratio": float(np.mean(harmonics_array)),
+                "baseline_ratio": float(np.percentile(harmonics_array, 50))
+            }
+        
+        if all_spectral_centroids:
+            spectral_array = np.array(all_spectral_centroids)
+            spectral_stats = {
+                "global_min_hz": float(np.min(spectral_array)),
+                "global_max_hz": float(np.max(spectral_array)),
+                "global_mean_hz": float(np.mean(spectral_array)),
+                "baseline_hz": float(np.percentile(spectral_array, 50))
+            }
+        
+        logger.info("global_statistics_calculated",
+                   volume_samples=len(all_volumes),
+                   pitch_samples=len(all_pitches),
+                   harmonics_samples=len(all_harmonics))
+                   
+    except Exception as e:
+        logger.error("global_statistics_calculation_failed", error=str(e))
+    
     # Create result
     result = AnalysisResult(
         filename=Path(input_path).name,
@@ -533,6 +674,10 @@ async def _process_audio_with_real_models(
         unique_speakers=unique_speakers,
         dominant_emotion=dominant_emotion,
         avg_confidence=avg_confidence,
+        volume_statistics=volume_stats,
+        pitch_statistics=pitch_stats,
+        harmonics_statistics=harmonics_stats,
+        spectral_statistics=spectral_stats,
         metadata={
             "processing_mode": "real_ml_models",
             "config": {
@@ -560,5 +705,4 @@ async def _process_audio_with_real_models(
         logger.warning("temp_cleanup_failed", error=str(e))
     
     return result
-
 

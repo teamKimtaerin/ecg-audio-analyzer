@@ -33,9 +33,6 @@ class GPUMemoryStats:
     free_mb: float
     total_mb: float
     utilization_percent: float
-    
-    def __post_init__(self):
-        self.utilization_percent = (self.allocated_mb / self.total_mb * 100) if self.total_mb > 0 else 0.0
 
 
 @dataclass
@@ -97,11 +94,17 @@ class GPUMonitor:
             max_allocated = torch.cuda.max_memory_allocated(device_id) / 1024**2
             max_reserved = torch.cuda.max_memory_reserved(device_id) / 1024**2
             
-            # Get total memory
-            total = torch.cuda.get_device_properties(device_id).total_memory / 1024**2
-            free = total - reserved
+            # Get free and total memory more accurately
+            if hasattr(torch.cuda, 'mem_get_info'):
+                free, total = torch.cuda.mem_get_info(device_id)
+                free /= 1024**2
+                total /= 1024**2
+            else:
+                props = torch.cuda.get_device_properties(device_id)
+                total = props.total_memory / 1024**2
+                free = total - reserved
             
-            # Try to get utilization if nvidia-ml-py3 available
+            # Get utilization if nvidia-ml-py3 available (GPU compute utilization)
             utilization = 0.0
             try:
                 import pynvml
@@ -110,7 +113,8 @@ class GPUMonitor:
                 util = pynvml.nvmlDeviceGetUtilizationRates(handle)
                 utilization = util.gpu
             except ImportError:
-                pass
+                # Fallback to memory utilization as proxy
+                utilization = (allocated / total * 100) if total > 0 else 0.0
             
             return GPUMemoryStats(
                 allocated_mb=allocated,
@@ -364,7 +368,6 @@ class GPUOptimizer:
             
             # Enable half precision if supported
             if (self.config.enable_amp and 
-                hasattr(optimized_model, 'half') and 
                 self.primary_device and 
                 self.primary_device.compute_capability[0] >= 7):  # Volta and newer
                 
@@ -417,15 +420,19 @@ class GPUOptimizer:
     
     def _estimate_cache_memory(self) -> float:
         """Estimate current cache memory usage in MB"""
-        total_params = 0
+        total_bytes = 0
         for model in self.model_cache.values():
             try:
-                total_params += sum(p.numel() for p in model.parameters())
+                # Parameters
+                for p in model.parameters():
+                    total_bytes += p.numel() * p.element_size()
+                # Buffers
+                for b in model.buffers():
+                    total_bytes += b.numel() * b.element_size()
             except Exception:
                 continue
         
-        # Rough estimation: 4 bytes per parameter (float16)
-        estimated_mb = (total_params * 4) / (1024**2)
+        estimated_mb = total_bytes / (1024**2)
         return estimated_mb
     
     def _evict_cached_models(self):
@@ -438,6 +445,10 @@ class GPUOptimizer:
         
         for model_name in models_to_remove:
             del self.model_cache[model_name]
+        
+        # Clear GPU cache to free memory
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         self.logger.info("cached_models_evicted", 
                        evicted_count=len(models_to_remove),
