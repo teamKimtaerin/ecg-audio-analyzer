@@ -329,22 +329,43 @@ async def _process_audio_with_real_models(
     import numpy as np
     from collections import Counter
     from pathlib import Path
-    from .models.emotion_analyzer import EmotionAnalyzer
+    from .services.emotion_analyzer import EmotionAnalyzer
     from .models.speech_recognizer import WhisperXPipeline
     from .utils.output_manager import get_output_manager
     
-    # Preprocess audio for optimal quality
+    # Preprocess audio with duration validation
     logger.info("preprocessing_audio")
-    from .utils.audio_cleaner import AudioCleaner
-    audio_cleaner = AudioCleaner(target_sr=config.sample_rate)
+    from .services.audio_extractor import AudioExtractor
+    from config.base_settings import BaseConfig, ProcessingConfig
     
-    # Clean audio (creates temporary file optimized for analysis)
-    cleaned_audio_path = audio_cleaner.process(input_path, "temp")
-    logger.info("audio_preprocessed", cleaned_path=cleaned_audio_path)
+    # Initialize audio extractor with duration validation
+    audio_extractor = AudioExtractor(
+        target_sr=config.sample_rate,
+        duration_tolerance=0.1
+    )
+    
+    # Extract audio with duration validation
+    extraction_result = audio_extractor.extract(input_path)
+    if not extraction_result.success:
+        raise ValueError(f"Audio extraction failed: {extraction_result.error}")
+    
+    cleaned_audio_path = extraction_result.output_path
+    original_duration = extraction_result.original_duration
+    logger.info("audio_preprocessed", 
+               cleaned_path=cleaned_audio_path,
+               original_duration=original_duration,
+               duration_validation_passed=extraction_result.duration_validation_passed)
     
     # Initialize models with optimized configurations
     logger.info("initializing_models")
-    emotion_analyzer = EmotionAnalyzer(device="cuda" if config.enable_gpu else "cpu") if config.emotion_detection else None
+    if config.emotion_detection:
+        from config.model_configs import EmotionAnalysisConfig
+        emotion_config = EmotionAnalysisConfig()
+        emotion_config.device = "cuda" if config.enable_gpu else "cpu"
+        emotion_analyzer = EmotionAnalyzer(emotion_config, device=emotion_config.device)
+        emotion_analyzer.load_models()  # Load the emotion analysis models
+    else:
+        emotion_analyzer = None
     whisperx_pipeline = WhisperXPipeline(
         model_size="base",
         device="cuda" if config.enable_gpu else "cpu",
@@ -358,7 +379,8 @@ async def _process_audio_with_real_models(
             cleaned_audio_path,
             min_speakers=2,
             max_speakers=8,  # Allow reasonable range for speaker detection
-            sample_rate=config.sample_rate
+            sample_rate=config.sample_rate,
+            expected_duration=original_duration  # Pass original duration for validation
         )
         logger.info("whisperx_processing_completed", 
                    segments_count=len(whisperx_result["segments"]),
@@ -381,6 +403,11 @@ async def _process_audio_with_real_models(
     speaker_segments = []
     speech_results = []
     
+    # Load audio for acoustic feature calculation
+    import librosa
+    y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
+    logger.info("audio_loaded_for_word_analysis", duration=len(y)/sr, sample_rate=sr)
+
     for segment in whisperx_result["segments"]:
         start_time = segment.get("start", 0.0)
         end_time = segment.get("end", 0.0)
@@ -398,13 +425,76 @@ async def _process_audio_with_real_models(
         )
         speaker_segments.append(speaker_seg)
         
-        # Create SpeechResult equivalent for text
+        # Process word-level data with acoustic features
+        words_with_acoustic_features = []
+        words = segment.get("words", [])
+        
+        for word in words:
+            word_start = word.get("start", start_time)
+            word_end = word.get("end", start_time)
+            word_text = word.get("word", "")
+            word_confidence = word.get("confidence", 0.0)
+            
+            # Calculate acoustic features for this word
+            start_sample = int(word_start * sr)
+            end_sample = int(word_end * sr)
+            
+            # Ensure valid sample range
+            start_sample = max(0, min(start_sample, len(y)))
+            end_sample = max(start_sample + 1, min(end_sample, len(y)))
+            
+            if end_sample > start_sample:
+                word_audio = y[start_sample:end_sample]
+                
+                try:
+                    # Calculate acoustic features
+                    volume_db = 20 * np.log10(np.maximum(np.mean(np.abs(word_audio)), 1e-10))
+                    volume_db = max(-60.0, volume_db)  # Threshold for silence
+                    
+                    # Pitch estimation using librosa
+                    pitches = librosa.piptrack(y=word_audio, sr=sr, threshold=0.1)
+                    pitch_values = pitches[0][pitches[0] > 0]
+                    pitch_hz = float(np.mean(pitch_values)) if len(pitch_values) > 0 else 0.0
+                    
+                    # Spectral centroid
+                    spectral_centroid = librosa.feature.spectral_centroid(y=word_audio, sr=sr)
+                    spectral_centroid_val = float(np.mean(spectral_centroid))
+                    
+                    # Harmonics ratio (simplified calculation)
+                    harmonics_ratio = 1.0 if pitch_hz > 0 else 0.0
+                    
+                except Exception as e:
+                    # Fallback values if calculation fails
+                    volume_db = -60.0
+                    pitch_hz = 0.0
+                    spectral_centroid_val = 0.0
+                    harmonics_ratio = 0.0
+            else:
+                # Very short or invalid word segment
+                volume_db = -60.0
+                pitch_hz = 0.0
+                spectral_centroid_val = 0.0
+                harmonics_ratio = 0.0
+            
+            # Add word with acoustic features
+            words_with_acoustic_features.append({
+                "word": word_text,
+                "start": word_start,
+                "end": word_end,
+                "confidence": word_confidence,
+                "volume_db": volume_db,
+                "pitch_hz": pitch_hz,
+                "harmonics_ratio": harmonics_ratio,
+                "spectral_centroid": spectral_centroid_val
+            })
+        
+        # Create SpeechResult with enhanced word data
         from .models.speech_recognizer import SpeechResult
         speech_result = SpeechResult(
             text=text,
             confidence=0.9,  # WhisperX provides high quality transcription
             language=whisperx_result.get("language"),
-            word_segments=segment.get("words", [])
+            word_segments=words_with_acoustic_features
         )
         speech_results.append(speech_result)
     
@@ -570,19 +660,16 @@ async def _process_audio_with_real_models(
         subtitle_data = subtitle_optimizer.generate_subtitle_json(optimized_subtitles)
         logger.info("subtitle_optimization_completed", optimized_segments=len(optimized_subtitles))
     
-    # Calculate actual duration from segments (fix duration calculation issue)
+    # Use original video duration (not calculated from segments to avoid truncation issue)
+    actual_duration = original_duration  # This is the actual video duration from duration validator
     if segments:
-        # Use the maximum end_time from segments as the actual duration
-        actual_duration = max(seg.end_time for seg in segments)
-        logger.info("duration_calculated_from_segments", 
-                   calculated_duration=actual_duration,
+        max_segment_time = max(seg.end_time for seg in segments)
+        logger.info("duration_comparison", 
+                   original_duration=original_duration,
+                   max_segment_time=max_segment_time,
                    segments_count=len(segments))
     else:
-        # Fallback: load audio to get duration
-        import librosa
-        y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
-        actual_duration = len(y) / sr
-        logger.info("duration_calculated_from_audio_fallback", duration=actual_duration)
+        logger.warning("no_segments_detected", original_duration=original_duration)
     
     # Calculate global acoustic statistics for dynamic subtitles
     volume_stats = None
@@ -685,7 +772,7 @@ async def _process_audio_with_real_models(
                 "segment_length": config.segment_length,
                 "language": config.language,
                 "unified_model": "whisperx-base-with-diarization",
-                "emotion_model": emotion_analyzer.model_name if emotion_analyzer else None
+                "emotion_model": emotion_analyzer.config.emotion_classifier if emotion_analyzer else None
             },
             "subtitle_optimization": subtitle_data is not None
         }

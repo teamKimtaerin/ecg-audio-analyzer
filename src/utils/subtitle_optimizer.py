@@ -6,6 +6,7 @@ import re
 from typing import List, Dict, Any, Tuple, Optional
 from dataclasses import dataclass
 from ..utils.logger import get_logger
+from .duration_validator import DurationValidator
 
 
 @dataclass
@@ -52,6 +53,9 @@ class SubtitleOptimizer:
         self.max_words_per_line = max_words_per_line
         
         self.logger = get_logger().bind_context(service="subtitle_optimizer")
+        
+        # Initialize duration validator for gap detection
+        self.duration_validator = DurationValidator()
         
         # Sentence boundary markers
         self.sentence_endings = r'[.!?]+\s*'
@@ -113,6 +117,213 @@ class SubtitleOptimizer:
                         output_subtitles=len(optimized_segments))
         
         return optimized_segments
+    
+    def optimize_segments_with_gap_filling(self, 
+                                         segments: List[Dict[str, Any]], 
+                                         total_duration: Optional[float] = None) -> List[OptimizedSubtitle]:
+        """
+        Optimize audio segments for subtitle display with gap detection and filling
+        
+        Args:
+            segments: List of audio segments with text, timing, and speaker info
+            total_duration: Total expected duration for gap detection
+            
+        Returns:
+            List of OptimizedSubtitle objects with gaps filled
+        """
+        self.logger.info("optimizing_segments_with_gap_filling", 
+                        total_segments=len(segments),
+                        total_duration=total_duration)
+        
+        # First, do standard optimization
+        optimized_segments = self.optimize_segments(segments)
+        
+        # Then detect and fill gaps if total duration is provided
+        if total_duration and optimized_segments:
+            optimized_segments = self._detect_and_fill_gaps(optimized_segments, total_duration)
+        
+        return optimized_segments
+    
+    def _detect_and_fill_gaps(self, optimized_segments: List[OptimizedSubtitle], total_duration: float) -> List[OptimizedSubtitle]:
+        """
+        Detect gaps in subtitle timeline and fill them with placeholder subtitles
+        
+        Args:
+            optimized_segments: List of optimized subtitle segments
+            total_duration: Total expected duration
+            
+        Returns:
+            List with gaps filled
+        """
+        if not optimized_segments:
+            return optimized_segments
+        
+        # Sort segments by start time
+        sorted_segments = sorted(optimized_segments, key=lambda x: x.start_time)
+        
+        # Detect gaps using duration validator
+        segment_data = [
+            {"start_time": seg.start_time, "end_time": seg.end_time}
+            for seg in sorted_segments
+        ]
+        
+        gaps = self.duration_validator.detect_timeline_gaps(segment_data, total_duration)
+        
+        if not gaps:
+            self.logger.info("no_timeline_gaps_detected")
+            return sorted_segments
+        
+        self.logger.info("filling_timeline_gaps", 
+                        gap_count=len(gaps),
+                        total_gap_duration=sum(g["gap_duration"] for g in gaps))
+        
+        # Fill gaps with placeholder subtitles
+        filled_segments = []
+        current_segments = sorted_segments.copy()
+        
+        for gap in gaps:
+            gap_start = gap["start_time"]
+            gap_end = gap["end_time"]
+            gap_duration = gap["gap_duration"]
+            gap_type = gap["gap_type"]
+            
+            # Add original segments that come before this gap
+            while current_segments and current_segments[0].end_time <= gap_start:
+                filled_segments.append(current_segments.pop(0))
+            
+            # Create gap-filling subtitle
+            if gap_duration >= self.min_duration:  # Only fill significant gaps
+                gap_filler = self._create_gap_filler_subtitle(
+                    gap_start, gap_end, gap_duration, gap_type
+                )
+                filled_segments.append(gap_filler)
+                
+                self.logger.debug("gap_filled",
+                                gap_start=gap_start,
+                                gap_end=gap_end,
+                                gap_duration=gap_duration,
+                                gap_type=gap_type)
+        
+        # Add remaining segments
+        filled_segments.extend(current_segments)
+        
+        # Final sort by start time
+        filled_segments.sort(key=lambda x: x.start_time)
+        
+        self.logger.info("gap_filling_completed", 
+                        original_segments=len(sorted_segments),
+                        final_segments=len(filled_segments),
+                        gaps_filled=len(filled_segments) - len(sorted_segments))
+        
+        return filled_segments
+    
+    def _create_gap_filler_subtitle(self, start_time: float, end_time: float, duration: float, gap_type: str) -> OptimizedSubtitle:
+        """
+        Create a placeholder subtitle for timeline gaps
+        
+        Args:
+            start_time: Gap start time
+            end_time: Gap end time
+            duration: Gap duration
+            gap_type: Type of gap (timeline_gap, ending_gap, etc.)
+            
+        Returns:
+            OptimizedSubtitle placeholder
+        """
+        # Create contextual placeholder text based on gap type and duration
+        if gap_type == "ending_gap":
+            text = "[No dialogue]"  # For gaps at the end
+        elif duration > 5.0:
+            text = "[Silence]"  # For long gaps
+        elif duration > 2.0:
+            text = "[Pause]"  # For medium gaps
+        else:
+            text = "[...]"  # For short gaps
+        
+        # Determine likely speaker (use previous segment's speaker if possible)
+        speaker_id = "unknown"
+        
+        return OptimizedSubtitle(
+            start_time=start_time,
+            end_time=end_time,
+            text=text,
+            speaker_id=speaker_id,
+            confidence=0.1,  # Low confidence for gap fillers
+            word_count=len(text.split()),
+            characters_per_second=len(text) / duration if duration > 0 else 0,
+            subtitle_ready=True
+        )
+    
+    def validate_subtitle_timeline_coverage(self, 
+                                          subtitles: List[OptimizedSubtitle], 
+                                          expected_duration: float) -> Dict[str, Any]:
+        """
+        Validate that subtitles cover the expected timeline duration
+        
+        Args:
+            subtitles: List of optimized subtitles
+            expected_duration: Expected total duration
+            
+        Returns:
+            Dictionary with coverage validation results
+        """
+        if not subtitles:
+            return {
+                "valid": False,
+                "coverage_percentage": 0.0,
+                "last_subtitle_time": 0.0,
+                "gaps_detected": True,
+                "total_gap_duration": expected_duration
+            }
+        
+        # Sort by start time
+        sorted_subtitles = sorted(subtitles, key=lambda x: x.start_time)
+        
+        # Find last subtitle end time
+        last_subtitle_time = max(sub.end_time for sub in sorted_subtitles)
+        
+        # Calculate total subtitle duration
+        total_subtitle_duration = sum(
+            sub.end_time - sub.start_time for sub in sorted_subtitles
+        )
+        
+        # Detect gaps
+        segment_data = [
+            {"start_time": sub.start_time, "end_time": sub.end_time}
+            for sub in sorted_subtitles
+        ]
+        gaps = self.duration_validator.detect_timeline_gaps(segment_data, expected_duration)
+        
+        # Calculate coverage metrics
+        coverage_percentage = (last_subtitle_time / expected_duration) * 100 if expected_duration > 0 else 0
+        time_coverage_percentage = (total_subtitle_duration / expected_duration) * 100 if expected_duration > 0 else 0
+        
+        total_gap_duration = sum(gap["gap_duration"] for gap in gaps) if gaps else 0
+        
+        is_valid = (
+            coverage_percentage >= 95.0 and  # Last subtitle covers at least 95% of duration
+            len(gaps) == 0  # No significant gaps
+        )
+        
+        result = {
+            "valid": is_valid,
+            "coverage_percentage": round(coverage_percentage, 2),
+            "time_coverage_percentage": round(time_coverage_percentage, 2),
+            "last_subtitle_time": round(last_subtitle_time, 2),
+            "expected_duration": expected_duration,
+            "gaps_detected": len(gaps) > 0,
+            "gap_count": len(gaps),
+            "total_gap_duration": round(total_gap_duration, 2),
+            "subtitle_count": len(subtitles),
+            "validation_summary": f"Coverage: {coverage_percentage:.1f}%, Gaps: {len(gaps)}, Duration: {last_subtitle_time:.1f}s/{expected_duration:.1f}s"
+        }
+        
+        log_level = "info" if is_valid else "warning"
+        getattr(self.logger, log_level)("subtitle_timeline_validation",
+                                       **{k: v for k, v in result.items() 
+                                          if k not in ["validation_summary"]})
+        
+        return result
     
     def _needs_splitting(self, text: str, duration: float, cps: float) -> bool:
         """Check if segment needs to be split for better subtitle display"""
