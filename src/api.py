@@ -328,8 +328,9 @@ async def _process_audio_with_real_models(
     import librosa
     import numpy as np
     from collections import Counter
-    from .models.speaker_diarizer import SpeakerDiarizer
-    from .models.emotion_analyzer import EmotionAnalyzer
+    from pathlib import Path
+    from .services.speaker_diarizer import SpeakerDiarizer
+    from .services.emotion_analyzer import EmotionAnalyzer
     from .models.speech_recognizer import SpeechRecognizer
     from .utils.output_manager import get_output_manager
     
@@ -339,13 +340,21 @@ async def _process_audio_with_real_models(
     audio_cleaner = AudioCleaner(target_sr=config.sample_rate)
     
     # Clean audio (creates temporary file optimized for analysis)
-    cleaned_audio_path = audio_cleaner.clean_audio(input_path)
+    cleaned_audio_path = audio_cleaner.process(input_path, "temp")
     logger.info("audio_preprocessed", cleaned_path=cleaned_audio_path)
     
-    # Initialize models
+    # Initialize models with optimized configurations
     logger.info("initializing_models")
-    speaker_diarizer = SpeakerDiarizer(device="cuda" if config.enable_gpu else "cpu")
-    emotion_analyzer = EmotionAnalyzer(device="cuda" if config.enable_gpu else "cpu") if config.emotion_detection else None
+    from config.model_configs import SpeakerDiarizationConfig
+    speaker_config = SpeakerDiarizationConfig()
+    speaker_config.device = "cuda" if config.enable_gpu else "cpu"
+    speaker_diarizer = SpeakerDiarizer(config=speaker_config, device=speaker_config.device)
+    emotion_analyzer = None
+    if config.emotion_detection:
+        from config.model_configs import EmotionAnalysisConfig
+        emotion_config = EmotionAnalysisConfig(device="cuda" if config.enable_gpu else "cpu")
+        emotion_analyzer = EmotionAnalyzer(config=emotion_config)
+        emotion_analyzer.load_models()  # Explicitly load models to prevent fallback
     speech_recognizer = SpeechRecognizer(device="cuda" if config.enable_gpu else "cpu")
     
     # Load preprocessed audio for basic info
@@ -356,55 +365,53 @@ async def _process_audio_with_real_models(
     # Perform speaker diarization on cleaned audio
     logger.info("performing_speaker_diarization")
     try:
-        speaker_segments = speaker_diarizer.diarize_audio(cleaned_audio_path, config.sample_rate)
-        logger.info("speaker_diarization_completed", segments_count=len(speaker_segments))
+        diarization_result = speaker_diarizer.diarize_audio(cleaned_audio_path)
+        if diarization_result.success:
+            speaker_segments = diarization_result.segments
+            logger.info("speaker_diarization_completed", 
+                       segments_count=len(speaker_segments),
+                       speakers_count=diarization_result.total_speakers)
+        else:
+            raise Exception(diarization_result.error_message or "Diarization failed")
     except Exception as e:
         logger.error("speaker_diarization_failed", error=str(e))
-        # Fallback to simple segmentation
-        speaker_segments = _create_fallback_segments(y, sr, config.segment_length, config.min_segment_length)
-    
-    # Merge adjacent segments if needed
-    speaker_segments = speaker_diarizer.merge_adjacent_segments(speaker_segments, max_gap=0.5)
+        raise RuntimeError(f"Speaker diarization failed: {str(e)}. No fallback mode allowed.")
     
     # Perform emotion analysis on each segment
     emotion_results = []
     if config.emotion_detection and emotion_analyzer:
         logger.info("performing_emotion_analysis")
         try:
-            segment_tuples = [(seg.start, seg.end) for seg in speaker_segments]
-            emotion_results = emotion_analyzer.batch_analyze_segments(
-                cleaned_audio_path, segment_tuples, config.sample_rate
+            # Create segments in the format expected by services EmotionAnalyzer
+            segment_tuples = [(seg.start_time, seg.end_time, seg.speaker_id) for seg in speaker_segments]
+            emotion_results = emotion_analyzer.analyze_batch(
+                Path(cleaned_audio_path), segment_tuples
             )
             logger.info("emotion_analysis_completed", results_count=len(emotion_results))
         except Exception as e:
             logger.error("emotion_analysis_failed", error=str(e))
-            # Fallback to neutral emotions
-            emotion_results = [emotion_analyzer._analyze_from_acoustic_features(
-                y[int(seg.start*sr):int(seg.end*sr)], sr
-            ) for seg in speaker_segments]
+            raise RuntimeError(f"Emotion analysis failed: {str(e)}. No fallback mode allowed.")
     
     # Perform speech recognition on each segment
     speech_results = []
     logger.info("performing_speech_recognition")
     try:
-        segment_tuples = [(seg.start, seg.end) for seg in speaker_segments]
+        segment_tuples = [(seg.start_time, seg.end_time) for seg in speaker_segments]
         speech_results = speech_recognizer.batch_transcribe_segments(
             cleaned_audio_path, segment_tuples, config.sample_rate
         )
         logger.info("speech_recognition_completed", results_count=len(speech_results))
     except Exception as e:
         logger.error("speech_recognition_failed", error=str(e))
-        # Fallback to empty text results
-        from .models.speech_recognizer import SpeechResult
-        speech_results = [SpeechResult(text="", confidence=0.0) for _ in speaker_segments]
+        raise RuntimeError(f"Speech recognition failed: {str(e)}. No fallback mode allowed.")
     
     # Extract acoustic features if requested
     acoustic_features_list = []
     if config.acoustic_features:
         logger.info("extracting_acoustic_features")
         for seg in speaker_segments:
-            start_sample = int(seg.start * sr)
-            end_sample = int(seg.end * sr)
+            start_sample = int(seg.start_time * sr)
+            end_sample = int(seg.end_time * sr)
             segment_audio = y[start_sample:end_sample]
             
             try:
@@ -445,9 +452,9 @@ async def _process_audio_with_real_models(
         if i < len(emotion_results) and config.emotion_detection:
             emotion_result = emotion_results[i]
             emotion_info = EmotionInfo(
-                emotion=emotion_result.emotion,
+                emotion=emotion_result.primary.value,  # Convert enum to string
                 confidence=emotion_result.confidence,
-                probabilities=emotion_result.probabilities
+                probabilities=emotion_result.all_scores.model_dump()  # Convert pydantic model to dict
             )
         
         # Get acoustic features
@@ -481,14 +488,14 @@ async def _process_audio_with_real_models(
         
         # Create speaker info
         speaker_info = SpeakerInfo(
-            speaker_id=speaker_seg.speaker,
+            speaker_id=speaker_seg.speaker_id,
             confidence=speaker_seg.confidence
         )
         
         # Create segment
         segment = AudioSegment(
-            start_time=speaker_seg.start,
-            end_time=speaker_seg.end,
+            start_time=speaker_seg.start_time,
+            end_time=speaker_seg.end_time,
             duration=speaker_seg.duration,
             speaker=speaker_info,
             emotion=emotion_info,
@@ -642,8 +649,8 @@ async def _process_audio_with_real_models(
                 "enable_gpu": config.enable_gpu,
                 "segment_length": config.segment_length,
                 "language": config.language,
-                "speaker_model": speaker_diarizer.model_name,
-                "emotion_model": emotion_analyzer.model_name if emotion_analyzer else None,
+                "speaker_model": speaker_diarizer.config.model_name,
+                "emotion_model": emotion_analyzer.config.model_name if emotion_analyzer else None,
                 "speech_model": "whisperx-base"
             },
             "subtitle_optimization": subtitle_data is not None
@@ -668,8 +675,9 @@ async def _process_audio_with_real_models(
 
 def _create_fallback_segments(y, sr, segment_length, min_segment_length):
     """Create fallback segments when speaker diarization fails"""
-    from .models.speaker_diarizer import SpeakerSegment
+    from .services.speaker_diarizer import SpeakerSegment
     import numpy as np
+    import librosa
     
     duration = len(y) / sr
     num_segments = int(duration // segment_length) + (1 if duration % segment_length > 0 else 0)
@@ -699,9 +707,9 @@ def _create_fallback_segments(y, sr, segment_length, min_segment_length):
         confidence = min(0.9, max(0.3, confidence))
         
         segment = SpeakerSegment(
-            start=start_time,
-            end=end_time,
-            speaker=speaker_id,
+            start_time=start_time,
+            end_time=end_time,
+            speaker_id=speaker_id,
             confidence=confidence
         )
         
