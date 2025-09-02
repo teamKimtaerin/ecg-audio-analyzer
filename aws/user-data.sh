@@ -232,17 +232,23 @@ EOF
     systemctl start gpu-monitor.service
 fi
 
-# Download and setup application (placeholder - replace with actual deployment)
+# Download and setup application from S3
 echo "$(date): Setting up ECG Audio Analysis application"
 cd /opt/ecg-audio-analyzer
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+# Download application code from S3
+echo "$(date): Downloading application code from S3..."
+ECG_S3_BUCKET="ecg-audio-analyzer-production-audio-084828586938"
+aws s3 cp s3://${ECG_S3_BUCKET}/app/ecg-audio-analyzer.tar.gz . --region us-east-1
+tar -xzf ecg-audio-analyzer.tar.gz
+rm ecg-audio-analyzer.tar.gz
 
-# Install application dependencies
-pip install --upgrade pip
-# pip install -r requirements.txt  # Uncomment when requirements.txt is available
+# Set permissions
+chown -R ubuntu:ubuntu /opt/ecg-audio-analyzer
+
+# Install application dependencies directly (no venv for system-wide access)
+pip3 install --upgrade pip
+pip3 install -e .
 
 # Create environment configuration
 cat << EOF > /opt/ecg-audio-analyzer/.env
@@ -379,6 +385,18 @@ cat << EOF > /opt/ecg-audio-analyzer/instance_info.json
 }
 EOF
 
+# Download test files and run GPU performance test
+echo "$(date): Downloading test files and running GPU performance test"
+mkdir -p /opt/ecg-audio-analyzer/test-files
+aws s3 cp s3://${ECG_S3_BUCKET}/test-files/friends.mp4 /opt/ecg-audio-analyzer/test-files/ --region us-east-1
+
+# Run GPU performance test as ubuntu user
+echo "$(date): Starting GPU performance test..."
+su - ubuntu -c "cd /opt/ecg-audio-analyzer && PYTHONPATH=/opt/ecg-audio-analyzer python3 -m src.cli analyze test-files/friends.mp4 --gpu --workers 4 --verbose" > /var/log/ecg-audio-analyzer/gpu-performance-test.log 2>&1 &
+
+# Wait a bit for test to start
+sleep 10
+
 # Final setup
 echo "$(date): Finalizing setup"
 chown -R ubuntu:ubuntu /opt/ecg-audio-analyzer
@@ -390,6 +408,7 @@ if command -v cfn-signal >/dev/null 2>&1; then
 fi
 
 echo "$(date): ECG Audio Analysis instance setup completed successfully"
+echo "$(date): GPU performance test is running in the background"
 
 # Display system information
 echo "=== System Information ==="

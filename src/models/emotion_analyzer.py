@@ -117,12 +117,7 @@ class EmotionAnalyzer:
             
         except Exception as e:
             self.logger.error("emotion_analysis_failed", error=str(e))
-            # Return neutral emotion as fallback
-            return EmotionResult(
-                emotion="neutral",
-                confidence=0.5,
-                probabilities={"neutral": 0.5}
-            )
+            raise
     
     def _analyze_from_acoustic_features(self, 
                                       audio_data: np.ndarray, 
@@ -202,11 +197,7 @@ class EmotionAnalyzer:
             
         except Exception as e:
             self.logger.error("acoustic_emotion_analysis_failed", error=str(e))
-            return EmotionResult(
-                emotion="neutral",
-                confidence=0.5,
-                probabilities={"neutral": 1.0}
-            )
+            raise
     
     def analyze_text(self, text: str) -> EmotionResult:
         """
