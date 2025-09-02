@@ -285,9 +285,8 @@ async def _process_audio_with_real_models(
     import librosa
     import numpy as np
     from collections import Counter
-    from .models.speaker_diarizer import SpeakerDiarizer
     from .models.emotion_analyzer import EmotionAnalyzer
-    from .models.speech_recognizer import SpeechRecognizer
+    from .models.speech_recognizer import WhisperXPipeline
     from .utils.output_manager import get_output_manager
     
     # Preprocess audio for optimal quality
@@ -301,27 +300,69 @@ async def _process_audio_with_real_models(
     
     # Initialize models
     logger.info("initializing_models")
-    speaker_diarizer = SpeakerDiarizer(device="cuda" if config.enable_gpu else "cpu")
     emotion_analyzer = EmotionAnalyzer(device="cuda" if config.enable_gpu else "cpu") if config.emotion_detection else None
-    speech_recognizer = SpeechRecognizer(device="cuda" if config.enable_gpu else "cpu")
+    whisperx_pipeline = WhisperXPipeline(
+        model_size="base",
+        device="cuda" if config.enable_gpu else "cpu",
+        language=config.language if config.language != "auto" else None
+    )
     
-    # Load preprocessed audio for basic info
-    logger.info("loading_preprocessed_audio")
-    y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
-    duration = len(y) / sr
-    
-    # Perform speaker diarization on cleaned audio
-    logger.info("performing_speaker_diarization")
+    # Perform unified WhisperX processing (speech recognition + speaker diarization)
+    logger.info("performing_whisperx_unified_processing")
     try:
-        speaker_segments = speaker_diarizer.diarize_audio(cleaned_audio_path, config.sample_rate)
-        logger.info("speaker_diarization_completed", segments_count=len(speaker_segments))
+        whisperx_result = whisperx_pipeline.process_audio_with_diarization(
+            cleaned_audio_path,
+            min_speakers=2,
+            max_speakers=8,  # Allow reasonable range for speaker detection
+            sample_rate=config.sample_rate
+        )
+        logger.info("whisperx_processing_completed", 
+                   segments_count=len(whisperx_result["segments"]),
+                   language=whisperx_result.get("language", "unknown"))
     except Exception as e:
-        logger.error("speaker_diarization_failed", error=str(e))
-        # Fallback to simple segmentation
-        speaker_segments = _create_fallback_segments(y, sr, config.segment_length, config.min_segment_length)
+        logger.error("whisperx_processing_failed", error=str(e))
+        raise
     
-    # Merge adjacent segments if needed
-    speaker_segments = speaker_diarizer.merge_adjacent_segments(speaker_segments, max_gap=0.5)
+    # Convert WhisperX segments to our SpeakerSegment format
+    from dataclasses import dataclass
+    
+    @dataclass
+    class SpeakerSegment:
+        start: float
+        end: float
+        duration: float
+        speaker: str
+        confidence: float
+    
+    speaker_segments = []
+    speech_results = []
+    
+    for segment in whisperx_result["segments"]:
+        start_time = segment.get("start", 0.0)
+        end_time = segment.get("end", 0.0)
+        duration = end_time - start_time
+        speaker_id = segment.get("speaker", "SPEAKER_00")
+        text = segment.get("text", "").strip()
+        
+        # Create SpeakerSegment for compatibility
+        speaker_seg = SpeakerSegment(
+            start=start_time,
+            end=end_time,
+            duration=duration,
+            speaker=speaker_id,
+            confidence=0.9  # WhisperX provides high quality diarization
+        )
+        speaker_segments.append(speaker_seg)
+        
+        # Create SpeechResult equivalent for text
+        from .models.speech_recognizer import SpeechResult
+        speech_result = SpeechResult(
+            text=text,
+            confidence=0.9,  # WhisperX provides high quality transcription
+            language=whisperx_result.get("language"),
+            word_segments=segment.get("words", [])
+        )
+        speech_results.append(speech_result)
     
     # Perform emotion analysis on each segment
     emotion_results = []
@@ -335,30 +376,16 @@ async def _process_audio_with_real_models(
             logger.info("emotion_analysis_completed", results_count=len(emotion_results))
         except Exception as e:
             logger.error("emotion_analysis_failed", error=str(e))
-            # Fallback to neutral emotions
-            emotion_results = [emotion_analyzer._analyze_from_acoustic_features(
-                y[int(seg.start*sr):int(seg.end*sr)], sr
-            ) for seg in speaker_segments]
-    
-    # Perform speech recognition on each segment
-    speech_results = []
-    logger.info("performing_speech_recognition")
-    try:
-        segment_tuples = [(seg.start, seg.end) for seg in speaker_segments]
-        speech_results = speech_recognizer.batch_transcribe_segments(
-            cleaned_audio_path, segment_tuples, config.sample_rate
-        )
-        logger.info("speech_recognition_completed", results_count=len(speech_results))
-    except Exception as e:
-        logger.error("speech_recognition_failed", error=str(e))
-        # Fallback to empty text results
-        from .models.speech_recognizer import SpeechResult
-        speech_results = [SpeechResult(text="", confidence=0.0) for _ in speaker_segments]
+            raise
     
     # Extract acoustic features if requested
     acoustic_features_list = []
     if config.acoustic_features:
         logger.info("extracting_acoustic_features")
+        # Load audio for acoustic feature extraction
+        import librosa
+        y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
+        
         for seg in speaker_segments:
             start_sample = int(seg.start * sr)
             end_sample = int(seg.end * sr)
@@ -377,18 +404,17 @@ async def _process_audio_with_real_models(
                     energy=energy
                 )
                 
-                # Add detailed features if requested
-                if config.detailed_features:
-                    try:
-                        mfcc = librosa.feature.mfcc(y=segment_audio, sr=sr, n_mfcc=13)
-                        pitch = librosa.piptrack(y=segment_audio, sr=sr, threshold=0.1)[0]
-                        pitch_values = pitch[pitch > 0]
-                        
-                        features.mfcc_mean = [float(np.mean(mfcc[i, :])) for i in range(mfcc.shape[0])]
-                        features.pitch_mean = float(np.mean(pitch_values)) if len(pitch_values) > 0 else None
-                        features.pitch_std = float(np.std(pitch_values)) if len(pitch_values) > 0 else None
-                    except:
-                        pass  # Skip detailed features if extraction fails
+                # Add detailed features (MFCC and pitch analysis)
+                try:
+                    mfcc = librosa.feature.mfcc(y=segment_audio, sr=sr, n_mfcc=13)
+                    pitch = librosa.piptrack(y=segment_audio, sr=sr, threshold=0.1)[0]
+                    pitch_values = pitch[pitch > 0]
+                    
+                    features.mfcc_mean = [float(np.mean(mfcc[i, :])) for i in range(mfcc.shape[0])]
+                    features.pitch_mean = float(np.mean(pitch_values)) if len(pitch_values) > 0 else None
+                    features.pitch_std = float(np.std(pitch_values)) if len(pitch_values) > 0 else None
+                except:
+                    pass  # Skip detailed features if extraction fails
                         
                 acoustic_features_list.append(features)
             except:
@@ -480,11 +506,25 @@ async def _process_audio_with_real_models(
         subtitle_data = subtitle_optimizer.generate_subtitle_json(optimized_subtitles)
         logger.info("subtitle_optimization_completed", optimized_segments=len(optimized_subtitles))
     
+    # Calculate actual duration from segments (fix duration calculation issue)
+    if segments:
+        # Use the maximum end_time from segments as the actual duration
+        actual_duration = max(seg.end_time for seg in segments)
+        logger.info("duration_calculated_from_segments", 
+                   calculated_duration=actual_duration,
+                   segments_count=len(segments))
+    else:
+        # Fallback: load audio to get duration
+        import librosa
+        y, sr = librosa.load(str(cleaned_audio_path), sr=config.sample_rate)
+        actual_duration = len(y) / sr
+        logger.info("duration_calculated_from_audio_fallback", duration=actual_duration)
+    
     # Create result
     result = AnalysisResult(
         filename=Path(input_path).name,
-        duration=duration,
-        sample_rate=sr,
+        duration=actual_duration,
+        sample_rate=config.sample_rate,
         processed_at=datetime.now(),  # Will be updated by caller
         processing_time=0,  # Will be updated by caller
         segments=segments,
@@ -499,9 +539,8 @@ async def _process_audio_with_real_models(
                 "enable_gpu": config.enable_gpu,
                 "segment_length": config.segment_length,
                 "language": config.language,
-                "speaker_model": speaker_diarizer.model_name,
-                "emotion_model": emotion_analyzer.model_name if emotion_analyzer else None,
-                "speech_model": "whisperx-base"
+                "unified_model": "whisperx-base-with-diarization",
+                "emotion_model": emotion_analyzer.model_name if emotion_analyzer else None
             },
             "subtitle_optimization": subtitle_data is not None
         }
@@ -523,45 +562,3 @@ async def _process_audio_with_real_models(
     return result
 
 
-def _create_fallback_segments(y, sr, segment_length, min_segment_length):
-    """Create fallback segments when speaker diarization fails"""
-    from .models.speaker_diarizer import SpeakerSegment
-    import numpy as np
-    
-    duration = len(y) / sr
-    num_segments = int(duration // segment_length) + (1 if duration % segment_length > 0 else 0)
-    
-    segments = []
-    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
-    median_centroid = np.median(spectral_centroid)
-    
-    for i in range(num_segments):
-        start_time = i * segment_length
-        end_time = min((i + 1) * segment_length, duration)
-        
-        if end_time - start_time < min_segment_length:
-            continue
-        
-        # Simple speaker assignment based on spectral centroid
-        start_frame = int(start_time * len(spectral_centroid) / duration)
-        end_frame = int(end_time * len(spectral_centroid) / duration)
-        
-        if start_frame < end_frame and end_frame <= len(spectral_centroid):
-            seg_centroid = np.mean(spectral_centroid[start_frame:end_frame])
-        else:
-            seg_centroid = median_centroid
-        
-        speaker_id = "speaker_01" if seg_centroid <= median_centroid else "speaker_02"
-        confidence = 0.6 + 0.3 * abs(seg_centroid - median_centroid) / (np.max(spectral_centroid) - np.min(spectral_centroid))
-        confidence = min(0.9, max(0.3, confidence))
-        
-        segment = SpeakerSegment(
-            start=start_time,
-            end=end_time,
-            speaker=speaker_id,
-            confidence=confidence
-        )
-        
-        segments.append(segment)
-    
-    return segments

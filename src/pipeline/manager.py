@@ -6,11 +6,12 @@ High-performance orchestration with async operations, GPU management, and error 
 """
 
 import asyncio
+import os
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List, Callable
+from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field
 from contextlib import asynccontextmanager
 
@@ -18,7 +19,7 @@ import torch
 import psutil
 
 from ..services.audio_extractor import AudioExtractor, AudioExtractionResult
-from ..services.speaker_diarizer import SpeakerDiarizer, DiarizationResult
+from ..models.speech_recognizer import WhisperXPipeline
 from ..models.output_models import (
     CompleteAnalysisResult, 
     AnalysisMetadata, 
@@ -166,7 +167,7 @@ class PipelineManager:
         
         # Service instances (lazy initialization)
         self._audio_extractor: Optional[AudioExtractor] = None
-        self._speaker_diarizer: Optional[SpeakerDiarizer] = None
+        self._whisperx_pipeline: Optional[WhisperXPipeline] = None
         
         # Pipeline stages definition
         self.stages = self._initialize_pipeline_stages()
@@ -192,13 +193,13 @@ class PipelineManager:
                 estimated_time_ratio=1.0,
                 dependencies=[]
             ),
-            "speaker_diarization": PipelineStage(
-                name="speaker_diarization",
-                service="speaker_diarizer",
+            "whisperx_pipeline": PipelineStage(
+                name="whisperx_pipeline",
+                service="whisperx_pipeline",
                 required=True,
                 gpu_intensive=True,
                 parallel_capable=False,
-                estimated_time_ratio=2.0,
+                estimated_time_ratio=3.0,  # Includes both transcription and speaker diarization
                 dependencies=["audio_extraction"]
             ),
             "emotion_analysis": PipelineStage(
@@ -208,7 +209,7 @@ class PipelineManager:
                 gpu_intensive=True,
                 parallel_capable=True,
                 estimated_time_ratio=1.5,
-                dependencies=["speaker_diarization"]
+                dependencies=["whisperx_pipeline"]
             ),
             "acoustic_analysis": PipelineStage(
                 name="acoustic_analysis",
@@ -226,7 +227,7 @@ class PipelineManager:
                 gpu_intensive=False,
                 parallel_capable=False,
                 estimated_time_ratio=0.2,
-                dependencies=["speaker_diarization"]
+                dependencies=["whisperx_pipeline"]
             )
         }
     
@@ -241,16 +242,20 @@ class PipelineManager:
             )
         return self._audio_extractor
     
-    def _get_speaker_diarizer(self) -> SpeakerDiarizer:
-        """Get or create speaker diarizer instance"""
-        if self._speaker_diarizer is None:
-            device = self.aws_config.cuda_device if self.aws_config else "cpu"
-            self._speaker_diarizer = SpeakerDiarizer(
-                config=self.speaker_config,
+    def _get_whisperx_pipeline(self) -> WhisperXPipeline:
+        """Get or create WhisperX pipeline instance"""
+        if self._whisperx_pipeline is None:
+            device = self.aws_config.cuda_device if self.aws_config else None
+            hf_token = os.getenv("HUGGING_FACE_TOKEN")
+            
+            self._whisperx_pipeline = WhisperXPipeline(
+                model_size="base",  # Can be configured
                 device=device,
-                enable_caching=True
+                compute_type="float16" if device and device.startswith("cuda") else "float32",
+                language=None,  # Auto-detect
+                hf_auth_token=hf_token
             )
-        return self._speaker_diarizer
+        return self._whisperx_pipeline
     
     async def preload_models(self, enable_warmup: bool = True) -> Dict[str, Any]:
         """
@@ -382,59 +387,70 @@ class PipelineManager:
             
             return result
     
-    async def _run_speaker_diarization(self, audio_path: Path) -> DiarizationResult:
-        """Run speaker diarization stage"""
-        self._update_progress("speaker_diarization")
+    async def _run_whisperx_pipeline(self, audio_path: Path) -> Dict[str, Any]:
+        """Run WhisperX integrated pipeline (transcription + speaker diarization)"""
+        self._update_progress("whisperx_pipeline")
         
         # Use GPU resource manager for GPU-intensive task
         async with self.gpu_manager.acquire_gpu_resource():
-            with self.logger.performance_timer("speaker_diarization_stage"):
+            with self.logger.performance_timer("whisperx_pipeline_stage"):
                 
-                diarizer = self._get_speaker_diarizer()
+                pipeline = self._get_whisperx_pipeline()
                 
-                # Load model if not already loaded
-                if diarizer.pipeline is None:
-                    await asyncio.get_event_loop().run_in_executor(
-                        self.thread_pool,
-                        diarizer.load_model
-                    )
-                
-                # Run diarization
+                # Run WhisperX pipeline with improved speaker settings
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(
                     self.thread_pool,
-                    diarizer.diarize_audio,
-                    audio_path
+                    pipeline.process_audio_with_diarization,
+                    audio_path,
+                    2,  # min_speakers (optimized)
+                    6,  # max_speakers (increased for better accuracy)
+                    16000  # sample_rate
                 )
                 
-                if result.success:
-                    self.progress.completed_stages.append("speaker_diarization")
-                    self.logger.info("speaker_diarization_completed",
-                                   total_speakers=result.total_speakers,
-                                   total_segments=len(result.segments),
-                                   processing_time=result.processing_time)
+                if result and "segments" in result:
+                    self.progress.completed_stages.append("whisperx_pipeline")
+                    segments_count = len(result["segments"])
+                    unique_speakers = len(set(
+                        seg.get("speaker", "UNKNOWN") 
+                        for seg in result["segments"] 
+                        if seg.get("speaker")
+                    ))
+                    
+                    self.logger.info("whisperx_pipeline_completed",
+                                   total_speakers=unique_speakers,
+                                   total_segments=segments_count,
+                                   language=result.get("language", "unknown"))
                 else:
                     self.progress.error_count += 1
-                    self.logger.error("speaker_diarization_failed",
-                                    error=result.error_message)
+                    self.logger.error("whisperx_pipeline_failed",
+                                    error="No valid result returned")
                 
                 return result
     
     async def _create_basic_result(self, 
                                   source: Union[str, Path],
                                   extraction_result: AudioExtractionResult,
-                                  diarization_result: DiarizationResult) -> CompleteAnalysisResult:
+                                  whisperx_result: Dict[str, Any]) -> CompleteAnalysisResult:
         """Create basic analysis result from available data"""
         
         filename = Path(source).name if isinstance(source, (str, Path)) else "unknown"
         duration = extraction_result.duration_seconds or 0.0
         
+        # Extract speaker information from WhisperX result
+        segments = whisperx_result.get("segments", [])
+        unique_speakers = len(set(
+            seg.get("speaker", "UNKNOWN") 
+            for seg in segments 
+            if seg.get("speaker")
+        ))
+        
         # Create basic metadata
         metadata = AnalysisMetadata(
             filename=filename,
             duration=duration,
-            total_speakers=diarization_result.total_speakers,
-            processing_time=f"00:00:{int(extraction_result.extraction_time_seconds + diarization_result.processing_time):02d}",
+            total_speakers=unique_speakers,
+            processing_time=f"00:00:{int(extraction_result.extraction_time_seconds):02d}",
             gpu_acceleration=self.aws_config.cuda_device.startswith('cuda') if self.aws_config else False
         )
         
@@ -443,8 +459,8 @@ class PipelineManager:
         performance_stats = PerformanceStats(
             gpu_utilization=self.resource_usage.gpu_utilization,
             peak_memory_mb=int(self.resource_usage.peak_memory_mb),
-            avg_processing_fps=duration / (extraction_result.extraction_time_seconds + diarization_result.processing_time) if duration > 0 else 0.0,
-            bottleneck_stage="speaker_diarization" if diarization_result.processing_time > extraction_result.extraction_time_seconds else "audio_extraction"
+            avg_processing_fps=duration / extraction_result.extraction_time_seconds if duration > 0 and extraction_result.extraction_time_seconds > 0 else 0.0,
+            bottleneck_stage="whisperx_pipeline"
         )
         
         # For MVP, create basic result with available data
@@ -489,9 +505,9 @@ class PipelineManager:
                         duration=0.0
                     )
                 
-                # Stage 2: Speaker Diarization
-                diarization_result = await self._run_speaker_diarization(extraction_result.output_path)
-                if not diarization_result.success:
+                # Stage 2: WhisperX Pipeline (transcription + speaker diarization)
+                whisperx_result = await self._run_whisperx_pipeline(extraction_result.output_path)
+                if not whisperx_result or "segments" not in whisperx_result:
                     return create_empty_analysis_result(
                         filename=Path(source_str).name,
                         duration=extraction_result.duration_seconds or 0.0
@@ -499,7 +515,7 @@ class PipelineManager:
                 
                 # For MVP: Create basic result (emotion analysis and acoustic features will be added later)
                 self._update_progress("result_synthesis")
-                result = await self._create_basic_result(source, extraction_result, diarization_result)
+                result = await self._create_basic_result(source, extraction_result, whisperx_result)
                 
                 # Mark synthesis as completed
                 self.progress.completed_stages.append("result_synthesis")
@@ -572,7 +588,7 @@ class PipelineManager:
             # Create semaphore for concurrency control
             semaphore = asyncio.Semaphore(max_concurrent)
             
-            async def process_with_semaphore(source, index):
+            async def process_with_semaphore(source, _):
                 async with semaphore:
                     output_path = None
                     if output_dir:
@@ -629,8 +645,9 @@ class PipelineManager:
                 if hasattr(self._audio_extractor, 'cleanup_temp_files'):
                     self._audio_extractor.cleanup_temp_files()
             
-            if self._speaker_diarizer:
-                self._speaker_diarizer.cleanup()
+            if self._whisperx_pipeline:
+                # WhisperX cleanup is handled automatically by context managers
+                pass
             
             # Shutdown thread pools
             self.thread_pool.shutdown(wait=True)

@@ -5,9 +5,9 @@
 -r requirements.txt
 
 # GPU-Accelerated ML Models & Frameworks
-torch>=2.0.0+cu118       # PyTorch with CUDA 11.8 support
-torchaudio>=2.0.0+cu118  # GPU audio processing
-torchvision>=0.15.0+cu118 # Vision models (for potential video analysis)
+torch>=2.0.0           # PyTorch (CUDA version from extra index)
+torchaudio>=2.0.0      # GPU audio processing
+torchvision>=0.15.0    # Vision models (for potential video analysis)
 
 # Speaker Diarization & Speech Processing
 pyannote-audio>=3.0.0    # GPU-accelerated speaker diarization
@@ -20,7 +20,7 @@ accelerate>=0.20.0       # Hugging Face acceleration library
 
 # Audio Feature Extraction (GPU-optimized versions)
 opensmile>=2.4.0         # Standardized acoustic features
-librosa[gpu]>=0.10.0     # GPU-accelerated audio analysis
+librosa>=0.10.0          # Audio analysis library
 
 # NVIDIA CUDA Dependencies
 nvidia-ml-py3>=7.352.0   # NVIDIA GPU monitoring

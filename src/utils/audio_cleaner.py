@@ -4,7 +4,6 @@ Audio Cleaner - Simple audio preprocessing for improved analysis quality
 
 import os
 import tempfile
-import io
 from pathlib import Path
 import numpy as np
 import librosa
@@ -120,14 +119,22 @@ class AudioCleaner:
                 mono=True  # Convert to mono automatically
             )
             
+            original_duration = len(audio) / sr
+            self.logger.info("audio_loaded", 
+                           original_duration=original_duration,
+                           sample_rate=sr)
+            
             # Normalize audio levels (prevents clipping and ensures consistent volume)
             audio = librosa.util.normalize(audio)
             
-            # Remove very short silences at beginning/end (trim silence)
-            audio, _ = librosa.effects.trim(audio, top_db=30)
+            # Use gentler trimming to preserve content - only trim very quiet parts
+            audio, _ = librosa.effects.trim(audio, top_db=10)  # Changed from 15 to 10 for better speaker separation
             
+            trimmed_duration = len(audio) / sr
             self.logger.info("audio_processed", 
-                           original_duration=len(audio) / sr,
+                           original_duration=original_duration,
+                           trimmed_duration=trimmed_duration,
+                           duration_loss=original_duration - trimmed_duration,
                            sample_rate=sr,
                            channels="mono")
             
@@ -239,36 +246,6 @@ class AudioCleaner:
         except:
             return 0.5  # Default moderate score
     
-    def clean_audio_to_memory(self, input_path: Union[str, Path]) -> Tuple[np.ndarray, int]:
-        """
-        Clean audio and return processed audio data in memory (no temp file)
-        
-        Args:
-            input_path: Path to input audio file
-            
-        Returns:
-            Tuple of (processed_audio_data, sample_rate)
-        """
-        input_path = Path(input_path)
-        
-        if not input_path.exists():
-            raise FileNotFoundError(f"Input file not found: {input_path}")
-        
-        self.logger.info("cleaning_audio_to_memory", input_file=str(input_path))
-        
-        try:
-            # Load and process audio directly in memory
-            processed_audio, sr = self._process_audio_file(input_path)
-            
-            self.logger.info("audio_cleaning_to_memory_completed", 
-                           duration=len(processed_audio) / sr,
-                           sample_rate=sr)
-            
-            return processed_audio, sr
-            
-        except Exception as e:
-            self.logger.error("audio_cleaning_to_memory_failed", error=str(e))
-            raise
     
     def clean_audio_from_memory(self, 
                                audio_data: np.ndarray, 
@@ -341,8 +318,8 @@ class AudioCleaner:
             # Normalize audio levels
             audio_data = librosa.util.normalize(audio_data)
             
-            # Remove silence at beginning/end
-            audio_data, _ = librosa.effects.trim(audio_data, top_db=30)
+            # Remove silence at beginning/end - gentler trimming for speaker separation
+            audio_data, _ = librosa.effects.trim(audio_data, top_db=10)
             
             self.logger.info("memory_audio_processed", 
                            duration=len(audio_data) / self.target_sr,

@@ -1,0 +1,1701 @@
+{
+  "metadata": {
+    "filename": "friends.mp4",
+    "duration": 130.208,
+    "sample_rate": 16000,
+    "processed_at": "2025-09-01T22:42:52.366130",
+    "processing_time": 271.329565,
+    "total_segments": 44,
+    "unique_speakers": 4,
+    "dominant_emotion": "anger",
+    "avg_confidence": 0.9,
+    "processing_mode": "real_ml_models",
+    "config": {
+      "enable_gpu": false,
+      "segment_length": 5.0,
+      "language": "en",
+      "unified_model": "whisperx-base-with-diarization",
+      "emotion_model": "j-hartmann/emotion-english-distilroberta-base"
+    },
+    "subtitle_optimization": true
+  },
+  "speakers": {
+    "SPEAKER_03": {
+      "total_duration": 23.789999999999992,
+      "segment_count": 11,
+      "avg_confidence": 0.9,
+      "emotions": [
+        "anger",
+        "fear"
+      ]
+    },
+    "SPEAKER_00": {
+      "total_duration": 8.760999999999996,
+      "segment_count": 1,
+      "avg_confidence": 0.9,
+      "emotions": [
+        "neutral"
+      ]
+    },
+    "SPEAKER_02": {
+      "total_duration": 37.629,
+      "segment_count": 18,
+      "avg_confidence": 0.8999999999999999,
+      "emotions": [
+        "anger",
+        "neutral",
+        "fear"
+      ]
+    },
+    "SPEAKER_01": {
+      "total_duration": 19.08599999999999,
+      "segment_count": 14,
+      "avg_confidence": 0.9,
+      "emotions": [
+        "anger",
+        "neutral"
+      ]
+    }
+  },
+  "segments": [
+    {
+      "start_time": 1.904,
+      "end_time": 3.065,
+      "duration": 1.161,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "You know, we should all do."
+    },
+    {
+      "start_time": 3.085,
+      "end_time": 5.789,
+      "duration": 2.7039999999999997,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Go see a musical."
+    },
+    {
+      "start_time": 9.273,
+      "end_time": 9.773,
+      "duration": 0.5,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "Sure."
+    },
+    {
+      "start_time": 9.814,
+      "end_time": 13.037,
+      "duration": 3.2230000000000008,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "And you know which one we should see?"
+    },
+    {
+      "start_time": 13.057,
+      "end_time": 17.363,
+      "duration": 4.305999999999999,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "The 1996 Tony Award winner."
+    },
+    {
+      "start_time": 19.485,
+      "end_time": 21.007,
+      "duration": 1.522000000000002,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Do you happen to know the name of that one?"
+    },
+    {
+      "start_time": 22.168,
+      "end_time": 22.649,
+      "duration": 0.48100000000000165,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "I don't know."
+    },
+    {
+      "start_time": 22.909,
+      "end_time": 23.25,
+      "duration": 0.3410000000000011,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Greece?"
+    },
+    {
+      "start_time": 25.552,
+      "end_time": 26.013,
+      "duration": 0.4610000000000021,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "fear",
+        "confidence": 0.55,
+        "probabilities": {
+          "anger": 0.075,
+          "disgust": 0.075,
+          "fear": 0.55,
+          "joy": 0.075,
+          "neutral": 0.075,
+          "sadness": 0.075,
+          "surprise": 0.075
+        }
+      },
+      "acoustic_features": null,
+      "text": "No."
+    },
+    {
+      "start_time": 29.037,
+      "end_time": 29.397,
+      "duration": 0.35999999999999943,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Rent."
+    },
+    {
+      "start_time": 30.777,
+      "end_time": 33.32,
+      "duration": 2.5429999999999993,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Yes, rinked."
+    },
+    {
+      "start_time": 33.62,
+      "end_time": 34.701,
+      "duration": 1.081000000000003,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "OK, so when do you want to go?"
+    },
+    {
+      "start_time": 35.182,
+      "end_time": 35.362,
+      "duration": 0.17999999999999972,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "What?"
+    },
+    {
+      "start_time": 36.223,
+      "end_time": 37.484,
+      "duration": 1.2610000000000028,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Oh, I'm sorry I can't, I'm busy."
+    },
+    {
+      "start_time": 41.188,
+      "end_time": 45.993,
+      "duration": 4.805,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Hey, man, it is so hard to shop for girls."
+    },
+    {
+      "start_time": 47.735,
+      "end_time": 52.881,
+      "duration": 5.146000000000001,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Yes, it is at office max."
+    },
+    {
+      "start_time": 52.901,
+      "end_time": 53.662,
+      "duration": 0.7609999999999957,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "What did you get her?"
+    },
+    {
+      "start_time": 53.682,
+      "end_time": 56.785,
+      "duration": 3.1029999999999944,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "A pen."
+    },
+    {
+      "start_time": 58.385,
+      "end_time": 59.326,
+      "duration": 0.9410000000000025,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "It's two gifts in one."
+    },
+    {
+      "start_time": 59.366,
+      "end_time": 59.887,
+      "duration": 0.5210000000000008,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "It's a pen."
+    },
+    {
+      "start_time": 60.207,
+      "end_time": 62.17,
+      "duration": 1.963000000000001,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "That's also a clock."
+    },
+    {
+      "start_time": 64.633,
+      "end_time": 65.695,
+      "duration": 1.0619999999999976,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "You can't give her that."
+    },
+    {
+      "start_time": 66.496,
+      "end_time": 66.816,
+      "duration": 0.3200000000000074,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "Why not?"
+    },
+    {
+      "start_time": 66.836,
+      "end_time": 67.717,
+      "duration": 0.8810000000000002,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Because she's not 11."
+    },
+    {
+      "start_time": 67.737,
+      "end_time": 75.628,
+      "duration": 7.891000000000005,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "fear",
+        "confidence": 0.55,
+        "probabilities": {
+          "anger": 0.075,
+          "disgust": 0.075,
+          "fear": 0.55,
+          "joy": 0.075,
+          "neutral": 0.075,
+          "sadness": 0.075,
+          "surprise": 0.075
+        }
+      },
+      "acoustic_features": null,
+      "text": "And it's not the seventh night of Hanukkah."
+    },
+    {
+      "start_time": 76.028,
+      "end_time": 81.696,
+      "duration": 5.667999999999992,
+      "speaker": {
+        "speaker_id": "SPEAKER_03",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "What he means by that is, while this is a very nice gift, maybe it's just not something a boyfriend gives?"
+    },
+    {
+      "start_time": 82.076,
+      "end_time": 82.877,
+      "duration": 0.8010000000000019,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "Sure it is."
+    },
+    {
+      "start_time": 82.917,
+      "end_time": 85.0,
+      "duration": 2.0829999999999984,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "She needs a pen for work."
+    },
+    {
+      "start_time": 85.233,
+      "end_time": 86.014,
+      "duration": 0.7809999999999917,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "She's riding."
+    },
+    {
+      "start_time": 86.134,
+      "end_time": 86.855,
+      "duration": 0.7210000000000036,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "She turns it over."
+    },
+    {
+      "start_time": 86.895,
+      "end_time": 87.275,
+      "duration": 0.38000000000000966,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Whoa!"
+    },
+    {
+      "start_time": 87.596,
+      "end_time": 88.837,
+      "duration": 1.2409999999999997,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "It's time for my date with Joey!"
+    },
+    {
+      "start_time": 91.841,
+      "end_time": 92.522,
+      "duration": 0.6810000000000116,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "All right, look, look."
+    },
+    {
+      "start_time": 92.702,
+      "end_time": 96.086,
+      "duration": 3.3840000000000003,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "fear",
+        "confidence": 0.55,
+        "probabilities": {
+          "anger": 0.075,
+          "disgust": 0.075,
+          "fear": 0.55,
+          "joy": 0.075,
+          "neutral": 0.075,
+          "sadness": 0.075,
+          "surprise": 0.075
+        }
+      },
+      "acoustic_features": null,
+      "text": "What did you get for Angela Dovecchio for her birthday?"
+    },
+    {
+      "start_time": 96.887,
+      "end_time": 98.449,
+      "duration": 1.5619999999999976,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "She didn't have a birthday while we were going out."
+    },
+    {
+      "start_time": 98.849,
+      "end_time": 99.63,
+      "duration": 0.7809999999999917,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "For three years."
+    },
+    {
+      "start_time": 103.354,
+      "end_time": 105.036,
+      "duration": 1.6820000000000022,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Look, it's too late."
+    },
+    {
+      "start_time": 105.177,
+      "end_time": 106.098,
+      "duration": 0.9209999999999923,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "And I got an audition."
+    },
+    {
+      "start_time": 106.158,
+      "end_time": 107.8,
+      "duration": 1.641999999999996,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "I can't shop anymore."
+    },
+    {
+      "start_time": 107.84,
+      "end_time": 113.226,
+      "duration": 5.385999999999996,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "fear",
+        "confidence": 0.55,
+        "probabilities": {
+          "anger": 0.075,
+          "disgust": 0.075,
+          "fear": 0.55,
+          "joy": 0.075,
+          "neutral": 0.075,
+          "sadness": 0.075,
+          "surprise": 0.075
+        }
+      },
+      "acoustic_features": null,
+      "text": "I will go out and I will try to find something for her, okay?"
+    },
+    {
+      "start_time": 114.007,
+      "end_time": 114.868,
+      "duration": 0.86099999999999,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "anger",
+        "confidence": 0.75,
+        "probabilities": {
+          "anger": 0.75,
+          "disgust": 0.041666666666666664,
+          "fear": 0.041666666666666664,
+          "joy": 0.041666666666666664,
+          "neutral": 0.041666666666666664,
+          "sadness": 0.041666666666666664,
+          "surprise": 0.041666666666666664
+        }
+      },
+      "acoustic_features": null,
+      "text": "Thanks, man."
+    },
+    {
+      "start_time": 115.372,
+      "end_time": 117.678,
+      "duration": 2.3059999999999974,
+      "speaker": {
+        "speaker_id": "SPEAKER_01",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "And oh, while you're at it, could you get her a card?"
+    },
+    {
+      "start_time": 119.281,
+      "end_time": 121.387,
+      "duration": 2.1059999999999945,
+      "speaker": {
+        "speaker_id": "SPEAKER_02",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "Would you like me to write her a little poem as well?"
+    },
+    {
+      "start_time": 121.447,
+      "end_time": 130.208,
+      "duration": 8.760999999999996,
+      "speaker": {
+        "speaker_id": "SPEAKER_00",
+        "confidence": 0.9,
+        "gender": null,
+        "age_group": null
+      },
+      "emotion": {
+        "emotion": "neutral",
+        "confidence": 0.8,
+        "probabilities": {
+          "anger": 0.033333333333333326,
+          "disgust": 0.033333333333333326,
+          "fear": 0.033333333333333326,
+          "joy": 0.033333333333333326,
+          "neutral": 0.8,
+          "sadness": 0.033333333333333326,
+          "surprise": 0.033333333333333326
+        }
+      },
+      "acoustic_features": null,
+      "text": "Or just get a card that has a poem already in it?"
+    }
+  ],
+  "subtitle_optimized_segments": [
+    {
+      "start_time": 1.904,
+      "end_time": 3.065,
+      "duration": 1.161,
+      "text": "You know, we should all do.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 6,
+      "characters_per_second": 23.26,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 3.085,
+      "end_time": 5.789,
+      "duration": 2.7039999999999997,
+      "text": "Go see a musical.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 6.29,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 9.273,
+      "end_time": 9.773,
+      "duration": 0.5,
+      "text": "Sure.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 1,
+      "characters_per_second": 10.0,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 9.814,
+      "end_time": 13.037,
+      "duration": 3.2230000000000008,
+      "text": "And you know which one we should see?",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 8,
+      "characters_per_second": 11.48,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 13.057,
+      "end_time": 17.057000000000002,
+      "duration": 4.000000000000002,
+      "text": "The 1996 Tony Award winner.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 5,
+      "characters_per_second": 6.27,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 19.485,
+      "end_time": 21.007,
+      "duration": 1.522000000000002,
+      "text": "Do you happen to know the name of that one?",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 10,
+      "characters_per_second": 28.25,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 22.168,
+      "end_time": 23.25,
+      "duration": 1.0820000000000007,
+      "text": "I don't know. Greece?",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 19.41,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 25.552,
+      "end_time": 26.013,
+      "duration": 0.4610000000000021,
+      "text": "No.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 1,
+      "characters_per_second": 6.51,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 29.037,
+      "end_time": 29.397,
+      "duration": 0.35999999999999943,
+      "text": "Rent.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 1,
+      "characters_per_second": 13.89,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 30.777,
+      "end_time": 33.32,
+      "duration": 2.5429999999999993,
+      "text": "Yes, rinked.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 2,
+      "characters_per_second": 4.72,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 33.62,
+      "end_time": 34.701,
+      "duration": 1.081000000000003,
+      "text": "OK, so when do you want to go?",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 8,
+      "characters_per_second": 27.75,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 35.182,
+      "end_time": 35.362,
+      "duration": 0.17999999999999972,
+      "text": "What?",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 1,
+      "characters_per_second": 27.78,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 36.223,
+      "end_time": 37.484,
+      "duration": 1.2610000000000028,
+      "text": "Oh, I'm sorry I can't, I'm busy.",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 7,
+      "characters_per_second": 25.38,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 41.188,
+      "end_time": 45.188,
+      "duration": 4.0,
+      "text": "Hey, man, it is so hard to shop for girls.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 10,
+      "characters_per_second": 8.74,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 47.735,
+      "end_time": 51.735,
+      "duration": 4.0,
+      "text": "Yes, it is at office max.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 6,
+      "characters_per_second": 4.86,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 52.901,
+      "end_time": 53.662,
+      "duration": 0.7609999999999957,
+      "text": "What did you get her?",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 5,
+      "characters_per_second": 27.6,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 53.682,
+      "end_time": 56.785,
+      "duration": 3.1029999999999944,
+      "text": "A pen.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 2,
+      "characters_per_second": 1.93,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 58.385,
+      "end_time": 59.887,
+      "duration": 1.5020000000000024,
+      "text": "It's two gifts in one. It's a pen.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 8,
+      "characters_per_second": 22.64,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 60.207,
+      "end_time": 62.17,
+      "duration": 1.963000000000001,
+      "text": "That's also a clock.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 10.19,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 64.633,
+      "end_time": 65.695,
+      "duration": 1.0619999999999976,
+      "text": "You can't give her that.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 5,
+      "characters_per_second": 22.6,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 66.496,
+      "end_time": 67.717,
+      "duration": 1.2210000000000036,
+      "text": "Why not? Because she's not 11.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 6,
+      "characters_per_second": 24.57,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 67.737,
+      "end_time": 71.737,
+      "duration": 4.0,
+      "text": "And it's not the seventh night of Hanukkah.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 8,
+      "characters_per_second": 5.45,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 76.028,
+      "end_time": 80.028,
+      "duration": 4.0,
+      "text": "What he means by that is, while this is a very nice gift, maybe it's just not something a boyfriend gives?",
+      "speaker_id": "SPEAKER_03",
+      "confidence": 0.9,
+      "word_count": 21,
+      "characters_per_second": 18.7,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 82.076,
+      "end_time": 82.877,
+      "duration": 0.8010000000000019,
+      "text": "Sure it is.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 3,
+      "characters_per_second": 13.73,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 82.917,
+      "end_time": 85.0,
+      "duration": 2.0829999999999984,
+      "text": "She needs a pen for work.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 6,
+      "characters_per_second": 12.0,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 85.233,
+      "end_time": 86.855,
+      "duration": 1.6219999999999999,
+      "text": "She's riding. She turns it over.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 6,
+      "characters_per_second": 19.73,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 86.895,
+      "end_time": 87.275,
+      "duration": 0.38000000000000966,
+      "text": "Whoa!",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 1,
+      "characters_per_second": 13.16,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 87.596,
+      "end_time": 88.837,
+      "duration": 1.2409999999999997,
+      "text": "It's time for my date with Joey!",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 7,
+      "characters_per_second": 25.79,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 91.841,
+      "end_time": 92.522,
+      "duration": 0.6810000000000116,
+      "text": "All right, look, look.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 32.31,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 92.702,
+      "end_time": 96.086,
+      "duration": 3.3840000000000003,
+      "text": "What did you get for Angela Dovecchio for her birthday?",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 10,
+      "characters_per_second": 16.25,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 96.887,
+      "end_time": 98.449,
+      "duration": 1.5619999999999976,
+      "text": "She didn't have a birthday while we were going out.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 10,
+      "characters_per_second": 32.65,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 98.849,
+      "end_time": 99.63,
+      "duration": 0.7809999999999917,
+      "text": "For three years.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 3,
+      "characters_per_second": 20.49,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 103.354,
+      "end_time": 105.036,
+      "duration": 1.6820000000000022,
+      "text": "Look, it's too late.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 11.89,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 105.177,
+      "end_time": 106.098,
+      "duration": 0.9209999999999923,
+      "text": "And I got an audition.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 5,
+      "characters_per_second": 23.89,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 106.158,
+      "end_time": 107.8,
+      "duration": 1.641999999999996,
+      "text": "I can't shop anymore.",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 4,
+      "characters_per_second": 12.79,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 107.84,
+      "end_time": 111.84,
+      "duration": 4.0,
+      "text": "I will go out and I will try to find something for her, okay?",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 14,
+      "characters_per_second": 11.33,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 114.007,
+      "end_time": 114.868,
+      "duration": 0.86099999999999,
+      "text": "Thanks, man.",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 2,
+      "characters_per_second": 13.94,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 115.372,
+      "end_time": 117.678,
+      "duration": 2.3059999999999974,
+      "text": "And oh, while you're at it, could you get her a card?",
+      "speaker_id": "SPEAKER_01",
+      "confidence": 0.9,
+      "word_count": 12,
+      "characters_per_second": 22.98,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 119.281,
+      "end_time": 121.387,
+      "duration": 2.1059999999999945,
+      "text": "Would you like me to write her a little poem as well?",
+      "speaker_id": "SPEAKER_02",
+      "confidence": 0.9,
+      "word_count": 12,
+      "characters_per_second": 25.17,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    },
+    {
+      "start_time": 121.447,
+      "end_time": 125.447,
+      "duration": 4.0,
+      "text": "Or just get a card that has a poem already in it?",
+      "speaker_id": "SPEAKER_00",
+      "confidence": 0.9,
+      "word_count": 12,
+      "characters_per_second": 5.59,
+      "subtitle_ready": true,
+      "reading_time_optimal": true
+    }
+  ],
+  "optimization_stats": {
+    "total_subtitles": 40,
+    "avg_duration": 1.8935749999999998,
+    "avg_words_per_subtitle": 6.2,
+    "avg_characters_per_second": 16.798082492290188,
+    "optimization_settings": {
+      "max_duration": 4.0,
+      "min_duration": 1.2,
+      "max_cps": 200.0,
+      "target_cps": 150.0,
+      "max_words_per_line": 7
+    }
+  }
+}
