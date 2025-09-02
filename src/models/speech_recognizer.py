@@ -11,6 +11,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from ..utils.logger import get_logger
 from .model_manager import get_model_manager
+from ..utils.duration_validator import DurationValidator
 
 @dataclass
 class SpeechResult:
@@ -102,6 +103,9 @@ class WhisperXPipeline:
         self.alignment_model = None
         self.alignment_metadata = None
         self.diarization_pipeline = None
+        
+        # Initialize duration validator for audio validation
+        self.duration_validator = DurationValidator()
     
     def _load_models(self):
         """Load WhisperX models"""
@@ -212,7 +216,8 @@ class WhisperXPipeline:
                                      audio_path: Union[str, Path],
                                      min_speakers: int = 2,
                                      max_speakers: int = 4,
-                                     sample_rate: int = 16000) -> Dict[str, Any]:
+                                     sample_rate: int = 16000,
+                                     expected_duration: Optional[float] = None) -> Dict[str, Any]:
         """
         Complete WhisperX pipeline with integrated speaker diarization
         
@@ -221,6 +226,7 @@ class WhisperXPipeline:
             min_speakers: Minimum number of speakers
             max_speakers: Maximum number of speakers
             sample_rate: Target sample rate
+            expected_duration: Expected duration for validation
             
         Returns:
             Dictionary with transcription, alignment, and speaker diarization
@@ -228,20 +234,47 @@ class WhisperXPipeline:
         self.logger.info("starting_whisperx_pipeline", 
                         file=str(audio_path),
                         min_speakers=min_speakers,
-                        max_speakers=max_speakers)
+                        max_speakers=max_speakers,
+                        expected_duration=expected_duration)
         
         try:
-            # Step 1: ASR (transcribe)
+            # Step 0: Validate audio duration if expected duration provided
+            if expected_duration:
+                validation_result = self.duration_validator.validate_extracted_audio(
+                    audio_path, expected_duration
+                )
+                if not validation_result.get("valid", False):
+                    self.logger.warning("audio_duration_validation_failed",
+                                      expected=expected_duration,
+                                      actual=validation_result.get("actual_duration"),
+                                      difference=validation_result.get("difference"))
+                    # Continue processing but log the issue
+                else:
+                    self.logger.info("audio_duration_validation_passed",
+                                   duration=validation_result.get("actual_duration"))
+            
+            # Step 1: ASR (transcribe) with enhanced audio loading
             self._load_models()
             
-            y, sr = librosa.load(str(audio_path), sr=sample_rate)
+            # Enhanced audio loading to ensure complete file is processed
+            y, sr = librosa.load(str(audio_path), sr=sample_rate, duration=None)  # Load entire file
             if y.dtype != np.float32:
                 y = y.astype(np.float32)
             
             audio_duration = len(y) / sr
+            
+            # Additional validation after loading
+            if expected_duration and abs(audio_duration - expected_duration) > 0.5:
+                self.logger.warning("loaded_audio_duration_mismatch",
+                                  loaded_duration=audio_duration,
+                                  expected_duration=expected_duration,
+                                  difference=abs(audio_duration - expected_duration))
+            
             self.logger.info("audio_loaded_for_processing", 
                            duration=round(audio_duration, 2),
-                           sample_rate=sr)
+                           sample_rate=sr,
+                           audio_shape=y.shape,
+                           samples=len(y))
             
             batch_size = 16 if self.device != "cpu" else 8
             
@@ -314,7 +347,7 @@ class WhisperXPipeline:
                 final_result["segments"]
             )
             
-            # Validation and detailed logging
+            # Enhanced validation and detailed logging
             segments_count = len(final_result["segments"])
             unique_speakers = set(
                 seg.get("speaker", "UNKNOWN") 
@@ -330,12 +363,66 @@ class WhisperXPipeline:
                 if seg.get("start") is not None and seg.get("end") is not None
             )
             
+            # Find the last segment timestamp to check coverage
+            last_segment_time = max(
+                (seg.get("end", 0) for seg in final_result["segments"] if seg.get("end")),
+                default=0.0
+            )
+            
+            # Calculate timeline coverage
+            timeline_coverage = (total_segment_duration / audio_duration * 100) if audio_duration > 0 else 0
+            end_coverage = (last_segment_time / audio_duration * 100) if audio_duration > 0 else 0
+            
+            # Detect potential timeline gaps using duration validator
+            if expected_duration or audio_duration:
+                reference_duration = expected_duration or audio_duration
+                gaps = self.duration_validator.detect_timeline_gaps(
+                    [{"start_time": seg.get("start", 0), "end_time": seg.get("end", 0)} 
+                     for seg in final_result["segments"]],
+                    reference_duration
+                )
+                
+                if gaps:
+                    total_gap_duration = sum(gap["gap_duration"] for gap in gaps)
+                    self.logger.warning("timeline_gaps_detected",
+                                      gap_count=len(gaps),
+                                      total_gap_duration=round(total_gap_duration, 2),
+                                      gaps=gaps[:3])  # Log first 3 gaps
+                    
+                    # Add gap information to result
+                    final_result["timeline_gaps"] = gaps
+                    final_result["timeline_coverage"] = {
+                        "segment_coverage": round(timeline_coverage, 1),
+                        "end_coverage": round(end_coverage, 1),
+                        "gaps_detected": len(gaps) > 0,
+                        "total_gap_duration": total_gap_duration
+                    }
+                else:
+                    self.logger.info("timeline_coverage_complete")
+                    final_result["timeline_coverage"] = {
+                        "segment_coverage": round(timeline_coverage, 1),
+                        "end_coverage": round(end_coverage, 1),
+                        "gaps_detected": False,
+                        "total_gap_duration": 0.0
+                    }
+            
+            # Add duration metadata to result
+            final_result["duration_metadata"] = {
+                "audio_file_duration": round(audio_duration, 2),
+                "expected_duration": expected_duration,
+                "last_segment_time": round(last_segment_time, 2),
+                "total_segment_duration": round(total_segment_duration, 2),
+                "timeline_coverage_percent": round(timeline_coverage, 1)
+            }
+            
             self.logger.info("whisperx_pipeline_completed",
                            total_segments=segments_count,
                            unique_speakers=speakers_count,
                            speaker_list=list(unique_speakers),
                            total_segment_duration=round(total_segment_duration, 2),
-                           audio_file_duration=round(audio_duration, 2))
+                           audio_file_duration=round(audio_duration, 2),
+                           last_segment_time=round(last_segment_time, 2),
+                           timeline_coverage=round(timeline_coverage, 1))
             
             return final_result
             
