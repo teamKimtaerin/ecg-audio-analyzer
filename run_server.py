@@ -14,12 +14,12 @@ if __name__ == "__main__":
     print("🎵 ECG Audio Analysis Server Starting...")
     print("📡 Server will be available at: http://localhost:8080")
     print("📋 API Documentation: http://localhost:8080/docs")
-    
+
     uvicorn.run(
         "src.server:app",
         host="0.0.0.0",
         port=8080,
         reload=True,
         log_level="info",
-        access_log=True
+        access_log=True,
     )

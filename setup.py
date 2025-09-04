@@ -15,7 +15,7 @@ setup(
     python_requires=">=3.9",
     install_requires=[
         "librosa>=0.10.0",
-        "soundfile>=0.12.0", 
+        "soundfile>=0.12.0",
         "pydub>=0.25.0",
         "scipy>=1.10.0",
         "scikit-learn>=1.3.0",
@@ -50,11 +50,11 @@ setup(
         ],
         "dev": [
             "pytest>=7.3.0",
-            "pytest-asyncio>=0.21.0", 
+            "pytest-asyncio>=0.21.0",
             "pytest-cov>=4.1.0",
             "black>=23.3.0",
             "ruff>=0.0.270",
-        ]
+        ],
     },
     entry_points={
         "console_scripts": [

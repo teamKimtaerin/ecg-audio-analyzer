@@ -9,8 +9,8 @@ import psutil
 import platform
 import json
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Any, Tuple
 from contextlib import contextmanager
 from collections import deque
 
@@ -21,9 +21,11 @@ from .gpu_optimizer import get_gpu_optimizer, GPUMemoryStats
 
 # --- Data Structures (No major changes, already well-designed) ---
 
+
 @dataclass
 class SystemResources:
     """System resource snapshot."""
+
     timestamp: float
     cpu_percent: float
     memory_used_mb: float
@@ -46,9 +48,11 @@ class SystemResources:
     def disk_available_gb(self) -> float:
         return self.disk_total_gb - self.disk_used_gb
 
+
 @dataclass
 class ProcessingBenchmark:
     """Processing benchmark results."""
+
     operation_name: str
     start_time: float
     end_time: float
@@ -63,20 +67,22 @@ class ProcessingBenchmark:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'operation': self.operation_name,
-            'duration_seconds': self.duration_seconds,
-            'items_processed': self.items_processed,
-            'throughput_items_per_second': self.throughput_items_per_second,
-            'cpu_usage_during': self.cpu_usage_during,
-            'memory_peak_mb': self.memory_peak_mb,
-            'gpu_memory_peak_mb': self.gpu_memory_peak_mb,
-            'success': self.success,
-            'error': self.error_message
+            "operation": self.operation_name,
+            "duration_seconds": self.duration_seconds,
+            "items_processed": self.items_processed,
+            "throughput_items_per_second": self.throughput_items_per_second,
+            "cpu_usage_during": self.cpu_usage_during,
+            "memory_peak_mb": self.memory_peak_mb,
+            "gpu_memory_peak_mb": self.gpu_memory_peak_mb,
+            "success": self.success,
+            "error": self.error_message,
         }
+
 
 @dataclass
 class PerformanceReport:
     """Comprehensive performance analysis report."""
+
     system_info: Dict[str, Any]
     resource_utilization: Dict[str, Any]
     benchmarks: List[ProcessingBenchmark]
@@ -87,27 +93,29 @@ class PerformanceReport:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'system_info': self.system_info,
-            'resource_utilization': self.resource_utilization,
-            'benchmarks': [b.to_dict() for b in self.benchmarks],
-            'bottlenecks': self.bottlenecks,
-            'recommendations': self.recommendations,
-            'optimization_opportunities': self.optimization_opportunities,
-            'timestamp': self.timestamp
+            "system_info": self.system_info,
+            "resource_utilization": self.resource_utilization,
+            "benchmarks": [b.to_dict() for b in self.benchmarks],
+            "bottlenecks": self.bottlenecks,
+            "recommendations": self.recommendations,
+            "optimization_opportunities": self.optimization_opportunities,
+            "timestamp": self.timestamp,
         }
 
     def save_to_file(self, output_path: Path):
         """Save performance report to a JSON file."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
 
 
 # --- NEW: Centralized Configuration ---
 
+
 @dataclass
 class ProfilerConfig:
     """Configuration for performance analysis thresholds."""
+
     cpu_warning_threshold: float = 80.0
     cpu_severe_threshold: float = 95.0
     memory_warning_threshold: float = 85.0
@@ -122,8 +130,10 @@ class ProfilerConfig:
 
 # --- Core Components: Refactored for Single Responsibility ---
 
+
 class ResourceTracker:
     """Tracks system resources over time in a background thread."""
+
     def __init__(self, max_samples: int = 1000):
         self.samples: deque = deque(maxlen=max_samples)
         self.logger = get_logger().bind_context(component="resource_tracker")
@@ -154,22 +164,22 @@ class ResourceTracker:
                 time.sleep(interval)
             except Exception as e:
                 self.logger.warning("Resource tracking error.", error=str(e))
-                time.sleep(interval) # Prevent rapid-fire errors
+                time.sleep(interval)  # Prevent rapid-fire errors
 
     @staticmethod
     def get_resource_snapshot() -> SystemResources:
         """Gets a single snapshot of current system resources."""
         mem = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
         net = psutil.net_io_counters()
-        
+
         gpu_stats = None
         try:
             # Encapsulate optional dependency
             gpu_optimizer = get_gpu_optimizer()
             gpu_stats = gpu_optimizer.monitor.get_current_stats(0)
         except Exception:
-            pass # Gracefully handle cases where GPU is not available or nvidia-smi fails
+            pass  # Gracefully handle cases where GPU is not available or nvidia-smi fails
 
         return SystemResources(
             timestamp=time.time(),
@@ -190,7 +200,7 @@ class ResourceTracker:
     def get_resource_summary(self, last_n_samples: int = 60) -> Dict[str, Any]:
         if not self.samples:
             return {}
-        
+
         recent_samples = list(self.samples)[-last_n_samples:]
         if not recent_samples:
             return {}
@@ -206,159 +216,270 @@ class ResourceTracker:
         avg_gpu_mem, peak_gpu_mem = (0.0, 0.0)
         avg_gpu_util = 0.0
         if gpu_samples:
-            avg_gpu_mem, peak_gpu_mem = _calculate_stats([s.utilization_percent for s in gpu_samples])
-            avg_gpu_util, _ = _calculate_stats([s.allocated_mb / s.total_mb * 100 for s in gpu_samples])
+            avg_gpu_mem, peak_gpu_mem = _calculate_stats(
+                [s.utilization_percent for s in gpu_samples]
+            )
+            avg_gpu_util, _ = _calculate_stats(
+                [s.allocated_mb / s.total_mb * 100 for s in gpu_samples]
+            )
 
         return {
-            'cpu': {'average_percent': avg_cpu, 'peak_percent': peak_cpu},
-            'memory': {'average_percent': avg_mem, 'peak_percent': peak_mem, 'total_mb': recent_samples[-1].memory_total_mb},
-            'disk': {'average_percent': avg_disk, 'total_gb': recent_samples[-1].disk_total_gb},
-            'gpu': {'available': bool(gpu_samples), 'average_memory_percent': avg_gpu_mem, 'peak_memory_percent': peak_gpu_mem, 'average_utilization': avg_gpu_util},
-            'samples_analyzed': len(recent_samples)
+            "cpu": {"average_percent": avg_cpu, "peak_percent": peak_cpu},
+            "memory": {
+                "average_percent": avg_mem,
+                "peak_percent": peak_mem,
+                "total_mb": recent_samples[-1].memory_total_mb,
+            },
+            "disk": {
+                "average_percent": avg_disk,
+                "total_gb": recent_samples[-1].disk_total_gb,
+            },
+            "gpu": {
+                "available": bool(gpu_samples),
+                "average_memory_percent": avg_gpu_mem,
+                "peak_memory_percent": peak_gpu_mem,
+                "average_utilization": avg_gpu_util,
+            },
+            "samples_analyzed": len(recent_samples),
         }
 
 
 class PerformanceAnalyzer:
     """Analyzes collected data to identify bottlenecks and generate recommendations."""
+
     def __init__(self, config: ProfilerConfig, system_info: Dict[str, Any]):
         self.config = config
         self.system_info = system_info
 
-    def run_analysis(self, benchmarks: List[ProcessingBenchmark], resource_summary: Dict[str, Any]) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
+    def run_analysis(
+        self, benchmarks: List[ProcessingBenchmark], resource_summary: Dict[str, Any]
+    ) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
         """Runs all analysis steps and returns results."""
         bottlenecks = self._analyze_bottlenecks(benchmarks, resource_summary)
         recommendations = self._generate_recommendations(resource_summary, bottlenecks)
         opportunities = self._identify_optimization_opportunities(benchmarks)
         return bottlenecks, recommendations, opportunities
 
-    def _analyze_bottlenecks(self, benchmarks: List[ProcessingBenchmark], res: Dict[str, Any]) -> List[str]:
+    def _analyze_bottlenecks(
+        self, benchmarks: List[ProcessingBenchmark], res: Dict[str, Any]
+    ) -> List[str]:
         bottlenecks = []
         # CPU
-        if res.get('cpu', {}).get('peak_percent', 0) > self.config.cpu_severe_threshold:
-            bottlenecks.append(f"Severe CPU bottleneck detected (peak > {self.config.cpu_severe_threshold}%)")
-        elif res.get('cpu', {}).get('average_percent', 0) > self.config.cpu_warning_threshold:
-            bottlenecks.append(f"High CPU utilization (avg > {self.config.cpu_warning_threshold}%)")
+        if res.get("cpu", {}).get("peak_percent", 0) > self.config.cpu_severe_threshold:
+            bottlenecks.append(
+                f"Severe CPU bottleneck detected (peak > {self.config.cpu_severe_threshold}%)"
+            )
+        elif (
+            res.get("cpu", {}).get("average_percent", 0)
+            > self.config.cpu_warning_threshold
+        ):
+            bottlenecks.append(
+                f"High CPU utilization (avg > {self.config.cpu_warning_threshold}%)"
+            )
         # Memory
-        if res.get('memory', {}).get('peak_percent', 0) > self.config.memory_severe_threshold:
-            bottlenecks.append(f"Severe memory bottleneck (peak > {self.config.memory_severe_threshold}%)")
-        elif res.get('memory', {}).get('average_percent', 0) > self.config.memory_warning_threshold:
-            bottlenecks.append(f"High memory utilization (avg > {self.config.memory_warning_threshold}%)")
+        if (
+            res.get("memory", {}).get("peak_percent", 0)
+            > self.config.memory_severe_threshold
+        ):
+            bottlenecks.append(
+                f"Severe memory bottleneck (peak > {self.config.memory_severe_threshold}%)"
+            )
+        elif (
+            res.get("memory", {}).get("average_percent", 0)
+            > self.config.memory_warning_threshold
+        ):
+            bottlenecks.append(
+                f"High memory utilization (avg > {self.config.memory_warning_threshold}%)"
+            )
         # GPU
-        if res.get('gpu', {}).get('available'):
-            if res['gpu'].get('peak_memory_percent', 0) > self.config.gpu_memory_severe_threshold:
-                bottlenecks.append(f"Severe GPU memory bottleneck (peak > {self.config.gpu_memory_severe_threshold}%)")
-            elif res['gpu'].get('average_memory_percent', 0) > self.config.gpu_memory_warning_threshold:
-                bottlenecks.append(f"High GPU memory utilization (avg > {self.config.gpu_memory_warning_threshold}%)")
+        if res.get("gpu", {}).get("available"):
+            if (
+                res["gpu"].get("peak_memory_percent", 0)
+                > self.config.gpu_memory_severe_threshold
+            ):
+                bottlenecks.append(
+                    f"Severe GPU memory bottleneck (peak > {self.config.gpu_memory_severe_threshold}%)"
+                )
+            elif (
+                res["gpu"].get("average_memory_percent", 0)
+                > self.config.gpu_memory_warning_threshold
+            ):
+                bottlenecks.append(
+                    f"High GPU memory utilization (avg > {self.config.gpu_memory_warning_threshold}%)"
+                )
         # Disk
-        if res.get('disk', {}).get('average_percent', 0) > self.config.disk_space_warning_threshold:
-            bottlenecks.append(f"High disk space usage (> {self.config.disk_space_warning_threshold}%)")
+        if (
+            res.get("disk", {}).get("average_percent", 0)
+            > self.config.disk_space_warning_threshold
+        ):
+            bottlenecks.append(
+                f"High disk space usage (> {self.config.disk_space_warning_threshold}%)"
+            )
         # Throughput
-        slow_ops = [b for b in benchmarks if b.success and b.throughput_items_per_second < self.config.low_throughput_threshold]
+        slow_ops = [
+            b
+            for b in benchmarks
+            if b.success
+            and b.throughput_items_per_second < self.config.low_throughput_threshold
+        ]
         if slow_ops:
-            bottlenecks.append(f"Slow processing detected in {len(slow_ops)} operation(s).")
+            bottlenecks.append(
+                f"Slow processing detected in {len(slow_ops)} operation(s)."
+            )
         return bottlenecks
 
-    def _generate_recommendations(self, res: Dict[str, Any], bottlenecks: List[str]) -> List[str]:
+    def _generate_recommendations(
+        self, res: Dict[str, Any], bottlenecks: List[str]
+    ) -> List[str]:
         recommendations = []
         if any("CPU" in b for b in bottlenecks):
-            recommendations.extend([
-                "Consider optimizing CPU-bound tasks, increasing parallel workers, or upgrading the CPU.",
-                "Explore batch processing to improve CPU efficiency for repetitive tasks."
-            ])
+            recommendations.extend(
+                [
+                    "Consider optimizing CPU-bound tasks, increasing parallel workers, or upgrading the CPU.",
+                    "Explore batch processing to improve CPU efficiency for repetitive tasks.",
+                ]
+            )
         if any("memory" in b for b in bottlenecks):
-            recommendations.extend([
-                f"Memory usage is high. Profile memory usage to find leaks or consider upgrading RAM.",
-                "Try using more memory-efficient data structures or reducing batch sizes."
-            ])
-        if res.get('gpu', {}).get('available'):
+            recommendations.extend(
+                [
+                    "Memory usage is high. Profile memory usage to find leaks or consider upgrading RAM.",
+                    "Try using more memory-efficient data structures or reducing batch sizes.",
+                ]
+            )
+        if res.get("gpu", {}).get("available"):
             if any("GPU" in b for b in bottlenecks):
-                recommendations.append("GPU memory is a bottleneck. Consider model quantization, gradient accumulation, or using a larger VRAM GPU.")
-            if res['gpu'].get('average_utilization', 100) < self.config.low_gpu_util_threshold:
-                recommendations.append("GPU utilization is low. Increase batch sizes or use data prefetching to ensure the GPU is not waiting for data.")
+                recommendations.append(
+                    "GPU memory is a bottleneck. Consider model quantization, gradient accumulation, or using a larger VRAM GPU."
+                )
+            if (
+                res["gpu"].get("average_utilization", 100)
+                < self.config.low_gpu_util_threshold
+            ):
+                recommendations.append(
+                    "GPU utilization is low. Increase batch sizes or use data prefetching to ensure the GPU is not waiting for data."
+                )
         else:
-            recommendations.append("No GPU detected. For deep learning or parallel computation, using a GPU can provide significant performance gains.")
-        if "AWS" in self.system_info.get('platform', ''):
-             recommendations.append("On AWS: Evaluate if the current EC2 instance type (CPU, memory, GPU) is optimal for the workload. Consider Graviton instances for better price/performance.")
+            recommendations.append(
+                "No GPU detected. For deep learning or parallel computation, using a GPU can provide significant performance gains."
+            )
+        if "AWS" in self.system_info.get("platform", ""):
+            recommendations.append(
+                "On AWS: Evaluate if the current EC2 instance type (CPU, memory, GPU) is optimal for the workload. Consider Graviton instances for better price/performance."
+            )
         return recommendations
 
-    def _identify_optimization_opportunities(self, benchmarks: List[ProcessingBenchmark]) -> List[Dict[str, Any]]:
+    def _identify_optimization_opportunities(
+        self, benchmarks: List[ProcessingBenchmark]
+    ) -> List[Dict[str, Any]]:
         opportunities = []
         # GPU Optimizations
         try:
             gpu_optimizer = get_gpu_optimizer()
             if gpu_optimizer.is_available():
                 summary = gpu_optimizer.get_memory_summary()
-                util = summary.get('utilization_percent', 100)
+                util = summary.get("utilization_percent", 100)
                 if util < self.config.underutilized_gpu_mem_threshold:
-                    opportunities.append({'type': 'gpu_memory_underutilization', 'description': f'GPU memory is underutilized ({util:.1f}%).', 'recommendation': 'Increase batch size or run models in parallel.'})
-                if not summary.get('optimizations', {}).get('amp_enabled'):
-                    opportunities.append({'type': 'mixed_precision', 'description': 'Automatic Mixed Precision (AMP) is not enabled.', 'recommendation': 'Enable AMP for potential 1.5-2x speed-up on compatible GPUs.'})
+                    opportunities.append(
+                        {
+                            "type": "gpu_memory_underutilization",
+                            "description": f"GPU memory is underutilized ({util:.1f}%).",
+                            "recommendation": "Increase batch size or run models in parallel.",
+                        }
+                    )
+                if not summary.get("optimizations", {}).get("amp_enabled"):
+                    opportunities.append(
+                        {
+                            "type": "mixed_precision",
+                            "description": "Automatic Mixed Precision (AMP) is not enabled.",
+                            "recommendation": "Enable AMP for potential 1.5-2x speed-up on compatible GPUs.",
+                        }
+                    )
         except Exception:
             pass
         # Parallel Processing
-        cpu_count = self.system_info.get('cpu_count', 1)
+        cpu_count = self.system_info.get("cpu_count", 1)
         if cpu_count > 4:
-            opportunities.append({'type': 'parallel_processing', 'description': f'Multi-core CPU ({cpu_count} cores) is available.', 'recommendation': 'Ensure your application is leveraging multiple cores for parallelizable tasks.'})
+            opportunities.append(
+                {
+                    "type": "parallel_processing",
+                    "description": f"Multi-core CPU ({cpu_count} cores) is available.",
+                    "recommendation": "Ensure your application is leveraging multiple cores for parallelizable tasks.",
+                }
+            )
         # Batch Processing
-        if benchmarks and len([b for b in benchmarks if b.items_processed == 1]) > len(benchmarks) / 2:
-             opportunities.append({'type': 'batch_processing', 'description': 'High number of single-item operations detected.', 'recommendation': 'Implement batch processing to reduce overhead and improve throughput.'})
+        if (
+            benchmarks
+            and len([b for b in benchmarks if b.items_processed == 1])
+            > len(benchmarks) / 2
+        ):
+            opportunities.append(
+                {
+                    "type": "batch_processing",
+                    "description": "High number of single-item operations detected.",
+                    "recommendation": "Implement batch processing to reduce overhead and improve throughput.",
+                }
+            )
         return opportunities
 
 
 class SystemInfo:
     """Collects and holds static system information."""
+
     @staticmethod
     def collect() -> Dict[str, Any]:
         """Collects comprehensive system hardware and software information."""
         logger = get_logger().bind_context(component="system_info")
         try:
             info = {
-                'platform': platform.platform(),
-                'processor': platform.processor(),
-                'architecture': platform.architecture(),
-                'cpu_count': psutil.cpu_count(),
-                'cpu_count_physical': psutil.cpu_count(logical=False),
-                'memory_total_gb': psutil.virtual_memory().total / (1024**3),
-                'python_version': platform.python_version(),
+                "platform": platform.platform(),
+                "processor": platform.processor(),
+                "architecture": platform.architecture(),
+                "cpu_count": psutil.cpu_count(),
+                "cpu_count_physical": psutil.cpu_count(logical=False),
+                "memory_total_gb": psutil.virtual_memory().total / (1024**3),
+                "python_version": platform.python_version(),
             }
             # Optional: GPU information
             try:
                 import torch
+
                 if torch.cuda.is_available():
-                    info['cuda_available'] = True
-                    info['cuda_version'] = torch.version.cuda
-                    info['gpu_count'] = torch.cuda.device_count()
-                    info['gpu_devices'] = [
+                    info["cuda_available"] = True
+                    info["cuda_version"] = torch.version.cuda
+                    info["gpu_count"] = torch.cuda.device_count()
+                    info["gpu_devices"] = [
                         {
-                            'name': props.name,
-                            'memory_gb': props.total_memory / (1024**3),
-                            'compute_capability': f"{props.major}.{props.minor}",
+                            "name": props.name,
+                            "memory_gb": props.total_memory / (1024**3),
+                            "compute_capability": f"{props.major}.{props.minor}",
                         }
                         for i in range(torch.cuda.device_count())
                         if (props := torch.cuda.get_device_properties(i))
                     ]
                 else:
-                    info['cuda_available'] = False
+                    info["cuda_available"] = False
             except ImportError:
-                info['cuda_available'] = False
+                info["cuda_available"] = False
             return info
         except Exception as e:
             logger.warning("System info collection failed.", error=str(e))
-            return {'error': str(e)}
+            return {"error": str(e)}
 
 
 # --- Main Orchestrator ---
 
+
 class PerformanceProfiler:
     """Orchestrates performance profiling, data collection, and report generation."""
+
     def __init__(self, config: Optional[ProfilerConfig] = None):
         self.logger = get_logger().bind_context(component="performance_profiler")
         self.config = config or ProfilerConfig()
-        
+
         self.system_info = SystemInfo.collect()
         self.resource_tracker = ResourceTracker()
         self.analyzer = PerformanceAnalyzer(self.config, self.system_info)
-        
+
         self.benchmarks: List[ProcessingBenchmark] = []
 
     @contextmanager
@@ -376,38 +497,53 @@ class PerformanceProfiler:
         except Exception as e:
             success = False
             error_message = str(e)
-            self.logger.error("Profiled operation failed.", operation=operation_name, error=error_message)
+            self.logger.error(
+                "Profiled operation failed.",
+                operation=operation_name,
+                error=error_message,
+            )
             raise
         finally:
             end_time = time.time()
             end_res = self.resource_tracker.get_resource_snapshot()
             duration = end_time - start_time
-            
+
             benchmark = ProcessingBenchmark(
                 operation_name=operation_name,
                 start_time=start_time,
                 end_time=end_time,
                 duration_seconds=duration,
                 items_processed=items_count,
-                throughput_items_per_second=items_count / duration if duration > 0 else 0,
+                throughput_items_per_second=(
+                    items_count / duration if duration > 0 else 0
+                ),
                 cpu_usage_during=max(start_res.cpu_percent, end_res.cpu_percent),
                 memory_peak_mb=max(start_res.memory_used_mb, end_res.memory_used_mb),
                 gpu_memory_peak_mb=(
-                    max(start_res.gpu_stats.allocated_mb, end_res.gpu_stats.allocated_mb)
+                    max(
+                        start_res.gpu_stats.allocated_mb, end_res.gpu_stats.allocated_mb
+                    )
                     if start_res.gpu_stats and end_res.gpu_stats
                     else None
                 ),
                 success=success,
-                error_message=error_message
+                error_message=error_message,
             )
             self.benchmarks.append(benchmark)
-            self.logger.info("Operation profiled.", operation=operation_name, duration=f"{duration:.2f}s", success=success)
+            self.logger.info(
+                "Operation profiled.",
+                operation=operation_name,
+                duration=f"{duration:.2f}s",
+                success=success,
+            )
 
     def generate_report(self) -> PerformanceReport:
         """Generates a comprehensive performance report."""
         resource_summary = self.resource_tracker.get_resource_summary()
-        bottlenecks, recommendations, opportunities = self.analyzer.run_analysis(self.benchmarks, resource_summary)
-        
+        bottlenecks, recommendations, opportunities = self.analyzer.run_analysis(
+            self.benchmarks, resource_summary
+        )
+
         return PerformanceReport(
             system_info=self.system_info,
             resource_utilization=resource_summary,
@@ -415,7 +551,7 @@ class PerformanceProfiler:
             bottlenecks=bottlenecks,
             recommendations=recommendations,
             optimization_opportunities=opportunities,
-            timestamp=time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+            timestamp=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
         )
 
     def cleanup(self):
@@ -423,9 +559,11 @@ class PerformanceProfiler:
         self.resource_tracker.stop_tracking()
         self.logger.info("Performance profiler cleanup completed.")
 
+
 # --- Global Singleton Accessor ---
 
 _global_profiler: Optional[PerformanceProfiler] = None
+
 
 def get_performance_profiler() -> PerformanceProfiler:
     """Gets the global performance profiler instance, creating it if necessary."""
@@ -433,6 +571,7 @@ def get_performance_profiler() -> PerformanceProfiler:
     if _global_profiler is None:
         _global_profiler = PerformanceProfiler()
     return _global_profiler
+
 
 def profile_operation(operation_name: str, items_count: int = 1):
     """Decorator/context manager for easy profiling of operations."""
