@@ -12,80 +12,91 @@ from ..utils.logger import get_logger
 # Load environment variables
 load_dotenv()
 
+
 class ModelManager:
     """Centralized manager for ML model loading and caching"""
-    
-    def __init__(self, 
-                 device: Optional[str] = None,
-                 cache_dir: Optional[Union[str, Path]] = None):
+
+    def __init__(
+        self, device: Optional[str] = None, cache_dir: Optional[Union[str, Path]] = None
+    ):
         """
         Initialize model manager
-        
+
         Args:
             device: Device to use ('cuda', 'cpu', or None for auto-detection)
             cache_dir: Directory to cache models (None for default)
         """
         self.logger = get_logger().bind_context(service="model_manager")
-        
+
         # Device detection
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             self.device = device
-            
+
         self.logger.info("model_manager_initialized", device=self.device)
-        
+
         # Cache directory
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".cache" / "ecg-audio-analyzer"
+        self.cache_dir = (
+            Path(cache_dir)
+            if cache_dir
+            else Path.home() / ".cache" / "ecg-audio-analyzer"
+        )
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Model cache
         self._model_cache: Dict[str, Any] = {}
-        
+
         # Hugging Face token
         self.hf_token = os.getenv("HF_TOKEN")
         if not self.hf_token:
-            self.logger.warning("hf_token_not_found", 
-                              message="HF_TOKEN not found, some models may not be accessible")
-    
+            self.logger.warning(
+                "hf_token_not_found",
+                message="HF_TOKEN not found, some models may not be accessible",
+            )
+
     def get_device(self) -> str:
         """Get current device"""
         return self.device
-    
+
     def is_gpu_available(self) -> bool:
         """Check if GPU is available"""
         return torch.cuda.is_available() and "cuda" in self.device
-    
+
     def clear_cache(self):
         """Clear model cache"""
         self.logger.info("clearing_model_cache")
         self._model_cache.clear()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    
-    def preload_models(self, 
-                      load_speaker: bool = True,
-                      load_whisperx: bool = True,
-                      load_emotion: bool = False,
-                      whisperx_model_size: str = "base") -> Dict[str, bool]:
+
+    def preload_models(
+        self,
+        load_speaker: bool = True,
+        load_whisperx: bool = True,
+        load_emotion: bool = False,
+        whisperx_model_size: str = "base",
+    ) -> Dict[str, bool]:
         """
         Preload commonly used models to improve first-time performance
-        
+
         Args:
             load_speaker: Preload speaker diarization model
-            load_whisperx: Preload WhisperX model  
+            load_whisperx: Preload WhisperX model
             load_emotion: Preload emotion analysis model
             whisperx_model_size: Size of WhisperX model to preload
-            
+
         Returns:
             Dictionary with loading status for each model
         """
         results = {}
-        self.logger.info("preloading_models", 
-                        speaker=load_speaker,
-                        whisperx=load_whisperx,
-                        emotion=load_emotion)
-        
+        self.logger.info(
+            "preloading_models",
+            speaker=load_speaker,
+            whisperx=load_whisperx,
+            emotion=load_emotion,
+        )
+
         # Preload speaker diarization model
         if load_speaker:
             try:
@@ -95,17 +106,19 @@ class ModelManager:
             except Exception as e:
                 results["speaker_model"] = False
                 self.logger.error("speaker_model_preload_failed", error=str(e))
-        
+
         # Preload WhisperX model
         if load_whisperx:
             try:
                 self.load_whisperx_model(model_size=whisperx_model_size)
                 results["whisperx_model"] = True
-                self.logger.info("whisperx_model_preloaded", model_size=whisperx_model_size)
+                self.logger.info(
+                    "whisperx_model_preloaded", model_size=whisperx_model_size
+                )
             except Exception as e:
                 results["whisperx_model"] = False
                 self.logger.error("whisperx_model_preload_failed", error=str(e))
-        
+
         # Preload emotion model
         if load_emotion:
             try:
@@ -115,48 +128,46 @@ class ModelManager:
             except Exception as e:
                 results["emotion_model"] = False
                 self.logger.error("emotion_model_preload_failed", error=str(e))
-        
+
         return results
-    
+
     def warmup_models(self) -> Dict[str, float]:
         """
         Warm up loaded models with dummy data to ensure optimal performance
-        
+
         Returns:
             Dictionary with warmup times for each model
         """
         warmup_times = {}
         self.logger.info("warming_up_models")
-        
+
         # Warm up WhisperX model if loaded
         for key, model in self._model_cache.items():
             if key.startswith("whisperx_"):
                 try:
                     import time
                     import numpy as np
-                    
+
                     start_time = time.time()
-                    
+
                     # Create dummy audio (1 second of silence at 16kHz)
                     dummy_audio = np.zeros(16000, dtype=np.float32)
-                    
+
                     # Run inference to warm up
                     result = model.transcribe(dummy_audio, batch_size=1)
-                    
+
                     warmup_time = time.time() - start_time
                     warmup_times[key] = warmup_time
-                    
-                    self.logger.info("model_warmed_up", 
-                                   model=key,
-                                   warmup_time=warmup_time)
-                                   
+
+                    self.logger.info(
+                        "model_warmed_up", model=key, warmup_time=warmup_time
+                    )
+
                 except Exception as e:
-                    self.logger.warning("model_warmup_failed", 
-                                      model=key,
-                                      error=str(e))
-        
+                    self.logger.warning("model_warmup_failed", model=key, error=str(e))
+
         return warmup_times
-    
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get model manager information"""
         return {
@@ -164,224 +175,234 @@ class ModelManager:
             "gpu_available": self.is_gpu_available(),
             "cached_models": list(self._model_cache.keys()),
             "cache_dir": str(self.cache_dir),
-            "hf_token_available": bool(self.hf_token)
+            "hf_token_available": bool(self.hf_token),
         }
-    
+
     def _cache_model(self, model_key: str, model: Any) -> Any:
         """Cache a model"""
         self._model_cache[model_key] = model
         self.logger.info("model_cached", model_key=model_key)
         return model
-    
+
     def _get_cached_model(self, model_key: str) -> Optional[Any]:
         """Get cached model"""
         return self._model_cache.get(model_key)
-    
-    def load_speaker_model(self, model_name: str = "pyannote/speaker-diarization-3.1") -> Any:
+
+    def load_speaker_model(
+        self, model_name: str = "pyannote/speaker-diarization-3.1"
+    ) -> Any:
         """
         Load speaker diarization model
-        
+
         Args:
             model_name: Hugging Face model name
-            
+
         Returns:
             Loaded pyannote pipeline
         """
         model_key = f"speaker_{model_name}"
-        
+
         # Check cache first
         cached_model = self._get_cached_model(model_key)
         if cached_model is not None:
             self.logger.info("using_cached_speaker_model", model_name=model_name)
             return cached_model
-        
+
         self.logger.info("loading_speaker_model", model_name=model_name)
-        
+
         try:
             from pyannote.audio import Pipeline
-            
+
             # Load pipeline with authentication
             if self.hf_token:
                 pipeline = Pipeline.from_pretrained(
-                    model_name, 
-                    use_auth_token=self.hf_token
+                    model_name, use_auth_token=self.hf_token
                 )
             else:
                 pipeline = Pipeline.from_pretrained(model_name)
-            
+
             # Move to device
-            if hasattr(pipeline, 'to'):
+            if hasattr(pipeline, "to"):
                 pipeline = pipeline.to(torch.device(self.device))
-            
-            self.logger.info("speaker_model_loaded", 
-                           model_name=model_name, 
-                           device=self.device)
-            
+
+            self.logger.info(
+                "speaker_model_loaded", model_name=model_name, device=self.device
+            )
+
             return self._cache_model(model_key, pipeline)
-            
+
         except Exception as e:
-            self.logger.error("speaker_model_load_failed", 
-                            model_name=model_name, 
-                            error=str(e))
+            self.logger.error(
+                "speaker_model_load_failed", model_name=model_name, error=str(e)
+            )
             raise
-    
-    def load_emotion_model(self, model_name: str = "j-hartmann/emotion-english-distilroberta-base") -> tuple:
+
+    def load_emotion_model(
+        self, model_name: str = "j-hartmann/emotion-english-distilroberta-base"
+    ) -> tuple:
         """
         Load emotion analysis model
-        
+
         Args:
             model_name: Hugging Face model name
-            
+
         Returns:
             Tuple of (tokenizer, model)
         """
         model_key = f"emotion_{model_name}"
-        
+
         # Check cache first
         cached_model = self._get_cached_model(model_key)
         if cached_model is not None:
             self.logger.info("using_cached_emotion_model", model_name=model_name)
             return cached_model
-        
+
         self.logger.info("loading_emotion_model", model_name=model_name)
-        
+
         try:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
-            
+
             # Load tokenizer and model
             tokenizer = AutoTokenizer.from_pretrained(
-                model_name,
-                use_auth_token=self.hf_token if self.hf_token else None
+                model_name, use_auth_token=self.hf_token if self.hf_token else None
             )
-            
+
             model = AutoModelForSequenceClassification.from_pretrained(
-                model_name,
-                use_auth_token=self.hf_token if self.hf_token else None
+                model_name, use_auth_token=self.hf_token if self.hf_token else None
             )
-            
+
             # Move model to device with fallback
             device_to_use = self.device
             try:
                 model = model.to(torch.device(device_to_use))
             except Exception as e:
                 if "CUDA" in str(e) and device_to_use == "cuda":
-                    self.logger.warning("cuda_failed_for_emotion_model_fallback_to_cpu", error=str(e))
+                    self.logger.warning(
+                        "cuda_failed_for_emotion_model_fallback_to_cpu", error=str(e)
+                    )
                     device_to_use = "cpu"
                     model = model.to(torch.device(device_to_use))
                 else:
                     raise
-            
+
             model.eval()  # Set to evaluation mode
-            
-            self.logger.info("emotion_model_loaded", 
-                           model_name=model_name, 
-                           device=device_to_use)
-            
+
+            self.logger.info(
+                "emotion_model_loaded", model_name=model_name, device=device_to_use
+            )
+
             return self._cache_model(model_key, (tokenizer, model))
-            
+
         except Exception as e:
-            self.logger.error("emotion_model_load_failed", 
-                            model_name=model_name, 
-                            error=str(e))
+            self.logger.error(
+                "emotion_model_load_failed", model_name=model_name, error=str(e)
+            )
             raise
-    
-    def load_whisperx_model(self, 
-                           model_size: str = "base",
-                           compute_type: str = "float16",
-                           language: Optional[str] = None) -> Any:
+
+    def load_whisperx_model(
+        self,
+        model_size: str = "base",
+        compute_type: str = "float16",
+        language: Optional[str] = None,
+    ) -> Any:
         """
         Load WhisperX model
-        
+
         Args:
             model_size: WhisperX model size (tiny, base, small, medium, large-v2)
             compute_type: Compute type (float16, float16, int8)
             language: Language code (None for auto-detection)
-            
+
         Returns:
             Loaded WhisperX model
         """
         model_key = f"whisperx_{model_size}_{compute_type}_{language}"
-        
+
         # Check cache first
         cached_model = self._get_cached_model(model_key)
         if cached_model is not None:
-            self.logger.info("using_cached_whisperx_model", 
-                           model_size=model_size,
-                           compute_type=compute_type)
+            self.logger.info(
+                "using_cached_whisperx_model",
+                model_size=model_size,
+                compute_type=compute_type,
+            )
             return cached_model
-        
-        self.logger.info("loading_whisperx_model", 
-                        model_size=model_size,
-                        compute_type=compute_type,
-                        language=language)
-        
+
+        self.logger.info(
+            "loading_whisperx_model",
+            model_size=model_size,
+            compute_type=compute_type,
+            language=language,
+        )
+
         try:
             import whisperx
-            
+
             # Use CPU compute type if on CPU
             if self.device == "cpu":
                 compute_type = "float32"
-            
+
             # Load WhisperX model
             model = whisperx.load_model(
                 model_size,
                 device=self.device,
                 compute_type=compute_type,
-                language=language
+                language=language,
             )
-            
-            self.logger.info("whisperx_model_loaded", 
-                           model_size=model_size, 
-                           device=self.device,
-                           compute_type=compute_type)
-            
+
+            self.logger.info(
+                "whisperx_model_loaded",
+                model_size=model_size,
+                device=self.device,
+                compute_type=compute_type,
+            )
+
             return self._cache_model(model_key, model)
-            
+
         except Exception as e:
-            self.logger.error("whisperx_model_load_failed", 
-                            model_size=model_size, 
-                            error=str(e))
+            self.logger.error(
+                "whisperx_model_load_failed", model_size=model_size, error=str(e)
+            )
             raise
-    
+
     def load_whisperx_alignment_model(self, language_code: str) -> tuple:
         """
         Load WhisperX alignment model for better word-level timestamps
-        
+
         Args:
             language_code: Language code for alignment model
-            
+
         Returns:
             Tuple of (alignment_model, metadata)
         """
         model_key = f"whisperx_align_{language_code}"
-        
+
         # Check cache first
         cached_model = self._get_cached_model(model_key)
         if cached_model is not None:
             self.logger.info("using_cached_alignment_model", language=language_code)
             return cached_model
-        
+
         self.logger.info("loading_alignment_model", language=language_code)
-        
+
         try:
             import whisperx
-            
+
             # Load alignment model
             model, metadata = whisperx.load_align_model(
-                language_code=language_code,
-                device=self.device
+                language_code=language_code, device=self.device
             )
-            
-            self.logger.info("alignment_model_loaded", 
-                           language=language_code,
-                           device=self.device)
-            
+
+            self.logger.info(
+                "alignment_model_loaded", language=language_code, device=self.device
+            )
+
             return self._cache_model(model_key, (model, metadata))
-            
+
         except Exception as e:
-            self.logger.error("alignment_model_load_failed", 
-                            language=language_code,
-                            error=str(e))
+            self.logger.error(
+                "alignment_model_load_failed", language=language_code, error=str(e)
+            )
             raise
 
 
@@ -392,16 +413,18 @@ _global_model_manager: Optional[ModelManager] = None
 def get_model_manager(**kwargs) -> ModelManager:
     """Get or create global model manager instance"""
     global _global_model_manager
-    
+
     if _global_model_manager is None:
         _global_model_manager = ModelManager(**kwargs)
-    
+
     return _global_model_manager
 
 
-def setup_models(device: Optional[str] = None, cache_dir: Optional[str] = None) -> ModelManager:
+def setup_models(
+    device: Optional[str] = None, cache_dir: Optional[str] = None
+) -> ModelManager:
     """Setup global model manager"""
     global _global_model_manager
-    
+
     _global_model_manager = ModelManager(device=device, cache_dir=cache_dir)
     return _global_model_manager

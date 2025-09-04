@@ -8,9 +8,4 @@ from .model_manager import ModelManager
 from .emotion_analyzer import EmotionAnalyzer
 from .speech_recognizer import WhisperXPipeline, SpeechRecognizer
 
-__all__ = [
-    "ModelManager",
-    "EmotionAnalyzer",
-    "WhisperXPipeline",
-    "SpeechRecognizer"
-]
+__all__ = ["ModelManager", "EmotionAnalyzer", "WhisperXPipeline", "SpeechRecognizer"]
