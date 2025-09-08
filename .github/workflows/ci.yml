@@ -214,7 +214,7 @@ jobs:
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🏗️ Build Docker image (test only)
+      - name: 🏗️ Build Docker image (test only - CPU compatible)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -223,8 +223,10 @@ jobs:
           tags: ecg-audio-analyzer:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build only base and dependencies stages for faster testing
-          target: dependencies
+          # Build only base stage for CI testing (skip GPU dependencies)
+          target: base
+          build-args: |
+            SKIP_GPU_DEPS=true
 
       - name: 🧪 Test Docker container startup
         run: |
