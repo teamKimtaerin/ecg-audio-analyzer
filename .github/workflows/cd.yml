@@ -1,5 +1,5 @@
 # ECG Audio Analyzer - Continuous Deployment
-# Automated deployment to AWS EC2 g4dn.2xlarge with GPU optimization
+# Automated deployment to AWS EC2 g4dn.xlarge with GPU optimization
 name: CD - Production Deployment
 
 on:
@@ -20,9 +20,10 @@ on:
       target_instance:
         description: 'Target EC2 instance type'
         required: false
-        default: 'g4dn.2xlarge'
+        default: 'g4dn.xlarge'
         type: choice
         options:
+          - 'g4dn.xlarge'
           - 'g4dn.2xlarge'
           - 'p3.2xlarge'
 
@@ -257,7 +258,7 @@ jobs:
             
             # Create environment file
             cat > .env << ENV_EOF
-            INSTANCE_TYPE=g4dn.2xlarge
+            INSTANCE_TYPE=g4dn.xlarge
             INSTANCE_ID=${{ env.EC2_INSTANCE_ID }}
             AWS_DEFAULT_REGION=${{ env.AWS_REGION }}
             ECG_S3_BUCKET=${{ secrets.S3_BUCKET_NAME }}
@@ -337,7 +338,7 @@ jobs:
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ needs.pre-deployment-checks.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Target**: AWS EC2 g4dn.2xlarge" >> $GITHUB_STEP_SUMMARY
+          echo "**Target**: AWS EC2 g4dn.xlarge" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Time**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
