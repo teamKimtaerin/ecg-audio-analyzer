@@ -34,7 +34,8 @@ from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput
 from src.utils.logger import setup_logging, get_logger
 from config.base_settings import BaseConfig, ProcessingConfig, ValidationConfig
 from config.aws_settings import AWSConfig
-from config.model_configs import SpeakerDiarizationConfig, ModelVersions
+from config.model_configs import SpeakerDiarizationConfig
+from src.models.output_models import ModelVersions
 
 # Initialize CLI app
 app = typer.Typer(
