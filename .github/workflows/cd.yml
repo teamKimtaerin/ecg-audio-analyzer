@@ -106,8 +106,9 @@ jobs:
 
       - name: 📦 Create deployment archive
         run: |
-          # Create a clean deployment package
-          tar -czf ecg-audio-analyzer-${{ needs.pre-deployment-checks.outputs.version }}.tar.gz \
+          # Create a clean deployment package in temp directory
+          mkdir -p /tmp/deployment
+          tar -czf /tmp/deployment/ecg-audio-analyzer-${{ needs.pre-deployment-checks.outputs.version }}.tar.gz \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='docker' \
@@ -115,8 +116,9 @@ jobs:
             --exclude='__pycache__' \
             --exclude='*.pyc' \
             --exclude='tests' \
-            --exclude='*.tar.gz' \
             .
+          # Move back to workspace
+          mv /tmp/deployment/ecg-audio-analyzer-${{ needs.pre-deployment-checks.outputs.version }}.tar.gz .
 
       - name: 📊 Show package info
         run: |
