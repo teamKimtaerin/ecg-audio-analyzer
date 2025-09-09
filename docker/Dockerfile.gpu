@@ -69,25 +69,41 @@ WORKDIR /tmp/install
 # Copy requirements files
 COPY requirements.txt requirements-gpu.txt ./
 
-# Install base Python dependencies first
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install dependencies in optimized order with cleanup
+RUN pip3 install --no-cache-dir -r requirements.txt && \
+    # Clean up unnecessary files
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete && \
+    find /usr/local/lib/python*/site-packages -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
-# Install PyTorch with CUDA support (before other GPU dependencies)
-RUN pip3 install --no-cache-dir \
+# Upgrade PyTorch to CUDA version (replaces CPU version from requirements.txt)
+RUN pip3 install --no-cache-dir --upgrade \
     torch \
     torchaudio \
     torchvision \
-    --index-url https://download.pytorch.org/whl/cu121
+    --index-url https://download.pytorch.org/whl/cu121 && \
+    # Clean up after PyTorch installation
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete && \
+    find /usr/local/lib/python*/site-packages -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
-# Install GPU-specific dependencies (excluding PyTorch which is already installed)
+# Install GPU-specific dependencies in smaller batches
 RUN pip3 install --no-cache-dir \
     pyannote-audio>=3.0.0 \
-    speechbrain>=0.5.0 \
+    speechbrain>=0.5.0 && \
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete
+
+RUN pip3 install --no-cache-dir \
     datasets>=2.12.0 \
     accelerate>=0.20.0 \
-    opensmile>=2.4.0 \
+    opensmile>=2.4.0 && \
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete
+
+RUN pip3 install --no-cache-dir \
     nvidia-ml-py3>=7.352.0 \
-    gpustat>=1.1.0
+    gpustat>=1.1.0 \
+    whisperx>=3.0.0 && \
+    # Final cleanup
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete && \
+    find /usr/local/lib/python*/site-packages -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 # Install WhisperX (requires specific installation order)
 RUN pip3 install --no-cache-dir whisperx>=3.0.0
