@@ -2,7 +2,7 @@
 # Multi-stage build for production deployment on AWS GPU instances
 
 # Stage 1: Base CUDA development environment  
-FROM nvidia/cuda:12.9.1-devel-ubuntu20.04 AS base
+FROM nvidia/cuda:12.9.1-devel-ubuntu22.04 AS base
 
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
