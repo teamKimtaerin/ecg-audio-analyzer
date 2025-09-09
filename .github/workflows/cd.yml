@@ -225,8 +225,16 @@ jobs:
             --query 'Command.CommandId')
 
           echo "Command ID: $COMMAND_ID"
-          echo "Waiting for server to start..."
-          sleep 20
+          echo "Waiting for server startup command to complete..."
+          sleep 25
+          
+          # Get server startup results immediately
+          echo "📋 Server startup results:"
+          aws ssm get-command-invocation \
+            --instance-id ${{ env.EC2_INSTANCE_ID }} \
+            --command-id $COMMAND_ID \
+            --output text \
+            --query 'StandardOutputContent' || echo "Command still running"
 
       - name: 🏥 Health check
         timeout-minutes: 5
