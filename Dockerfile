@@ -1,6 +1,6 @@
 # ECG Audio Analyzer - ML API Server
 # NVIDIA CUDA 기반 GPU 가속 이미지
-FROM nvidia/cuda:11.8-runtime-ubuntu22.04
+FROM nvidia/cuda:11.8-cudnn8-runtime-ubuntu22.04
 
 # 환경변수 설정
 ENV DEBIAN_FRONTEND=noninteractive
