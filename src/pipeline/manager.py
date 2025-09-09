@@ -28,9 +28,9 @@ from ..models.output_models import (
 )
 from ..utils.logger import get_logger
 from ..utils.duration_validator import DurationValidator
-from ...config.base_settings import BaseConfig, ProcessingConfig
-from ...config.aws_settings import AWSConfig
-from ...config.model_configs import SpeakerDiarizationConfig
+from config.base_settings import BaseConfig, ProcessingConfig
+from config.aws_settings import AWSConfig
+from config.model_configs import SpeakerDiarizationConfig
 
 
 @dataclass
@@ -169,7 +169,7 @@ class PipelineManager:
         # Process pool for CPU-intensive tasks (better for ML inference)
         cpu_cores = psutil.cpu_count(logical=False) or 4
         self.process_pool = ProcessPoolExecutor(
-            max_workers=min(cpu_cores, processing_config.max_workers)
+            max_workers=min(cpu_cores, base_config.max_workers)
         )
 
         # Progress tracking
@@ -182,17 +182,13 @@ class PipelineManager:
 
         # Pipeline stages definition
         self.stages = self._initialize_pipeline_stages()
-        self.progress.total_stages = len(
-            [s for s in self.stages.values() if s.required]
-        )
-
-        self.logger.info(
-            "pipeline_manager_initialized",
-            total_stages=self.progress.total_stages,
-            gpu_workers=self.gpu_manager.max_concurrent_gpu_tasks,
-            thread_workers=processing_config.max_workers,
-        )
-
+        self.progress.total_stages = len([s for s in self.stages.values() if s.required])
+        
+        self.logger.info("pipeline_manager_initialized",
+                        total_stages=self.progress.total_stages,
+                        gpu_workers=self.gpu_manager.max_concurrent_gpu_tasks,
+                        thread_workers=base_config.max_workers)
+        
         # Initialize with optional model preloading
         self._models_preloaded = False
 
@@ -250,14 +246,9 @@ class PipelineManager:
         """Get or create audio extractor instance"""
         if self._audio_extractor is None:
             self._audio_extractor = AudioExtractor(
-                config=self.base_config,
-                processing_config=self.processing_config,
-                validation_config=self.base_config,  # Using base config for validation
-                enable_gpu_acceleration=(
-                    self.aws_config.cuda_device.startswith("cuda")
-                    if self.aws_config
-                    else False
-                ),
+                target_sr=self.base_config.sample_rate,
+                temp_dir=self.base_config.temp_dir,
+                duration_tolerance=0.1
             )
         return self._audio_extractor
 
@@ -402,6 +393,7 @@ class PipelineManager:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 self.thread_pool, extractor.extract_single, source
+
             )
 
             if result.success:
@@ -475,8 +467,9 @@ class PipelineManager:
         """Create basic analysis result from available data"""
 
         filename = Path(source).name if isinstance(source, (str, Path)) else "unknown"
-        duration = extraction_result.duration_seconds or 0.0
 
+        duration = extraction_result.duration or 0.0
+        
         # Extract speaker information from WhisperX result
         segments = whisperx_result.get("segments", [])
         unique_speakers = len(
@@ -488,12 +481,9 @@ class PipelineManager:
             filename=filename,
             duration=duration,
             total_speakers=unique_speakers,
-            processing_time=f"00:00:{int(extraction_result.extraction_time_seconds):02d}",
-            gpu_acceleration=(
-                self.aws_config.cuda_device.startswith("cuda")
-                if self.aws_config
-                else False
-            ),
+            processing_time=f"00:00:00",
+            gpu_acceleration=self.aws_config.cuda_device.startswith('cuda') if self.aws_config else False
+
         )
 
         # Create performance stats
@@ -501,12 +491,8 @@ class PipelineManager:
         performance_stats = PerformanceStats(
             gpu_utilization=self.resource_usage.gpu_utilization,
             peak_memory_mb=int(self.resource_usage.peak_memory_mb),
-            avg_processing_fps=(
-                duration / extraction_result.extraction_time_seconds
-                if duration > 0 and extraction_result.extraction_time_seconds > 0
-                else 0.0
-            ),
-            bottleneck_stage="whisperx_pipeline",
+            avg_processing_fps=0.0,
+            bottleneck_stage="whisperx_pipeline"
         )
 
         # For MVP, create basic result with available data
@@ -716,8 +702,7 @@ class PipelineManager:
         """
 
         if max_concurrent is None:
-            max_concurrent = self.processing_config.max_workers
-
+            max_concurrent = self.base_config.max_workers
         with self.logger.performance_timer("batch_pipeline", items_count=len(sources)):
 
             self.logger.info(

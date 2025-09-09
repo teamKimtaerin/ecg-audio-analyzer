@@ -20,12 +20,13 @@ on:
       target_instance:
         description: "Target EC2 instance type"
         required: false
-        default: "g4dn.xlarge"
+
+        default: 'g4dn.xlarge'
         type: choice
         options:
-          - "g4dn.xlarge"
-          - "g4dn.2xlarge"
-          - "p3.2xlarge"
+          - 'g4dn.xlarge'
+          - 'g4dn.2xlarge'
+          - 'p3.2xlarge'
 
 # Security: Ensure only one deployment at a time
 concurrency:
@@ -117,7 +118,48 @@ jobs:
             --exclude='tests' \
             .
 
-      - name: 📊 Show package info
+
+      - name: 🏷️ Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/${{ env.APP_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.pre-deployment-checks.outputs.version }}
+
+      - name: 🧹 Free up disk space
+        run: |
+          # Remove unnecessary packages to free up space
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/graalvm/
+          sudo rm -rf /usr/local/.ghcup /usr/local/lib/node_modules
+          df -h
+
+      - name: 🏗️ Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.gpu
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            VCS_REF=${{ github.sha }}
+          # Add more memory for build process
+          shm-size: 2g
+
+      - name: 🔍 Image security scan (non-blocking)
+        continue-on-error: true
         run: |
           ls -lh ecg-audio-analyzer-*.tar.gz
           echo "✅ Deployment package created successfully"
@@ -261,7 +303,13 @@ jobs:
             
             # Create environment file
             cat > .env << ENV_EOF
-            ML_API_SERVER_URL=http://10.0.10.42:8080
+
+            INSTANCE_TYPE=g4dn.xlarge
+            INSTANCE_ID=${{ env.EC2_INSTANCE_ID }}
+            AWS_DEFAULT_REGION=${{ env.AWS_REGION }}
+            ECG_S3_BUCKET=${{ secrets.S3_BUCKET_NAME }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             ENVIRONMENT=production
             LOG_LEVEL=INFO
             CUDA_VISIBLE_DEVICES=0

@@ -65,6 +65,7 @@ class RequestProcessResponse(BaseModel):
     status: str  # "processing"
 
 
+
 class TranscribeResponse(BaseModel):
     """비디오 분석 응답"""
     success: bool
@@ -227,6 +228,7 @@ async def process_video_async(job_id: str, video_key: str):
         logger.error(f"분석 실패 - job_id: {job_id}, error: {str(e)}")
 
 
+
 async def _dummy_progress_callback(stage: str, progress: float, message: str = None):
     """진행 상황 콜백 (로그만 출력)"""
     logger.info(f"Progress: {stage} - {progress:.1%} - {message or ''}")
@@ -256,6 +258,7 @@ async def root():
         "endpoints": {
             "request-process": "POST /request-process - 비동기 비디오 분석",
             "process-video": "POST /process-video - 레거시 비디오 분석", 
+
             "health": "GET /health - 헬스 체크",
             "docs": "GET /docs - API 문서"
         }
@@ -278,6 +281,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ECG Audio Analyzer ML API Server")
     parser.add_argument("--host", default="0.0.0.0", help="바인드 호스트")
     parser.add_argument("--port", type=int, default=8080, help="바인드 포트") 
+
     parser.add_argument("--workers", type=int, default=1, help="워커 수")
     parser.add_argument("--log-level", default="info", choices=["debug", "info", "warning", "error"])
     

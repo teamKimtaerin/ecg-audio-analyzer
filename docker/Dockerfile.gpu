@@ -105,6 +105,9 @@ RUN pip3 install --no-cache-dir \
     find /usr/local/lib/python*/site-packages -name "*.pyc" -delete && \
     find /usr/local/lib/python*/site-packages -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
+# Install WhisperX (requires specific installation order)
+RUN pip3 install --no-cache-dir whisperx>=3.0.0
+
 
 # Stage 3: Production application
 FROM dependencies AS production
