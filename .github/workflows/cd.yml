@@ -20,13 +20,12 @@ on:
       target_instance:
         description: "Target EC2 instance type"
         required: false
-
-        default: 'g4dn.xlarge'
+        default: "g4dn.xlarge"
         type: choice
         options:
-          - 'g4dn.xlarge'
-          - 'g4dn.2xlarge'
-          - 'p3.2xlarge'
+          - "g4dn.xlarge"
+          - "g4dn.2xlarge"
+          - "p3.2xlarge"
 
 # Security: Ensure only one deployment at a time
 concurrency:
@@ -118,48 +117,7 @@ jobs:
             --exclude='tests' \
             .
 
-
-      - name: 🏷️ Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.ECR_REGISTRY }}/${{ env.APP_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ needs.pre-deployment-checks.outputs.version }}
-
-      - name: 🧹 Free up disk space
-        run: |
-          # Remove unnecessary packages to free up space
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/share/boost
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/graalvm/
-          sudo rm -rf /usr/local/.ghcup /usr/local/lib/node_modules
-          df -h
-
-      - name: 🏗️ Build and push Docker image
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./docker/Dockerfile.gpu
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-          build-args: |
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            VCS_REF=${{ github.sha }}
-          # Add more memory for build process
-          shm-size: 2g
-
-      - name: 🔍 Image security scan (non-blocking)
-        continue-on-error: true
+      - name: 📊 Show package info
         run: |
           ls -lh ecg-audio-analyzer-*.tar.gz
           echo "✅ Deployment package created successfully"
@@ -207,144 +165,106 @@ jobs:
 
       - name: 🧹 Cleanup and prepare EC2
         run: |
-          # Create cleanup script
-          cat > cleanup.sh << 'EOF'
-          echo "🧹 Preparing EC2 for deployment..."
-          
-          # Stop existing ML API server if running
-          sudo pkill -f "ml_api_server.py" || true
-          sudo pkill -f "python.*ml_api_server" || true
-          
-          # Create application directory if not exists
-          sudo mkdir -p /opt/ecg-audio-analyzer
-          sudo chown ubuntu:ubuntu /opt/ecg-audio-analyzer
-          
-          # Clean up old deployment files
-          rm -rf /opt/ecg-audio-analyzer/src /opt/ecg-audio-analyzer/*.py /opt/ecg-audio-analyzer/*.txt
-          
-          # Check disk space
-          echo "💾 Disk usage:"
-          df -h /
-          EOF
-          
-          # Execute via Session Manager
-          aws ssm send-command \
+          echo "🧹 Step 1: Environment cleanup..."
+
+          COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ env.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[\"$(cat cleanup.sh)\"]" \
-            --output text
+            --parameters 'commands=["echo \"🧹 Cleaning up existing processes...\"","sudo pkill -f \"ml_api_server.py\" || true","sudo pkill -f \"python.*ml_api_server\" || true","sleep 2","sudo mkdir -p /opt/ecg-audio-analyzer","sudo chown ubuntu:ubuntu /opt/ecg-audio-analyzer","cd /opt/ecg-audio-analyzer","echo \"Current disk usage:\"","df -h /","echo \"✅ Cleanup completed\""]' \
+            --output text \
+            --query 'Command.CommandId')
+
+          echo "Command ID: $COMMAND_ID"
+          echo "Waiting for cleanup to complete..."
+          sleep 15
 
       - name: 📦 Deploy code to EC2
+        timeout-minutes: 10
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /opt/ecg-audio-analyzer
-            
-            echo "📦 Deploying application code..."
-            
-            # Remove old code
-            rm -rf src/ *.py requirements.txt setup.py pyproject.toml
-            
-          EOF
+          echo "📦 Step 2: Code deployment and dependency installation..."
 
-          # Copy application files
-          scp -o StrictHostKeyChecking=no -r \
-            src/ \
-            ml_api_server.py \
-            run_ml_server.py \
-            requirements.txt \
-            setup.py \
-            pyproject.toml \
-            ubuntu@${{ secrets.EC2_HOST }}:/opt/ecg-audio-analyzer/
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/ecg-audio-analyzer","echo \"📦 Downloading latest code from GitHub...\"","rm -rf src/ *.py requirements.txt setup.py pyproject.toml .git","curl -L https://github.com/teamKimtaerin/ecg-audio-analyzer/archive/refs/heads/main.zip -o main.zip","unzip -o main.zip","mv ecg-audio-analyzer-main/* .","rm -rf ecg-audio-analyzer-main/ main.zip","echo \"✅ Code deployment completed\"","ls -la"]' \
+            --output text \
+            --query 'Command.CommandId')
+
+          echo "Command ID: $COMMAND_ID"
+          echo "Waiting for code deployment to complete..."
+          sleep 20
 
       - name: 🐍 Setup Python environment
         timeout-minutes: 15
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /opt/ecg-audio-analyzer
-            
-            echo "🐍 Setting up Python environment..."
-            
-            # Create virtual environment if not exists
-            if [ ! -d "venv" ]; then
-              python3 -m venv venv
-            fi
-            
-            # Activate virtual environment
-            source venv/bin/activate
-            
-            # Upgrade pip
-            pip install --upgrade pip
-            
-            # Install dependencies in batches to avoid memory issues
-            echo "📦 Installing basic dependencies..."
-            pip install --no-cache-dir fastapi uvicorn aiohttp pydantic python-dotenv
-            
-            echo "📦 Installing audio processing dependencies..."  
-            pip install --no-cache-dir librosa soundfile pydub ffmpeg-python
-            
-            echo "📦 Installing ML dependencies..."
-            pip install --no-cache-dir torch torchaudio transformers scikit-learn
-            
-            echo "📦 Installing WhisperX..."
-            pip install --no-cache-dir whisperx>=3.0.0
-            
-            echo "📦 Installing remaining dependencies..."
-            pip install --no-cache-dir -r requirements.txt || true
-            
-            echo "✅ Python environment setup complete"
-          EOF
+          echo "🐍 Step 3: Python environment setup..."
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/ecg-audio-analyzer","echo \"🐍 Setting up Python environment...\"","rm -rf venv/","python3 -m venv venv","source venv/bin/activate && pip install --upgrade pip","source venv/bin/activate && pip install --no-cache-dir fastapi uvicorn aiohttp pydantic python-dotenv structlog rich typer","source venv/bin/activate && pip install --no-cache-dir librosa soundfile pydub ffmpeg-python yt-dlp","source venv/bin/activate && pip install --no-cache-dir torch torchaudio transformers scikit-learn numpy scipy","source venv/bin/activate && pip install --no-cache-dir whisperx>=3.0.0","source venv/bin/activate && pip install --no-cache-dir -r requirements.txt || echo \"Some packages might have failed, continuing...\"","echo \"✅ Python environment setup completed\""]' \
+            --output text \
+            --query 'Command.CommandId')
+
+          echo "Command ID: $COMMAND_ID"
+          echo "Waiting for Python environment setup (this may take several minutes)..."
+          sleep 120
 
       - name: 🚀 Start ML API Server
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /opt/ecg-audio-analyzer
-            
-            echo "🚀 Starting ML API Server..."
-            
-            # Create environment file
-            cat > .env << ENV_EOF
+          echo "🚀 Step 4: Starting ML API Server..."
 
-            INSTANCE_TYPE=g4dn.xlarge
-            INSTANCE_ID=${{ env.EC2_INSTANCE_ID }}
-            AWS_DEFAULT_REGION=${{ env.AWS_REGION }}
-            ECG_S3_BUCKET=${{ secrets.S3_BUCKET_NAME }}
-            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            ENVIRONMENT=production
-            LOG_LEVEL=INFO
-            CUDA_VISIBLE_DEVICES=0
-            ENV_EOF
-            
-            # Activate virtual environment and start server
-            source venv/bin/activate
-            
-            # Start ML API server as daemon
-            nohup python ml_api_server.py --host 0.0.0.0 --port 8080 --log-level info \
-              > ml_server.log 2>&1 &
-            
-            echo "Server PID: $!" > ml_server.pid
-            
-            echo "✅ ML API Server started successfully"
-          EOF
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/ecg-audio-analyzer","source venv/bin/activate","echo \"🔧 Creating environment configuration...\"","echo ML_API_SERVER_URL=http://10.0.10.42:8080 > .env","echo ENVIRONMENT=production >> .env","echo LOG_LEVEL=INFO >> .env","echo CUDA_VISIBLE_DEVICES=0 >> .env","echo \"🚀 Starting ML API Server...\"","nohup python ml_api_server.py --host 0.0.0.0 --port 8080 --log-level info > ml_server.log 2>&1 &","echo $! > ml_server.pid","sleep 5","echo \"🔍 Checking server status...\"","ps aux | grep ml_api_server | grep -v grep || echo \"Process not found\"","netstat -tlnp | grep :8080 || echo \"Port not listening\"","echo \"✅ Server startup completed\""]' \
+            --output text \
+            --query 'Command.CommandId')
+
+          echo "Command ID: $COMMAND_ID"
+          echo "Waiting for server to start..."
+          sleep 20
 
       - name: 🏥 Health check
-        timeout-minutes: 3
+        timeout-minutes: 5
         run: |
-          echo "🏥 Performing health check..."
+          echo "🏥 Step 5: Performing health check..."
 
-          # Wait for ML API server to be ready
+          # Health check using SSM
           for i in {1..18}; do
-            if ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} \
-               "curl -f http://localhost:8080/health"; then
+            COMMAND_ID=$(aws ssm send-command \
+              --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=["cd /opt/ecg-audio-analyzer","echo \"🏥 Performing health check...\"","curl -f http://localhost:8080/health || echo \"Health check failed\"","curl -f http://localhost:8080/ || echo \"Root endpoint failed\"","echo \"📊 System status:\"","ps aux | grep ml_api_server | grep -v grep || echo \"No process found\"","netstat -tlnp | grep :8080 || echo \"Port not listening\"","echo \"✅ Health check completed\""]' \
+              --output text \
+              --query 'Command.CommandId')
+            
+            sleep 15
+            
+            # Get health check results
+            HEALTH_OUTPUT=$(aws ssm get-command-invocation \
+              --instance-id ${{ env.EC2_INSTANCE_ID }} \
+              --command-id $COMMAND_ID \
+              --output text \
+              --query 'StandardOutputContent' 2>/dev/null || echo "Command still running")
+            
+            echo "Health check output:"
+            echo "$HEALTH_OUTPUT"
+            
+            # Check if health check passed
+            if echo "$HEALTH_OUTPUT" | grep -q "HTTP/1.1 200 OK\|\"status\":\"healthy\""; then
               echo "✅ Health check passed!"
               break
             fi
             
             if [ $i -eq 18 ]; then
-              echo "❌ Health check failed after 3 minutes"
+              echo "❌ Health check failed after 5 minutes"
               # Get server logs for debugging
-              ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} \
-                "cat /opt/ecg-audio-analyzer/ml_server.log | tail -50"
+              aws ssm send-command \
+                --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+                --document-name "AWS-RunShellScript" \
+                --parameters 'commands=["tail -50 /opt/ecg-audio-analyzer/ml_server.log 2>/dev/null || echo \"No logs found\""]' \
+                --output text
               exit 1
             fi
             
@@ -354,27 +274,24 @@ jobs:
 
       - name: 📊 Post-deployment validation
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            echo "📊 Post-deployment system status:"
-            
-            # Container status
-            echo "🐳 Container status:"
-            docker ps --filter "name=${{ env.CONTAINER_NAME }}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-            
-            # GPU status
-            echo "🎮 GPU status:"
-            nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader
-            
-            # System resources
-            echo "💻 System resources:"
-            echo "CPU: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)% usage"
-            echo "Memory: $(free -h | awk 'NR==2{printf "%.1f%%", $3*100/$2 }')"
-            echo "Disk: $(df -h / | awk 'NR==2{print $5}')"
-            
-            # Application logs (last 10 lines)
-            echo "📋 Recent application logs:"
-            docker logs --tail 10 ${{ env.CONTAINER_NAME }}
-          EOF
+          echo "📊 Step 6: Post-deployment validation..."
+          
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["echo \"📊 Post-deployment system status:\"","echo \"🚀 ML API Server processes:\"","ps aux | grep ml_api_server | grep -v grep","echo \"🌐 Port status:\"","netstat -tlnp | grep :8080","echo \"🎮 GPU status:\"","nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader || echo \"No GPU info available\"","echo \"💾 Disk usage:\"","df -h /","echo \"📋 Recent logs:\"","tail -10 /opt/ecg-audio-analyzer/ml_server.log 2>/dev/null || echo \"No logs found\"","echo \"✅ Validation completed\""]' \
+            --output text \
+            --query 'Command.CommandId')
+          
+          echo "Command ID: $COMMAND_ID"
+          sleep 15
+          
+          # Get validation results
+          aws ssm get-command-invocation \
+            --instance-id ${{ env.EC2_INSTANCE_ID }} \
+            --command-id $COMMAND_ID \
+            --output text \
+            --query 'StandardOutputContent'
 
   # =============================================================================
   # Deployment Notification and Rollback
@@ -397,7 +314,7 @@ jobs:
 
           if [[ "${{ needs.deploy-to-ec2.result }}" == "success" ]]; then
             echo "✅ **Status**: Deployment Successful" >> $GITHUB_STEP_SUMMARY
-            echo "🔗 **Application**: https://${{ secrets.EC2_HOST }}:8080" >> $GITHUB_STEP_SUMMARY
+            echo "🔗 **Application**: http://10.0.10.42:8080" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Status**: Deployment Failed" >> $GITHUB_STEP_SUMMARY
             echo "🔄 **Action**: Check logs and consider rollback" >> $GITHUB_STEP_SUMMARY
@@ -414,5 +331,5 @@ jobs:
         if: needs.deploy-to-ec2.result == 'success'
         run: |
           echo "🎉 Deployment completed successfully!"
-          echo "🔗 Application is now running at: https://${{ secrets.EC2_HOST }}:8080"
+          echo "🔗 Application is now running at: http://10.0.10.42:8080"
           echo "📊 Monitor the application performance and logs"
