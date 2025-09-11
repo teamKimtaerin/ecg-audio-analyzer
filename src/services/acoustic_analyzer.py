@@ -204,6 +204,19 @@ class FastAcousticAnalyzer:
             )[0]
             spectral_centroid_mean = float(np.mean(spectral_centroid))
 
+            # Extract volume peaks for waveform visualization (reuse RMS calculation)
+            frame_energy = librosa.feature.rms(
+                y=audio, frame_length=self.frame_length, hop_length=self.hop_length
+            )[0]
+
+            # Extract 10 evenly spaced samples for waveform
+            if len(frame_energy) >= 10:
+                step = len(frame_energy) // 10
+                volume_peaks = [float(frame_energy[i * step]) for i in range(10)]
+            else:
+                # For short segments, use all available points
+                volume_peaks = frame_energy.tolist()
+
             # Create AudioFeatures object
             return AudioFeatures(
                 rms_energy=np.exp(volume_db / 20) * 1e-5,  # Convert back from dB
@@ -217,6 +230,7 @@ class FastAcousticAnalyzer:
                 zcr=0.05,  # Default ZCR
                 mfcc=[12.0, -8.0, 4.0],  # Default MFCCs
                 volume_category=volume_cat,
+                volume_peaks=volume_peaks,
             )
 
         except Exception as e:
@@ -239,6 +253,7 @@ class FastAcousticAnalyzer:
                 zcr=0.05,
                 mfcc=[12.0, -8.0, 4.0],
                 volume_category=VolumeCategory.MEDIUM,
+                volume_peaks=[0.03] * 5,  # Default peaks
             )
 
     def extract_batch_features(

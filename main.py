@@ -30,12 +30,14 @@ from rich.panel import Panel
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.pipeline.manager import PipelineManager
-from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput
+
+# from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput  # Currently unused in MVP
 from src.utils.logger import setup_logging, get_logger
 from config.base_settings import BaseConfig, ProcessingConfig, ValidationConfig
 from config.aws_settings import AWSConfig
 from config.model_configs import SpeakerDiarizationConfig
-from src.models.output_models import ModelVersions
+
+# from src.models.output_models import ModelVersions  # Currently unused in MVP
 
 # Initialize CLI app
 app = typer.Typer(
@@ -281,12 +283,12 @@ def analyze(
             speaker_config=speaker_config,
         ) as pipeline:
 
-            # Initialize result synthesizer
-            synthesizer = ResultSynthesizer(
-                enable_compression=compress,
-                compression_threshold_mb=5.0,
-                enable_validation=True,
-            )
+            # Initialize result synthesizer (currently unused in MVP)
+            # synthesizer = ResultSynthesizer(
+            #     enable_compression=compress,
+            #     compression_threshold_mb=5.0,
+            #     enable_validation=True,
+            # )
 
             results = []
             start_time = time.time()
@@ -322,16 +324,16 @@ def analyze(
                             src_name = Path(str(src)).stem
                             output_file = output / f"{src_name}_analysis.json"
 
-                            # Create synthesis input
-                            synthesis_input = SynthesisInput(
-                                filename=Path(str(src)).name,
-                                duration=result.metadata.duration,
-                                audio_extraction_result=None,  # Will be mock for this version
-                                diarization_result=None,  # Will be mock for this version
-                                processing_start_time=start_time,
-                                gpu_acceleration_used=gpu,
-                                model_versions=ModelVersions(),
-                            )
+                            # Create synthesis input (currently unused in MVP)
+                            # synthesis_input = SynthesisInput(
+                            #     filename=Path(str(src)).name,
+                            #     duration=result.metadata.duration,
+                            #     audio_extraction_result=None,  # Will be mock for this version
+                            #     diarization_result=None,  # Will be mock for this version
+                            #     processing_start_time=start_time,
+                            #     gpu_acceleration_used=gpu,
+                            #     model_versions=ModelVersions(),
+                            # )
 
                             # Export result
                             if (

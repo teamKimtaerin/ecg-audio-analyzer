@@ -273,7 +273,7 @@ def test():
 
         # Test configuration
         rprint("⚙️  Testing configuration... ", end="")
-        config = AnalysisConfig()
+        _ = AnalysisConfig()  # Initialize to test configuration loading
         rprint("[green]✅ OK[/green]")
 
         # Test system info
