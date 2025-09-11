@@ -7,9 +7,9 @@ import asyncio
 from pathlib import Path
 from unittest.mock import patch
 
-from pipeline.manager import PipelineManager
-from services.result_synthesizer import ResultSynthesizer, SynthesisInput
-from models.output_models import CompleteAnalysisResult, create_empty_analysis_result
+from src.pipeline.manager import PipelineManager
+from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput
+from src.models.output_models import CompleteAnalysisResult, create_empty_analysis_result
 
 
 @pytest.mark.integration
@@ -51,7 +51,7 @@ class TestPipelineIntegration:
         ):
 
             # Mock extraction result
-            from services.audio_extractor import AudioExtractionResult
+            from src.services.audio_extractor import AudioExtractionResult
 
             mock_extraction_result = AudioExtractionResult(
                 success=True,
@@ -65,7 +65,7 @@ class TestPipelineIntegration:
             mock_extraction.return_value = mock_extraction_result
 
             # Mock diarization result
-            from services.speaker_diarizer import (
+            from src.services.speaker_diarizer import (
                 DiarizationResult,
                 SpeakerSegment,
                 SpeakerInfo,
@@ -150,8 +150,8 @@ class TestPipelineIntegration:
         )
 
         # Create mock synthesis input
-        from services.audio_extractor import AudioExtractionResult
-        from services.speaker_diarizer import (
+        from src.services.audio_extractor import AudioExtractionResult
+        from src.services.speaker_diarizer import (
             DiarizationResult,
             SpeakerSegment,
             SpeakerInfo,

@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from services.audio_extractor import AudioExtractor, AudioExtractionResult
+from src.services.audio_extractor import AudioExtractor, AudioExtractionResult
 
 
 class TestAudioExtractor:

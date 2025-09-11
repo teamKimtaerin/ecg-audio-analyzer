@@ -108,7 +108,6 @@ def processing_config():
         enable_multiprocessing=False,  # Disabled for testing
         enable_async_io=True,
         enable_memory_monitoring=False,
-        max_workers=2,
     )
 
 
@@ -272,6 +271,38 @@ def mock_pyannote():
             return MockAnnotation(segments)
 
     with patch("pyannote.audio.Pipeline.from_pretrained", return_value=MockPipeline()):
+        yield
+
+
+# Global mock for pyannote to handle import-time dependencies
+@pytest.fixture(autouse=True, scope="session")
+def mock_pyannote_imports():
+    """Auto-mock pyannote imports to prevent ModuleNotFoundError during tests"""
+    
+    class MockModel:
+        pass
+    
+    class MockPipeline:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return cls()
+        
+        def to(self, device):
+            return self
+            
+        def instantiate(self, params):
+            pass
+    
+    # Mock the modules at import time
+    mocks = {
+        "pyannote": Mock(),
+        "pyannote.audio": Mock(),
+        "pyannote.audio.Pipeline": MockPipeline,
+        "pyannote.audio.Model": MockModel,
+    }
+    
+    # Add the mocks to sys.modules to prevent import errors
+    with patch.dict(sys.modules, mocks):
         yield
 
 

@@ -6,12 +6,11 @@ import torch
 from pathlib import Path
 from unittest.mock import patch
 
-from services.speaker_diarizer import (
+from src.services.speaker_diarizer import (
     SpeakerDiarizer,
     SpeakerSegment,
     SpeakerInfo,
     DiarizationResult,
-    SpeakerEmbeddingCache,
 )
 
 
@@ -82,64 +81,7 @@ class TestSpeakerInfo:
         assert result_dict["segment_count"] == 8
 
 
-class TestSpeakerEmbeddingCache:
-    """Test cases for SpeakerEmbeddingCache"""
-
-    def test_cache_initialization(self):
-        """Test cache initialization"""
-        cache = SpeakerEmbeddingCache(max_cache_size=100)
-        assert len(cache.cache) == 0
-        assert cache.max_cache_size == 100
-
-    def test_store_and_retrieve_embedding(self):
-        """Test storing and retrieving embeddings"""
-        cache = SpeakerEmbeddingCache(max_cache_size=10)
-
-        # Create mock embedding
-        embedding = torch.randn(128)
-        audio_hash = "test_hash_123"
-
-        # Store embedding
-        cache.store_embedding(audio_hash, embedding)
-
-        # Retrieve embedding
-        retrieved = cache.get_embedding(audio_hash)
-
-        assert retrieved is not None
-        assert torch.equal(retrieved, embedding)
-
-    def test_cache_eviction(self):
-        """Test cache eviction when max size exceeded"""
-        cache = SpeakerEmbeddingCache(max_cache_size=2)
-
-        # Store 3 embeddings (should trigger eviction)
-        for i in range(3):
-            embedding = torch.randn(64)
-            cache.store_embedding(f"hash_{i}", embedding)
-
-        # Cache should only have 2 items
-        assert len(cache.cache) == 2
-
-        # First item should be evicted
-        assert cache.get_embedding("hash_0") is None
-        assert cache.get_embedding("hash_1") is not None
-        assert cache.get_embedding("hash_2") is not None
-
-    def test_cache_clear(self):
-        """Test cache clearing"""
-        cache = SpeakerEmbeddingCache()
-
-        # Store some embeddings
-        cache.store_embedding("hash_1", torch.randn(64))
-        cache.store_embedding("hash_2", torch.randn(64))
-
-        assert len(cache.cache) == 2
-
-        # Clear cache
-        cache.clear()
-
-        assert len(cache.cache) == 0
-        assert len(cache.access_times) == 0
+# TestSpeakerEmbeddingCache class removed - SpeakerEmbeddingCache not present in current implementation
 
 
 class TestSpeakerDiarizer:
@@ -151,14 +93,12 @@ class TestSpeakerDiarizer:
 
         with patch("torch.cuda.is_available", return_value=False):
             diarizer = SpeakerDiarizer(
-                config=speaker_config, device="cpu", enable_caching=True
+                config=speaker_config, device="cpu"
             )
 
             assert diarizer.config == speaker_config
             assert diarizer.device == "cpu"
-            assert diarizer.enable_caching is True
             assert diarizer.pipeline is None  # Not loaded yet
-            assert diarizer.embedding_cache is not None
 
     def test_initialization_gpu_fallback(self, speaker_config):
         """Test GPU fallback to CPU when CUDA unavailable"""
@@ -312,23 +252,13 @@ class TestSpeakerDiarizer:
         """Test SpeakerDiarizer as context manager"""
         with SpeakerDiarizer(config=speaker_config, device="cpu") as diarizer:
             assert diarizer is not None
-            assert diarizer.embedding_cache is not None
 
     def test_cleanup(self, speaker_config, mock_pyannote):
         """Test resource cleanup"""
         diarizer = SpeakerDiarizer(config=speaker_config, device="cpu")
 
-        # Add some data to cache
-        if diarizer.embedding_cache:
-            diarizer.embedding_cache.store_embedding("test", torch.randn(64))
-            assert len(diarizer.embedding_cache.cache) == 1
-
-        # Cleanup
+        # Cleanup should not raise exception
         diarizer.cleanup()
-
-        # Cache should be cleared
-        if diarizer.embedding_cache:
-            assert len(diarizer.embedding_cache.cache) == 0
 
     def test_error_handling_during_processing(
         self, speaker_config, sample_audio_file, mock_pyannote
