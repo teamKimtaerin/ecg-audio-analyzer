@@ -132,26 +132,29 @@ class SimplifiedResultSynthesizer:
         try:
             if not timeline:
                 return None
-            
+
             # Collect all volume_peaks from segments
             all_peaks = []
             for segment in timeline:
-                if hasattr(segment, 'audio_features') and segment.audio_features.volume_peaks:
+                if (
+                    hasattr(segment, "audio_features")
+                    and segment.audio_features.volume_peaks
+                ):
                     all_peaks.extend(segment.audio_features.volume_peaks)
-            
+
             if not all_peaks:
                 return None
-            
+
             # Downsample to max 100 samples for overall waveform
             max_samples = 100
             if len(all_peaks) <= max_samples:
                 return [round(float(peak), 3) for peak in all_peaks]
-            
+
             # Downsample by taking evenly spaced samples
             step = len(all_peaks) // max_samples
             downsampled = [all_peaks[i * step] for i in range(max_samples)]
             return [round(float(peak), 3) for peak in downsampled]
-            
+
         except Exception as e:
             self.logger.warning("waveform_summary_generation_failed", error=str(e))
             return None

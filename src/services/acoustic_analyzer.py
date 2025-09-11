@@ -203,12 +203,12 @@ class FastAcousticAnalyzer:
                 y=audio, sr=self.sample_rate
             )[0]
             spectral_centroid_mean = float(np.mean(spectral_centroid))
-            
+
             # Extract volume peaks for waveform visualization (reuse RMS calculation)
             frame_energy = librosa.feature.rms(
                 y=audio, frame_length=self.frame_length, hop_length=self.hop_length
             )[0]
-            
+
             # Extract 10 evenly spaced samples for waveform
             if len(frame_energy) >= 10:
                 step = len(frame_energy) // 10
