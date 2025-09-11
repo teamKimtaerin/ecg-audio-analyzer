@@ -8,6 +8,7 @@ ECS FastAPI 백엔드로부터 요청을 받아 JSON으로 결과 반환
 # 프로젝트 루트를 Python 경로에 추가 (다른 import 전에 실행)
 import sys
 from pathlib import Path
+
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
