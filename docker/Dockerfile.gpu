@@ -57,11 +57,12 @@ RUN python3 -m pip install --upgrade pip setuptools wheel
 # Stage 1.5: Lightweight test stage for CI
 FROM base AS test
 
-# Install minimal packages needed for CI testing
+# Install CPU-only PyTorch for CI testing (much smaller than GPU version)
 RUN pip3 install --no-cache-dir \
-    torch \
+    torch --index-url https://download.pytorch.org/whl/cpu \
     numpy \
-    && find /usr/local/lib/python*/site-packages -name "*.pyc" -delete
+    && find /usr/local/lib/python*/site-packages -name "*.pyc" -delete \
+    && find /usr/local/lib/python*/site-packages -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 # Stage 2: Python dependencies installation
 FROM base AS dependencies
