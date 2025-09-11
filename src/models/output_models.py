@@ -114,6 +114,9 @@ class AudioFeatures(BaseModel):
         ..., description="First 3 MFCC coefficients", min_items=3, max_items=3
     )
     volume_category: VolumeCategory = Field(..., description="Categorized volume level")
+    volume_peaks: Optional[List[float]] = Field(
+        None, description="Volume peaks for waveform visualization (10 samples max)"
+    )
 
     @validator(
         "rms_energy",
@@ -263,6 +266,9 @@ class AnalysisMetadata(BaseModel):
     )
     model_versions: ModelVersions = Field(
         default_factory=ModelVersions, description="Model version information"
+    )
+    waveform_summary: Optional[List[float]] = Field(
+        None, description="Overall waveform data for visualization (max 100 samples)"
     )
 
     @validator("duration", pre=True)

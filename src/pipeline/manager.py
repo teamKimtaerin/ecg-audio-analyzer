@@ -122,7 +122,7 @@ class GPUResourceManager:
                 pynvml.nvmlInit()
                 handle = pynvml.nvmlDeviceGetHandleByIndex(device)
                 util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                utilization = util.gpu / 100.0
+                utilization = float(util.gpu) / 100.0
             except ImportError:
                 pass
 
@@ -165,7 +165,7 @@ class PipelineManager:
         self.gpu_manager = GPUResourceManager(
             max_concurrent_gpu_tasks=aws_config.concurrent_workers if aws_config else 2
         )
-        self.thread_pool = ThreadPoolExecutor(max_workers=processing_config.max_workers)
+        self.thread_pool = ThreadPoolExecutor(max_workers=base_config.max_workers)
         # Process pool for CPU-intensive tasks (better for ML inference)
         cpu_cores = psutil.cpu_count(logical=False) or 4
         self.process_pool = ProcessPoolExecutor(
@@ -182,13 +182,17 @@ class PipelineManager:
 
         # Pipeline stages definition
         self.stages = self._initialize_pipeline_stages()
-        self.progress.total_stages = len([s for s in self.stages.values() if s.required])
-        
-        self.logger.info("pipeline_manager_initialized",
-                        total_stages=self.progress.total_stages,
-                        gpu_workers=self.gpu_manager.max_concurrent_gpu_tasks,
-                        thread_workers=base_config.max_workers)
-        
+        self.progress.total_stages = len(
+            [s for s in self.stages.values() if s.required]
+        )
+
+        self.logger.info(
+            "pipeline_manager_initialized",
+            total_stages=self.progress.total_stages,
+            gpu_workers=self.gpu_manager.max_concurrent_gpu_tasks,
+            thread_workers=base_config.max_workers,
+        )
+
         # Initialize with optional model preloading
         self._models_preloaded = False
 
@@ -248,7 +252,7 @@ class PipelineManager:
             self._audio_extractor = AudioExtractor(
                 target_sr=self.base_config.sample_rate,
                 temp_dir=self.base_config.temp_dir,
-                duration_tolerance=0.1
+                duration_tolerance=0.1,
             )
         return self._audio_extractor
 
@@ -331,7 +335,7 @@ class PipelineManager:
             self.logger.error("model_preloading_failed", error=str(e))
             return {"status": "failed", "error": str(e)}
 
-    def _update_progress(self, stage_name: str, percentage: float = None):
+    def _update_progress(self, stage_name: str, percentage: Optional[float] = None):
         """Update pipeline progress"""
         self.progress.current_stage = stage_name
 
@@ -343,7 +347,7 @@ class PipelineManager:
                 [
                     s
                     for s in self.progress.completed_stages
-                    if self.stages.get(s, {}).required
+                    if s in self.stages and self.stages[s].required
                 ]
             )
             total_required = len([s for s in self.stages.values() if s.required])
@@ -392,8 +396,7 @@ class PipelineManager:
             # Run in thread pool for I/O intensive operation
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
-                self.thread_pool, extractor.extract_single, source
-
+                self.thread_pool, extractor.extract, source
             )
 
             if result.success:
@@ -401,11 +404,11 @@ class PipelineManager:
                 self.logger.info(
                     "audio_extraction_completed",
                     output_path=str(result.output_path),
-                    duration=result.duration_seconds,
+                    duration=result.duration,
                 )
             else:
                 self.progress.error_count += 1
-                self.logger.error("audio_extraction_failed", error=result.error_message)
+                self.logger.error("audio_extraction_failed", error=result.error)
 
             return result
 
@@ -469,7 +472,7 @@ class PipelineManager:
         filename = Path(source).name if isinstance(source, (str, Path)) else "unknown"
 
         duration = extraction_result.duration or 0.0
-        
+
         # Extract speaker information from WhisperX result
         segments = whisperx_result.get("segments", [])
         unique_speakers = len(
@@ -481,9 +484,13 @@ class PipelineManager:
             filename=filename,
             duration=duration,
             total_speakers=unique_speakers,
-            processing_time=f"00:00:00",
-            gpu_acceleration=self.aws_config.cuda_device.startswith('cuda') if self.aws_config else False
-
+            processing_time="00:00:00",
+            gpu_acceleration=(
+                self.aws_config.cuda_device.startswith("cuda")
+                if self.aws_config
+                else False
+            ),
+            waveform_summary=None,
         )
 
         # Create performance stats
@@ -492,7 +499,7 @@ class PipelineManager:
             gpu_utilization=self.resource_usage.gpu_utilization,
             peak_memory_mb=int(self.resource_usage.peak_memory_mb),
             avg_processing_fps=0.0,
-            bottleneck_stage="whisperx_pipeline"
+            bottleneck_stage="whisperx_pipeline",
         )
 
         # For MVP, create basic result with available data
@@ -619,9 +626,12 @@ class PipelineManager:
                 expected_duration = getattr(
                     extraction_result, "original_duration", extraction_result.duration
                 )
-                whisperx_result = await self._run_whisperx_pipeline(
-                    extraction_result.output_path, expected_duration
-                )
+                if extraction_result.output_path:
+                    whisperx_result = await self._run_whisperx_pipeline(
+                        extraction_result.output_path, expected_duration
+                    )
+                else:
+                    whisperx_result = None
 
                 if not whisperx_result or "segments" not in whisperx_result:
                     return create_empty_analysis_result(
@@ -687,7 +697,7 @@ class PipelineManager:
         self,
         sources: List[Union[str, Path]],
         output_dir: Optional[Path] = None,
-        max_concurrent: int = None,
+        max_concurrent: Optional[int] = None,
     ) -> List[CompleteAnalysisResult]:
         """
         Process multiple files concurrently.
@@ -778,8 +788,8 @@ class PipelineManager:
         try:
             # Clean up services
             if self._audio_extractor:
-                if hasattr(self._audio_extractor, "cleanup_temp_files"):
-                    self._audio_extractor.cleanup_temp_files()
+                if hasattr(self._audio_extractor, "cleanup"):
+                    self._audio_extractor.cleanup()
 
             if self._whisperx_pipeline:
                 # WhisperX cleanup is handled automatically by context managers
