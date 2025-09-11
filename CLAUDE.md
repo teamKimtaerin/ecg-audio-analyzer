@@ -42,25 +42,11 @@ PYTHONPATH=/Users/ahntaeju/project/ecg-audio-analyzer python -m src.cli analyze 
 python ml_api_server.py  # Starts FastAPI server on port 8000
 ```
 
-### Testing
-```bash
-# Unit tests
-python run_tests.py --unit
-PYTHONPATH=/Users/ahntaeju/project/ecg-audio-analyzer python run_tests.py --unit
-python -m pytest tests/unit/test_audio_extractor.py -v
-
-# Integration tests
-pytest tests/integration/ -v
-```
-
 ### Development
 ```bash
 # Code formatting
-black src/ tests/ config/
-ruff check src/ tests/ config/ --fix
-
-# Type checking
-mypy src/
+black src/ config/
+ruff check src/ config/ --fix
 
 # Clean artifacts
 find /Users/ahntaeju/project/ecg-audio-analyzer -name "__pycache__" -type d -exec rm -rf {} +
@@ -114,12 +100,6 @@ class ServiceName:
 - Docker: nvidia-docker2 runtime for containerized deployment
 - S3 integration for file storage
 - CloudWatch monitoring enabled
-
-### Testing Architecture
-- Unit tests mock ML models to test business logic
-- Integration tests use end-to-end pipeline with real audio samples
-- Test fixtures in `tests/conftest.py` provide audio samples
-- Mock Hugging Face models and pyannote components for faster tests
 
 ## Performance Targets
 - 30 seconds for 10-minute video on P3.2xlarge

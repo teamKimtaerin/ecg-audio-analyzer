@@ -63,9 +63,6 @@ gpu = [
     "whisperx>=3.1.0",
 ]
 dev = [
-    "pytest>=7.3.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
     "black>=23.3.0",
     "ruff>=0.0.270",
     "build>=0.10.0",
@@ -125,24 +122,5 @@ ignore = ["E722"]  # Allow bare except for error handling
 "src/utils/aws_utils.py" = ["E722"]
 "src/utils/logger.py" = ["F841"]
 "src/utils/subtitle_optimizer.py" = ["F841"]
-"tests/**/*.py" = ["F841"]
 "main.py" = ["F841"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_paths = ["."]
-addopts = [
-    "--strict-markers",
-    "-v"
-]
-markers = [
-    "unit: Unit tests",
-    "integration: Integration tests", 
-    "performance: Performance tests",
-    "slow: Slow running tests",
-    "gpu: Tests requiring GPU"
-]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::UserWarning",
-]
