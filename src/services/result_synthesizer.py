@@ -127,6 +127,35 @@ class SimplifiedResultSynthesizer:
 
         return speakers
 
+    def _create_waveform_summary(self, timeline: list) -> Optional[list]:
+        """Generate overall waveform summary from timeline segments"""
+        try:
+            if not timeline:
+                return None
+            
+            # Collect all volume_peaks from segments
+            all_peaks = []
+            for segment in timeline:
+                if hasattr(segment, 'audio_features') and segment.audio_features.volume_peaks:
+                    all_peaks.extend(segment.audio_features.volume_peaks)
+            
+            if not all_peaks:
+                return None
+            
+            # Downsample to max 100 samples for overall waveform
+            max_samples = 100
+            if len(all_peaks) <= max_samples:
+                return [round(float(peak), 3) for peak in all_peaks]
+            
+            # Downsample by taking evenly spaced samples
+            step = len(all_peaks) // max_samples
+            downsampled = [all_peaks[i * step] for i in range(max_samples)]
+            return [round(float(peak), 3) for peak in downsampled]
+            
+        except Exception as e:
+            self.logger.warning("waveform_summary_generation_failed", error=str(e))
+            return None
+
     def _create_performance_stats(
         self, synthesis_input: SynthesisInput, synthesis_time: float
     ) -> PerformanceStats:
@@ -198,6 +227,9 @@ class SimplifiedResultSynthesizer:
             # Create speaker information
             speakers = self._create_speakers_dict(synthesis_input.diarization_result)
 
+            # Generate waveform summary from timeline
+            waveform_summary = self._create_waveform_summary(timeline)
+
             # Create metadata
             processing_time = time.time() - synthesis_input.processing_start_time
             metadata = AnalysisMetadata(
@@ -207,6 +239,7 @@ class SimplifiedResultSynthesizer:
                 processing_time=processing_time,
                 gpu_acceleration=synthesis_input.gpu_acceleration_used,
                 model_versions=synthesis_input.model_versions or ModelVersions(),
+                waveform_summary=waveform_summary,
             )
 
             # Create performance stats
