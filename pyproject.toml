@@ -108,6 +108,14 @@ include = '\.pyi?$'
 [tool.ruff]
 target-version = "py39"
 line-length = 88
+exclude = ["ml_api_server.py"]
+
+[tool.ruff.lint]
+# Allow E402 for the main ML server file due to sys.path manipulation
+ignore = []
+
+[tool.ruff.per-file-ignores]
+"ml_api_server.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

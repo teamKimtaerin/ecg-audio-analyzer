@@ -5,12 +5,14 @@ WhisperX, 화자 분리, 감정 분석 등을 HTTP API로 제공하는 서버
 ECS FastAPI 백엔드로부터 요청을 받아 JSON으로 결과 반환
 """
 
-import asyncio
-import os
+# 프로젝트 루트를 Python 경로에 추가 (다른 import 전에 실행)
 import sys
-import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+import logging
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -21,11 +23,6 @@ import requests
 import tempfile
 import boto3
 
-# 프로젝트 루트를 Python 경로에 추가
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
-
-from src.services.callback_pipeline import process_video_with_fastapi
 from src.api import AnalysisConfig
 from src.utils.logger import get_logger
 
@@ -311,7 +308,7 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    logger.info(f"🚀 ECG Audio Analyzer ML API 서버 시작")
+    logger.info("🚀 ECG Audio Analyzer ML API 서버 시작")
     logger.info(f"   호스트: {args.host}:{args.port}")
     logger.info(f"   워커 수: {args.workers}")
     logger.info(f"   로그 레벨: {args.log_level}")

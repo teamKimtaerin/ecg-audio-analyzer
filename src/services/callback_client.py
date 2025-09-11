@@ -9,7 +9,6 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 import aiohttp
-import json
 from dataclasses import dataclass, asdict
 from enum import Enum
 

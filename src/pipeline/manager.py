@@ -484,7 +484,7 @@ class PipelineManager:
             filename=filename,
             duration=duration,
             total_speakers=unique_speakers,
-            processing_time=f"00:00:00",
+            processing_time="00:00:00",
             gpu_acceleration=(
                 self.aws_config.cuda_device.startswith("cuda")
                 if self.aws_config

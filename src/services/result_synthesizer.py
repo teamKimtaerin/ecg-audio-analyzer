@@ -116,7 +116,7 @@ class SimplifiedResultSynthesizer:
             try:
                 speaker_num = int(speaker_num) + 1  # 1-indexed for user display
                 speaker_name = f"Speaker {speaker_num}"
-            except:
+            except ValueError:
                 speaker_name = f"Speaker {speaker_id}"
 
             speakers[speaker_id] = SpeakerInfo(
