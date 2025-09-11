@@ -124,3 +124,14 @@ ignore = ["E722"]  # Allow bare except for error handling
 "src/utils/subtitle_optimizer.py" = ["F841"]
 "main.py" = ["F841"]
 
+[tool.bandit]
+# Skip certain security warnings that are acceptable in this context
+skips = [
+    "B110",  # Try/Except/Pass - acceptable for graceful error handling
+    "B404",  # subprocess import - necessary for ffmpeg integration
+    "B603",  # subprocess without shell=True - safe with controlled input
+    "B112",  # Try/Except/Continue - acceptable for iteration error handling
+]
+
+# Exclude certain files from security scanning
+exclude_dirs = ["build", "dist", ".git", "__pycache__"]

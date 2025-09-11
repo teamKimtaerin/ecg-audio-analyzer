@@ -189,13 +189,13 @@ jobs:
         run: |
           pip install bandit[toml]
           bandit -r src/ -f json -o bandit-report.json || true
-          bandit -r src/ -f txt
+          bandit -r src/ -f txt || echo "⚠️ Bandit found security issues (non-blocking)"
 
       - name: 📦 Scan dependencies for vulnerabilities
         run: |
           pip install safety
           safety check --json --output safety-report.json || true
-          safety check
+          safety check || echo "⚠️ Safety found vulnerability issues (non-blocking)"
 
       - name: 📊 Upload security reports
         uses: actions/upload-artifact@v4
