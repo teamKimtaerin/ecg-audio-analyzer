@@ -490,6 +490,7 @@ class PipelineManager:
                 if self.aws_config
                 else False
             ),
+            waveform_summary=None,
         )
 
         # Create performance stats
