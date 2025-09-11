@@ -54,6 +54,15 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 # Upgrade pip and install wheel
 RUN python3 -m pip install --upgrade pip setuptools wheel
 
+# Stage 1.5: Lightweight test stage for CI
+FROM base AS test
+
+# Install minimal packages needed for CI testing
+RUN pip3 install --no-cache-dir \
+    torch \
+    numpy \
+    && find /usr/local/lib/python*/site-packages -name "*.pyc" -delete
+
 # Stage 2: Python dependencies installation
 FROM base AS dependencies
 

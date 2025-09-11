@@ -160,10 +160,8 @@ jobs:
           tags: ecg-audio-analyzer:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build only base stage for CI testing (skip GPU dependencies)
-          target: base
-          build-args: |
-            SKIP_GPU_DEPS=true
+          # Build test stage for CI testing (minimal packages)
+          target: test
 
       - name: 🧪 Test Docker container startup
         run: |
