@@ -281,12 +281,12 @@ def analyze(
             speaker_config=speaker_config,
         ) as pipeline:
 
-            # Initialize result synthesizer
-            synthesizer = ResultSynthesizer(
-                enable_compression=compress,
-                compression_threshold_mb=5.0,
-                enable_validation=True,
-            )
+            # Initialize result synthesizer (currently unused in MVP)
+            # synthesizer = ResultSynthesizer(
+            #     enable_compression=compress,
+            #     compression_threshold_mb=5.0,
+            #     enable_validation=True,
+            # )
 
             results = []
             start_time = time.time()
@@ -322,16 +322,16 @@ def analyze(
                             src_name = Path(str(src)).stem
                             output_file = output / f"{src_name}_analysis.json"
 
-                            # Create synthesis input
-                            synthesis_input = SynthesisInput(
-                                filename=Path(str(src)).name,
-                                duration=result.metadata.duration,
-                                audio_extraction_result=None,  # Will be mock for this version
-                                diarization_result=None,  # Will be mock for this version
-                                processing_start_time=start_time,
-                                gpu_acceleration_used=gpu,
-                                model_versions=ModelVersions(),
-                            )
+                            # Create synthesis input (currently unused in MVP)
+                            # synthesis_input = SynthesisInput(
+                            #     filename=Path(str(src)).name,
+                            #     duration=result.metadata.duration,
+                            #     audio_extraction_result=None,  # Will be mock for this version
+                            #     diarization_result=None,  # Will be mock for this version
+                            #     processing_start_time=start_time,
+                            #     gpu_acceleration_used=gpu,
+                            #     model_versions=ModelVersions(),
+                            # )
 
                             # Export result
                             if (
