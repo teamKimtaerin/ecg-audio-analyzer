@@ -156,6 +156,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile.gpu
           push: false
+          load: true
           tags: ecg-audio-analyzer:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
