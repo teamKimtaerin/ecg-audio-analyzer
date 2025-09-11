@@ -30,12 +30,12 @@ from rich.panel import Panel
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.pipeline.manager import PipelineManager
-from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput
+# from src.services.result_synthesizer import ResultSynthesizer, SynthesisInput  # Currently unused in MVP
 from src.utils.logger import setup_logging, get_logger
 from config.base_settings import BaseConfig, ProcessingConfig, ValidationConfig
 from config.aws_settings import AWSConfig
 from config.model_configs import SpeakerDiarizationConfig
-from src.models.output_models import ModelVersions
+# from src.models.output_models import ModelVersions  # Currently unused in MVP
 
 # Initialize CLI app
 app = typer.Typer(
