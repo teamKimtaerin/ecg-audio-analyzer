@@ -6,12 +6,11 @@ import whisperx
 import torch
 import librosa
 import numpy as np
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 from dataclasses import dataclass
 from ..utils.logger import get_logger
 from .model_manager import get_model_manager
-from ..utils.duration_validator import DurationValidator
 
 
 @dataclass
@@ -94,9 +93,7 @@ class WhisperXPipeline:
         self.model_manager = get_model_manager(device=device)
         self.device = self.model_manager.get_device()
 
-        # Use CPU compute type if on CPU
-        if self.device == "cpu":
-            self.compute_type = "float32"
+        # Assume GPU environment (AWS instances)
 
         self.logger = get_logger().bind_context(
             service="whisperx_pipeline",
@@ -110,71 +107,26 @@ class WhisperXPipeline:
         self.alignment_metadata = None
         self.diarization_pipeline = None
 
-        # Initialize duration validator for audio validation
-        self.duration_validator = DurationValidator()
 
     def _load_models(self):
         """Load WhisperX models"""
         if self.whisper_model is None:
             self.logger.info("loading_whisperx_model")
 
-            try:
-                # Try to load with GPU/MPS first, fallback to CPU if needed
-                device_to_use = self.device
-                compute_type_to_use = self.compute_type
+            # Load WhisperX model (GPU-first approach)
+            self.whisper_model = whisperx.load_model(
+                self.model_size,
+                device=self.device,
+                compute_type=self.compute_type,
+                language=self.language,
+            )
 
-                # WhisperX only supports CUDA and CPU, fallback to CPU if CUDA not available
-                if self.device == "cuda" and not torch.cuda.is_available():
-                    self.logger.info("cuda_not_available_fallback_to_cpu")
-                    device_to_use = "cpu"
-                    compute_type_to_use = "float32"
-
-                # Load WhisperX model
-                self.whisper_model = whisperx.load_model(
-                    self.model_size,
-                    device=device_to_use,
-                    compute_type=compute_type_to_use,
-                    language=self.language,
-                )
-
-                # Update device info based on what actually worked
-                self.device = device_to_use
-                self.compute_type = compute_type_to_use
-
-                self.logger.info(
-                    "whisperx_model_loaded",
-                    model_size=self.model_size,
-                    device=self.device,
-                    compute_type=self.compute_type,
-                )
-
-            except Exception as e:
-                if "CUDA" in str(e) or "CTranslate2" in str(e):
-                    self.logger.warning("gpu_failed_fallback_to_cpu", error=str(e))
-                    # Fallback to CPU
-                    device_to_use = "cpu"
-                    compute_type_to_use = "float32"
-
-                    self.whisper_model = whisperx.load_model(
-                        self.model_size,
-                        device=device_to_use,
-                        compute_type=compute_type_to_use,
-                        language=self.language,
-                    )
-
-                    # Update device info
-                    self.device = device_to_use
-                    self.compute_type = compute_type_to_use
-
-                    self.logger.info(
-                        "whisperx_model_loaded_cpu_fallback",
-                        model_size=self.model_size,
-                        device=self.device,
-                        compute_type=self.compute_type,
-                    )
-                else:
-                    self.logger.error("failed_to_load_whisperx_model", error=str(e))
-                    raise
+            self.logger.info(
+                "whisperx_model_loaded",
+                model_size=self.model_size,
+                device=self.device,
+                compute_type=self.compute_type,
+            )
 
     def _load_alignment_model(self, language_code: str):
         """Load alignment model for better word-level timestamps"""
@@ -261,55 +213,24 @@ class WhisperXPipeline:
         )
 
         try:
-            # Step 0: Validate audio duration if expected duration provided
-            if expected_duration:
-                validation_result = self.duration_validator.validate_extracted_audio(
-                    audio_path, expected_duration
-                )
-                if not validation_result.get("valid", False):
-                    self.logger.warning(
-                        "audio_duration_validation_failed",
-                        expected=expected_duration,
-                        actual=validation_result.get("actual_duration"),
-                        difference=validation_result.get("difference"),
-                    )
-                    # Continue processing but log the issue
-                else:
-                    self.logger.info(
-                        "audio_duration_validation_passed",
-                        duration=validation_result.get("actual_duration"),
-                    )
 
             # Step 1: ASR (transcribe) with enhanced audio loading
             self._load_models()
 
-            # Enhanced audio loading to ensure complete file is processed
-            y, sr = librosa.load(
-                str(audio_path), sr=sample_rate, duration=None
-            )  # Load entire file
+            # Load and process audio
+            y, sr = librosa.load(str(audio_path), sr=sample_rate)
             if y.dtype != np.float32:
                 y = y.astype(np.float32)
-
+            
             audio_duration = len(y) / sr
+            self.logger.info("audio_loaded", duration=round(audio_duration, 2))
 
-            # Additional validation after loading
-            if expected_duration and abs(audio_duration - expected_duration) > 0.5:
-                self.logger.warning(
-                    "loaded_audio_duration_mismatch",
-                    loaded_duration=audio_duration,
-                    expected_duration=expected_duration,
-                    difference=abs(audio_duration - expected_duration),
-                )
+            batch_size = 16  # GPU optimized batch size
 
-            self.logger.info(
-                "audio_loaded_for_processing",
-                duration=round(audio_duration, 2),
-                sample_rate=sr,
-                audio_shape=y.shape,
-                samples=len(y),
-            )
-
-            batch_size = 16 if self.device != "cpu" else 8
+            # Ensure models are loaded
+            if self.whisper_model is None:
+                self._load_models()
+            assert self.whisper_model is not None, "Failed to load WhisperX model"
 
             self.logger.info("transcribing_audio")
             asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
@@ -350,6 +271,11 @@ class WhisperXPipeline:
                 max_speakers=max_speakers,
             )
 
+            # Ensure diarization pipeline is loaded
+            if self.diarization_pipeline is None:
+                self._load_diarization_model()
+            assert self.diarization_pipeline is not None, "Failed to load diarization pipeline"
+
             # Use pyannote diarization with speaker constraints
             diarization = self.diarization_pipeline(
                 str(audio_path), min_speakers=min_speakers, max_speakers=max_speakers
@@ -381,7 +307,7 @@ class WhisperXPipeline:
                 final_result["segments"]
             )
 
-            # Enhanced validation and detailed logging
+            # Basic result validation
             segments_count = len(final_result["segments"])
             unique_speakers = set(
                 seg.get("speaker", "UNKNOWN")
@@ -390,80 +316,10 @@ class WhisperXPipeline:
             )
             speakers_count = len(unique_speakers)
 
-            # Calculate total duration from segments
-            total_segment_duration = sum(
-                seg.get("end", 0) - seg.get("start", 0)
-                for seg in final_result["segments"]
-                if seg.get("start") is not None and seg.get("end") is not None
-            )
-
-            # Find the last segment timestamp to check coverage
-            last_segment_time = max(
-                (
-                    seg.get("end", 0)
-                    for seg in final_result["segments"]
-                    if seg.get("end")
-                ),
-                default=0.0,
-            )
-
-            # Calculate timeline coverage
-            timeline_coverage = (
-                (total_segment_duration / audio_duration * 100)
-                if audio_duration > 0
-                else 0
-            )
-            end_coverage = (
-                (last_segment_time / audio_duration * 100) if audio_duration > 0 else 0
-            )
-
-            # Detect potential timeline gaps using duration validator
-            if expected_duration or audio_duration:
-                reference_duration = expected_duration or audio_duration
-                gaps = self.duration_validator.detect_timeline_gaps(
-                    [
-                        {
-                            "start_time": seg.get("start", 0),
-                            "end_time": seg.get("end", 0),
-                        }
-                        for seg in final_result["segments"]
-                    ],
-                    reference_duration,
-                )
-
-                if gaps:
-                    total_gap_duration = sum(gap["gap_duration"] for gap in gaps)
-                    self.logger.warning(
-                        "timeline_gaps_detected",
-                        gap_count=len(gaps),
-                        total_gap_duration=round(total_gap_duration, 2),
-                        gaps=gaps[:3],
-                    )  # Log first 3 gaps
-
-                    # Add gap information to result
-                    final_result["timeline_gaps"] = gaps
-                    final_result["timeline_coverage"] = {
-                        "segment_coverage": round(timeline_coverage, 1),
-                        "end_coverage": round(end_coverage, 1),
-                        "gaps_detected": len(gaps) > 0,
-                        "total_gap_duration": total_gap_duration,
-                    }
-                else:
-                    self.logger.info("timeline_coverage_complete")
-                    final_result["timeline_coverage"] = {
-                        "segment_coverage": round(timeline_coverage, 1),
-                        "end_coverage": round(end_coverage, 1),
-                        "gaps_detected": False,
-                        "total_gap_duration": 0.0,
-                    }
-
-            # Add duration metadata to result
+            # Add basic metadata
             final_result["duration_metadata"] = {
                 "audio_file_duration": round(audio_duration, 2),
-                "expected_duration": expected_duration,
-                "last_segment_time": round(last_segment_time, 2),
-                "total_segment_duration": round(total_segment_duration, 2),
-                "timeline_coverage_percent": round(timeline_coverage, 1),
+                "total_segments": segments_count,
             }
 
             self.logger.info(
@@ -471,10 +327,6 @@ class WhisperXPipeline:
                 total_segments=segments_count,
                 unique_speakers=speakers_count,
                 speaker_list=list(unique_speakers),
-                total_segment_duration=round(total_segment_duration, 2),
-                audio_file_duration=round(audio_duration, 2),
-                last_segment_time=round(last_segment_time, 2),
-                timeline_coverage=round(timeline_coverage, 1),
             )
 
             return final_result
@@ -602,10 +454,8 @@ class WhisperXPipeline:
                     )
                     segment["speaker_confidence"] = 0.2  # Very low confidence
 
-            # Post-process: merge consecutive segments from same speaker if confidence is low
-            self._merge_consecutive_same_speaker_segments(
-                transcription_result["segments"]
-            )
+            # Simple post-processing: basic segment cleanup
+            self._basic_segment_cleanup(transcription_result["segments"])
 
             unique_speakers = set(
                 seg.get("speaker", "UNKNOWN")
@@ -623,8 +473,8 @@ class WhisperXPipeline:
 
         except Exception as e:
             self.logger.error("fallback_speaker_assignment_failed", error=str(e))
-            # Ultimate fallback: assign speakers based on timing patterns
-            return self._assign_speakers_by_timing_pattern(transcription_result)
+            # Simple fallback: assign basic speaker IDs
+            return self._simple_speaker_fallback(transcription_result)
 
     def _find_closest_speaker(
         self, seg_start: float, seg_end: float, speaker_timeline: List[Dict]
@@ -645,8 +495,8 @@ class WhisperXPipeline:
 
         return closest_speaker
 
-    def _merge_consecutive_same_speaker_segments(self, segments: List[Dict]) -> None:
-        """Merge consecutive segments from the same speaker with improved logic"""
+    def _basic_segment_cleanup(self, segments: List[Dict]) -> None:
+        """Basic segment cleanup and merging"""
         if len(segments) < 2:
             return
 
@@ -655,223 +505,44 @@ class WhisperXPipeline:
             current = segments[i]
             next_seg = segments[i + 1]
 
-            # More aggressive merging conditions for better speaker consistency
-            should_merge = False
-
-            # Case 1: Same speaker and very close in time (< 0.3 seconds gap)
+            # Simple merging: same speaker and close in time (< 0.5 seconds gap)
             time_gap = next_seg.get("start", 0) - current.get("end", 0)
-            if current.get("speaker") == next_seg.get("speaker") and time_gap < 0.3:
-                should_merge = True
-
-            # Case 2: Same speaker with low confidence and reasonable gap (< 1.0 seconds)
-            elif (
-                current.get("speaker") == next_seg.get("speaker")
-                and (
-                    current.get("speaker_confidence", 1.0) < 0.6
-                    or next_seg.get("speaker_confidence", 1.0) < 0.6
-                )
-                and time_gap < 1.0
-            ):
-                should_merge = True
-
-            # Case 3: Very short segments (< 1 second) from same speaker
-            elif (
-                current.get("speaker") == next_seg.get("speaker")
-                and (
-                    current.get("end", 0) - current.get("start", 0) < 1.0
-                    or next_seg.get("end", 0) - next_seg.get("start", 0) < 1.0
-                )
-                and time_gap < 2.0
-            ):
-                should_merge = True
-
-            if should_merge:
-                # Merge segments with improved text handling
+            if current.get("speaker") == next_seg.get("speaker") and time_gap < 0.5:
+                # Merge segments
                 current_text = current.get("text", "").strip()
                 next_text = next_seg.get("text", "").strip()
-
-                # Add proper spacing
+                
                 if current_text and next_text:
                     current["text"] = current_text + " " + next_text
                 elif next_text:
                     current["text"] = next_text
-
+                
                 current["end"] = next_seg.get("end", current.get("end"))
-
-                # Update confidence - take weighted average based on duration
-                current_duration = current.get("end", 0) - current.get("start", 0)
-                next_duration = next_seg.get("end", 0) - next_seg.get("start", 0)
-                total_duration = current_duration + next_duration
-
-                if total_duration > 0:
-                    current_conf = current.get("speaker_confidence", 0.5)
-                    next_conf = next_seg.get("speaker_confidence", 0.5)
-                    weighted_conf = (
-                        current_conf * current_duration + next_conf * next_duration
-                    ) / total_duration
-                    current["speaker_confidence"] = min(
-                        0.9, weighted_conf + 0.1
-                    )  # Boost confidence after merge
-
+                
                 # Merge word-level information if available
                 if "words" in current and "words" in next_seg:
                     current["words"].extend(next_seg["words"])
                 elif "words" in next_seg:
                     current["words"] = next_seg["words"]
-
-                # Remove next segment
+                
                 segments.pop(i + 1)
                 continue
-
+            
             i += 1
 
-    def _assign_speakers_by_timing_pattern(
-        self, transcription_result: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Ultimate fallback: assign speakers based on timing patterns"""
+    def _simple_speaker_fallback(self, transcription_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Simple fallback: assign basic speaker IDs"""
         segments = transcription_result["segments"]
-
-        if not segments:
-            return transcription_result
-
-        # Simple alternating pattern with gaps detection
-        current_speaker = 0
-        last_end_time = 0
-
-        for segment in segments:
-            seg_start = segment.get("start", 0.0)
-
-            # If there's a significant gap (>2 seconds), potentially switch speaker
-            if seg_start - last_end_time > 2.0:
-                current_speaker = (current_speaker + 1) % min(
-                    3, len(segments)
-                )  # Max 3 speakers
-
-            segment["speaker"] = f"SPEAKER_{current_speaker:02d}"
-            segment["speaker_confidence"] = 0.1  # Very low confidence
-            last_end_time = segment.get("end", seg_start)
-
+        
+        for i, segment in enumerate(segments):
+            # Simple alternating pattern
+            speaker_id = f"SPEAKER_{(i % 2):02d}"
+            segment["speaker"] = speaker_id
+            segment["speaker_confidence"] = 0.3
+        
         return transcription_result
 
-    def transcribe_audio_segment(
-        self, audio_data: np.ndarray, sample_rate: int = 16000
-    ) -> SpeechResult:
-        """
-        Transcribe audio segment to text (backward compatibility)
 
-        Args:
-            audio_data: Audio data as numpy array
-            sample_rate: Sample rate of audio
-
-        Returns:
-            SpeechResult with transcription
-        """
-        self._load_models()
-
-        try:
-            # Ensure audio is float32 and correct sample rate
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
-
-            # WhisperX expects 16kHz audio
-            if sample_rate != 16000:
-                audio_data = librosa.resample(
-                    audio_data, orig_sr=sample_rate, target_sr=16000
-                )
-
-            # Transcribe with WhisperX
-            batch_size = 32 if self.device != "cpu" else 16
-            result = self.whisper_model.transcribe(audio_data, batch_size=batch_size)
-
-            # Detect language if not specified
-            detected_language = result.get("language", "en")
-
-            # Load alignment model for better word-level timestamps
-            if self.alignment_model is None:
-                self._load_alignment_model(detected_language)
-
-            # Align whisper output for better word-level timestamps
-            if self.alignment_model is not None:
-                try:
-                    result = whisperx.align(
-                        result["segments"],
-                        self.alignment_model,
-                        self.alignment_metadata,
-                        audio_data,
-                        self.device,
-                        return_char_alignments=False,
-                    )
-                except Exception as e:
-                    self.logger.warning("alignment_failed", error=str(e))
-                    # Continue with unaligned result
-
-            # Convert to SpeechResult
-            speech_result = SpeechResult.from_whisperx_result(result)
-            speech_result.language = detected_language
-
-            return speech_result
-
-        except Exception as e:
-            self.logger.error("speech_recognition_failed", error=str(e))
-            raise
-
-    def batch_transcribe_segments(
-        self,
-        audio_path: Union[str, Path],
-        segments: List[Tuple[float, float]],
-        sample_rate: int = 16000,
-    ) -> List[SpeechResult]:
-        """
-        Legacy method for backward compatibility
-        Now uses the unified pipeline and extracts segment-based results
-        """
-        try:
-            # Use the unified pipeline
-            full_result = self.process_audio_with_diarization(
-                audio_path,
-                min_speakers=2,
-                max_speakers=10,  # Allow more flexibility for legacy compatibility
-                sample_rate=sample_rate,
-            )
-
-            # Map results to requested segments
-            results = []
-            for start_time, end_time in segments:
-                # Find segments that overlap with requested timeframe
-                matching_segments = [
-                    seg
-                    for seg in full_result["segments"]
-                    if (
-                        seg.get("start", 0) < end_time
-                        and seg.get("end", 0) > start_time
-                    )
-                ]
-
-                # Combine text from matching segments
-                combined_text = " ".join(
-                    [seg.get("text", "").strip() for seg in matching_segments]
-                ).strip()
-
-                # Calculate average confidence
-                confidences = [
-                    seg.get("confidence", 0.0)
-                    for seg in matching_segments
-                    if "confidence" in seg
-                ]
-                avg_confidence = np.mean(confidences) if confidences else 0.0
-
-                result = SpeechResult(
-                    text=combined_text,
-                    confidence=float(avg_confidence),
-                    language=full_result.get("language", "en"),
-                )
-                results.append(result)
-
-            return results
-
-        except Exception as e:
-            self.logger.error("batch_transcribe_segments_failed", error=str(e))
-            raise
 
     def get_pipeline_summary(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """

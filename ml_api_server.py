@@ -26,8 +26,31 @@ import requests
 import tempfile
 import boto3
 
-from src.api import AnalysisConfig
+from dataclasses import dataclass
 from src.utils.logger import get_logger
+from src.models.output_models import AudioFeatures, VolumeCategory
+from src.utils.audio_cleaner import AudioCleaner
+
+
+@dataclass
+class AnalysisConfig:
+    """GPU 최적화 ML API 서버 전용 분석 설정"""
+
+    # GPU 사용 전제 (AWS 인스턴스 환경)
+    enable_gpu: bool = True
+    emotion_detection: bool = True
+    language: str = "en"  # auto-detection for multilingual support
+    max_workers: int = 4
+
+    # 성능 최적화된 기본값 (WhisperX 최적화)
+    sample_rate: int = 16000
+    segment_length: float = 5.0
+    min_segment_length: float = 1.0
+    confidence_threshold: float = 0.5
+
+    # 기본 활성화 기능들
+    speaker_diarization: bool = True
+    acoustic_features: bool = True
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -75,8 +98,6 @@ class ProcessVideoResponse(BaseModel):
     status: str
     message: str
     estimated_time: Optional[int] = 300  # seconds
-
-
 class MLProgressCallback(BaseModel):
     """ML 진행 상황 콜백"""
 
@@ -87,10 +108,6 @@ class MLProgressCallback(BaseModel):
     result: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
     error_code: Optional[str] = None
-
-
-
-
 class TranscribeRequest(BaseModel):
     """백엔드 호환 전사 요청"""
 
@@ -98,14 +115,9 @@ class TranscribeRequest(BaseModel):
     video_url: Optional[str] = None
     enable_gpu: bool = True
     emotion_detection: bool = True
-    language: str = "auto"
+    language: str = "en"
     max_workers: int = 4
     output_path: Optional[str] = None
-
-
-
-
-
 
 class BackendTranscribeResponse(BaseModel):
     """상세 분석 응답 (simplified)"""
@@ -117,8 +129,6 @@ class BackendTranscribeResponse(BaseModel):
     processing_time: float
     error: Optional[str] = None
     error_code: Optional[str] = None
-
-
 
 
 @app.post("/api/upload-video/process-video", response_model=ProcessVideoResponse)
@@ -299,7 +309,7 @@ async def process_video_with_callback(job_id: str, video_url: str):
 
         # 분석 설정
         config = AnalysisConfig(
-            enable_gpu=True, emotion_detection=True, language="auto", max_workers=4
+            enable_gpu=True, emotion_detection=True, language="en", max_workers=4
         )
 
         # 5. 전사 생성 (60-75%)
@@ -582,37 +592,20 @@ async def transcribe(request: TranscribeRequest):
                     try:
                         from src.services.acoustic_analyzer import FastAcousticAnalyzer
 
-                        # 오디오 파일 경로 확인
+                        # 오디오 파일 준비 (AudioCleaner 사용)
                         audio_path = None
                         if hasattr(pipeline.pipeline_manager, "_last_audio_path"):
                             audio_path = pipeline.pipeline_manager._last_audio_path
                         elif actual_video_path.endswith(".mp4"):
-                            # 비디오에서 추출된 오디오 파일 찾기
-                            temp_audio = actual_video_path.replace(".mp4", ".wav")
-                            if Path(temp_audio).exists():
-                                audio_path = temp_audio
-                            else:
-                                # 임시 오디오 추출
-                                import subprocess
-
-                                temp_audio = f"/tmp/audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
-                                subprocess.run(
-                                    [
-                                        "ffmpeg",
-                                        "-i",
-                                        actual_video_path,
-                                        "-vn",
-                                        "-acodec",
-                                        "pcm_s16le",
-                                        "-ar",
-                                        "16000",
-                                        "-ac",
-                                        "1",
-                                        temp_audio,
-                                        "-y",
-                                    ],
-                                    capture_output=True,
-                                )
+                            # AudioCleaner를 사용한 전문적인 오디오 추출
+                            try:
+                                cleaner = AudioCleaner(target_sr=16000)
+                                audio_path = str(cleaner.process(actual_video_path, output_path="temp"))
+                                logger.info(f"AudioCleaner로 오디오 추출 완료: {audio_path}")
+                            except Exception as e:
+                                logger.error(f"AudioCleaner 오디오 추출 실패: {e}")
+                                # 기존 파일이 있으면 사용
+                                temp_audio = actual_video_path.replace(".mp4", ".wav")
                                 if Path(temp_audio).exists():
                                     audio_path = temp_audio
 
@@ -634,7 +627,6 @@ async def transcribe(request: TranscribeRequest):
                     except Exception as e:
                         logger.warning(f"음향 특성 추출 실패: {e}")
                         # 기본값 사용 - AudioFeatures 객체로 생성
-                        from src.models.output_models import VolumeCategory
 
                         acoustic_features_list = [
                             AudioFeatures(

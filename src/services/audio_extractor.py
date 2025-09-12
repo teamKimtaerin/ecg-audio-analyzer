@@ -15,7 +15,6 @@ import yt_dlp
 import ffmpeg
 
 from ..utils.logger import get_logger
-from ..utils.duration_validator import DurationValidator
 
 
 @dataclass
@@ -64,8 +63,6 @@ class AudioExtractor:
         self.duration_tolerance = duration_tolerance
         self.logger = get_logger().bind_context(service="audio_extractor")
 
-        # Initialize duration validator
-        self.duration_validator = DurationValidator()
 
         # Setup temp directory
         self.temp_dir = Path(temp_dir or tempfile.gettempdir()) / "audio_extract"
@@ -85,6 +82,54 @@ class AudioExtractor:
         }
 
         self.logger.info("audio_extractor_ready", temp_dir=str(self.temp_dir))
+
+    def _probe_video_duration(self, video_path: Union[str, Path]) -> dict:
+        """Simple video duration probing using ffprobe"""
+        try:
+            probe = ffmpeg.probe(str(video_path))
+            duration = float(probe['streams'][0]['duration'])
+            return {
+                'final_duration': duration,
+                'confidence': 0.95,  # High confidence for direct probe
+                'method_used': 'ffprobe',
+                'warnings': []
+            }
+        except Exception as e:
+            self.logger.warning("video_duration_probe_failed", error=str(e))
+            return {
+                'final_duration': 0.0,
+                'confidence': 0.0,
+                'method_used': 'failed',
+                'warnings': [f"Duration probe failed: {str(e)}"]
+            }
+
+    def _validate_extracted_audio(self, audio_path: Union[str, Path], expected_duration: float) -> dict:
+        """Simple audio duration validation using soundfile"""
+        try:
+            import soundfile as sf
+            
+            # Get audio duration
+            info = sf.info(str(audio_path))
+            actual_duration = info.duration
+            difference = abs(actual_duration - expected_duration)
+            
+            # Consider valid if within tolerance
+            is_valid = difference <= self.duration_tolerance
+            
+            return {
+                'valid': is_valid,
+                'actual_duration': actual_duration,
+                'difference': difference,
+                'tolerance': self.duration_tolerance
+            }
+        except Exception as e:
+            self.logger.error("audio_validation_failed", error=str(e))
+            return {
+                'valid': False,
+                'actual_duration': 0.0,
+                'difference': float('inf'),
+                'error': str(e)
+            }
 
     def extract(
         self, source: Union[str, Path], output_path: Optional[Path] = None
@@ -121,22 +166,22 @@ class AudioExtractor:
             self.logger.info(
                 "probing_original_video_duration", video_path=str(video_path)
             )
-            duration_probe = self.duration_validator.probe_video_duration(video_path)
+            duration_probe = self._probe_video_duration(video_path)
 
-            if not duration_probe.final_duration:
+            if not duration_probe['final_duration']:
                 self.logger.warning(
-                    "duration_probe_failed", warnings=duration_probe.warnings
+                    "duration_probe_failed", warnings=duration_probe['warnings']
                 )
                 return AudioExtractionResult(
                     success=False, error="Failed to determine video duration"
                 )
 
-            original_duration = duration_probe.final_duration
+            original_duration = duration_probe['final_duration']
             self.logger.info(
                 "original_duration_detected",
                 duration=original_duration,
-                confidence=duration_probe.confidence,
-                method=duration_probe.method_used,
+                confidence=duration_probe['confidence'],
+                method=duration_probe['method_used'],
             )
 
             # Convert to WAV
@@ -152,7 +197,7 @@ class AudioExtractor:
                 return AudioExtractionResult(success=False, error="Conversion failed")
 
             # Step 3: Validate extracted audio duration
-            validation_result = self.duration_validator.validate_extracted_audio(
+            validation_result = self._validate_extracted_audio(
                 output_path, original_duration
             )
 
@@ -175,7 +220,7 @@ class AudioExtractor:
                 sample_rate=info.samplerate,
                 duration_validation_passed=validation_result.get("valid", False),
                 duration_difference=validation_result.get("difference", 0.0),
-                duration_confidence=duration_probe.confidence,
+                duration_confidence=duration_probe['confidence'],
                 extraction_method="enhanced_ffmpeg_with_validation",
             )
 
@@ -262,7 +307,7 @@ class AudioExtractor:
                 if output_path.exists():
                     # Validate the conversion
                     if expected_duration:
-                        validation = self.duration_validator.validate_extracted_audio(
+                        validation = self._validate_extracted_audio(
                             output_path, expected_duration
                         )
                         if validation.get("valid", False):
@@ -354,7 +399,7 @@ class AudioExtractor:
             if output_path.exists():
                 # Final validation
                 if expected_duration:
-                    validation = self.duration_validator.validate_extracted_audio(
+                    validation = self._validate_extracted_audio(
                         output_path, expected_duration
                     )
                     self.logger.info(

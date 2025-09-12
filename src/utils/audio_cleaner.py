@@ -91,7 +91,7 @@ class AudioCleaner:
 
         # Load with target sample rate and mono conversion
         audio, sr = librosa.load(str(file_path), sr=self.target_sr, mono=True)
-        return audio, sr
+        return audio, int(sr)
 
     def _process_audio(self, audio: np.ndarray, current_sr: int) -> np.ndarray:
         """Process audio data"""
@@ -153,10 +153,10 @@ class AudioCleaner:
                 "avg_energy": float(np.mean(rms)),
                 "dynamic_range": dynamic_range,
                 "avg_zcr": float(np.mean(zcr)),
-                "is_clipping": is_clipping,
-                "is_too_quiet": is_too_quiet,
+                "is_clipping": bool(is_clipping),
+                "is_too_quiet": bool(is_too_quiet),
                 "quality_score": self._calculate_quality_score(
-                    dynamic_range, is_clipping, is_too_quiet
+                    dynamic_range, bool(is_clipping), bool(is_too_quiet)
                 ),
             }
         except Exception as e:
@@ -187,7 +187,7 @@ class AudioCleaner:
 
             # Create output path if not provided
             if output_path is None:
-                output_path = self._create_temp_output_path(Path("memory_audio"))
+                output_path = self._get_temp_path()
             else:
                 output_path = Path(output_path)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -274,6 +274,24 @@ class AudioCleaner:
 
         return max(0.0, min(1.0, score))
 
+    def _validate_output(self, output_path: Union[str, Path]) -> dict:
+        """
+        Validate the output audio file and return basic info.
+
+        Args:
+            output_path: Path to the audio file
+
+        Returns:
+            Dictionary with duration and sample rate
+        """
+        try:
+            y, sr = librosa.load(str(output_path), sr=None)
+            duration = len(y) / sr if sr else 0
+            return {"duration": duration, "sample_rate": sr}
+        except Exception as e:
+            self.logger.error("output_validation_failed", error=str(e))
+            return {"duration": 0, "sample_rate": 0, "error": str(e)}
+
 
 # Convenience functions
 def clean_audio(
@@ -290,7 +308,12 @@ def clean_audio(
         Path to cleaned audio file
     """
     cleaner = AudioCleaner()
-    return cleaner.process(input_path, output_path)
+    result = cleaner.process(input_path, output_path or "temp")
+    # Ensure we always return a string for this convenience function
+    if isinstance(result, tuple):
+        # This shouldn't happen when output_path is provided, but handle it safely
+        raise ValueError("Expected file path output, got audio array")
+    return result
 
 
 def load_and_clean(input_path: Union[str, Path]) -> Tuple[np.ndarray, int]:
@@ -304,4 +327,9 @@ def load_and_clean(input_path: Union[str, Path]) -> Tuple[np.ndarray, int]:
         Tuple of (cleaned_audio, sample_rate)
     """
     cleaner = AudioCleaner()
-    return cleaner.process(input_path, output_path=None)
+    result = cleaner.process(input_path, output_path=None)
+    # Ensure we always return a tuple for this convenience function
+    if isinstance(result, str):
+        # This shouldn't happen when output_path=None, but handle it safely
+        raise ValueError("Expected audio array output, got file path")
+    return result

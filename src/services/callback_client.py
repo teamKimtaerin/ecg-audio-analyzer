@@ -195,7 +195,7 @@ class FastAPIClient:
         return False
 
     async def send_progress_update(
-        self, job_id: str, progress: float, message: str = None
+        self, job_id: str, progress: float, message: str
     ) -> bool:
         """진행 상황 업데이트 전송"""
         payload = CallbackPayload(

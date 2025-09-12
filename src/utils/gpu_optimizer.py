@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Any, Callable
 import warnings
 
 import torch
+import torch.nn
 import torch.cuda
 import torch.backends.cudnn as cudnn
 
@@ -80,7 +81,7 @@ class GPUMonitor:
         self.memory_critical_threshold = 0.95
         self.warning_callbacks: List[Callable] = []
 
-    def add_warning_callback(self, callback: Callable[[GPUMemoryStats], None]):
+    def add_warning_callback(self, callback: Callable[[GPUMemoryStats], None]) -> None:
         """Add callback for memory warnings"""
         self.warning_callbacks.append(callback)
 
@@ -126,7 +127,7 @@ class GPUMonitor:
                 max_reserved_mb=max_reserved,
                 free_mb=free,
                 total_mb=total,
-                utilization_percent=utilization,
+                utilization_percent=float(utilization),
             )
 
         except Exception as e:
@@ -135,7 +136,7 @@ class GPUMonitor:
             )
             return None
 
-    def start_monitoring(self):
+    def start_monitoring(self) -> None:
         """Start background GPU monitoring"""
         if self.monitoring:
             return
@@ -147,7 +148,7 @@ class GPUMonitor:
         self.monitor_thread.start()
         self.logger.info("gpu_monitoring_started", update_interval=self.update_interval)
 
-    def stop_monitoring(self):
+    def stop_monitoring(self) -> None:
         """Stop background monitoring"""
         self.monitoring = False
         if self.monitor_thread and self.monitor_thread.is_alive():
@@ -259,7 +260,7 @@ class GPUOptimizer:
             tf32_enabled=config.enable_tf32,
         )
 
-    def _discover_gpus(self):
+    def _discover_gpus(self) -> None:
         """Discover available GPU devices"""
         if not torch.cuda.is_available():
             self.logger.warning("cuda_not_available")
@@ -291,7 +292,7 @@ class GPUOptimizer:
             devices=[d.name for d in self.available_devices],
         )
 
-    def apply_optimizations(self):
+    def apply_optimizations(self) -> None:
         """Apply GPU optimizations"""
         if self.optimization_applied or not self.available_devices:
             return
@@ -339,7 +340,7 @@ class GPUOptimizer:
         self.logger.info("gpu_optimizations_applied")
 
     @contextmanager
-    def optimized_inference(self, model: torch.nn.Module, enable_amp: bool = None):
+    def optimized_inference(self, model: torch.nn.Module, enable_amp: Optional[bool] = None):
         """Context manager for optimized inference"""
 
         if enable_amp is None:
@@ -366,7 +367,7 @@ class GPUOptimizer:
             model.train(original_training)
 
     def optimize_model(
-        self, model: torch.nn.Module, model_name: str, cache_model: bool = None
+        self, model: torch.nn.Module, model_name: str, cache_model: Optional[bool] = None
     ) -> torch.nn.Module:
         """Optimize model for GPU inference"""
 
@@ -410,7 +411,11 @@ class GPUOptimizer:
             ):
 
                 try:
-                    optimized_model = torch.compile(optimized_model)
+                    compiled_model = torch.compile(optimized_model)
+                    # torch.compile can return either a Module or compiled function
+                    # Ensure we maintain Module type for caching compatibility
+                    if isinstance(compiled_model, torch.nn.Module):
+                        optimized_model = compiled_model
                     self.logger.info("model_compiled", model_name=model_name)
                 except Exception as e:
                     self.logger.warning(
@@ -429,7 +434,7 @@ class GPUOptimizer:
             )
             return model
 
-    def _cache_model(self, model_name: str, model: torch.nn.Module):
+    def _cache_model(self, model_name: str, model: torch.nn.Module) -> None:
         """Cache optimized model in GPU memory"""
         try:
             # Check cache memory usage
@@ -465,7 +470,7 @@ class GPUOptimizer:
         estimated_mb = total_bytes / (1024**2)
         return estimated_mb
 
-    def _evict_cached_models(self):
+    def _evict_cached_models(self) -> None:
         """Evict oldest cached models to free memory"""
         if not self.model_cache:
             return
@@ -523,7 +528,7 @@ class GPUOptimizer:
             self.logger.warning("batch_size_optimization_failed", error=str(e))
             return base_batch_size
 
-    def clear_cache(self, clear_model_cache: bool = True):
+    def clear_cache(self, clear_model_cache: bool = True) -> None:
         """Clear GPU memory caches"""
         try:
             # Clear PyTorch cache
@@ -580,7 +585,7 @@ class GPUOptimizer:
         """Stop GPU monitoring"""
         self.monitor.stop_monitoring()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up GPU optimizer resources"""
         try:
             self.stop_monitoring()
@@ -594,7 +599,7 @@ class GPUOptimizer:
         self.start_monitoring()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         """Context manager exit with cleanup"""
         self.cleanup()
 

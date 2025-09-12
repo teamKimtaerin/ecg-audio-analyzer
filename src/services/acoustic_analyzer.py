@@ -285,7 +285,7 @@ class FastAcousticAnalyzer:
             return results
 
         # For larger batches, use parallel processing
-        results = [None] * len(segments)
+        results: List[AudioFeatures] = [None] * len(segments)  # type: ignore
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as executor:
             futures = {}
@@ -313,6 +313,7 @@ class FastAcousticAnalyzer:
                         zcr=0.05,
                         mfcc=[12.0, -8.0, 4.0],
                         volume_category=VolumeCategory.MEDIUM,
+                        volume_peaks=[0.03] * 5,  # Default peaks
                     )
 
         self.logger.info(
@@ -333,7 +334,7 @@ class FastAcousticAnalyzer:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         self.clear_cache()
 
 
