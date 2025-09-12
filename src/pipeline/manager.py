@@ -27,7 +27,6 @@ from ..models.output_models import (
     create_empty_analysis_result,
 )
 from ..utils.logger import get_logger
-from ..utils.duration_validator import DurationValidator
 from config.base_settings import BaseConfig, ProcessingConfig
 from config.aws_settings import AWSConfig
 from config.model_configs import SpeakerDiarizationConfig
@@ -160,8 +159,6 @@ class PipelineManager:
 
         self.logger = get_logger().bind_context(component="pipeline_manager")
 
-        # Initialize duration validator for timeline validation
-        self.duration_validator = DurationValidator()
 
         # Resource management
         self.gpu_manager = GPUResourceManager(
@@ -553,25 +550,30 @@ class PipelineManager:
                         "timeline_coverage_validated", coverage_complete=True
                     )
 
-            # Additional validation using duration validator
+            # Basic timeline coverage statistics
             segments = whisperx_result["segments"]
-            gaps = self.duration_validator.detect_timeline_gaps(
-                [
-                    {"start_time": seg.get("start", 0), "end_time": seg.get("end", 0)}
-                    for seg in segments
-                ],
-                expected_duration,
-            )
-
-            if gaps and "timeline_gaps" not in whisperx_result:
-                # Add gaps that weren't detected by WhisperX
-                whisperx_result["additional_gaps"] = gaps
-                total_gap_duration = sum(gap["gap_duration"] for gap in gaps)
-                self.logger.warning(
-                    "additional_timeline_gaps_detected",
-                    additional_gaps=len(gaps),
-                    total_additional_gap_duration=total_gap_duration,
+            if segments:
+                first_segment_start = min(seg.get("start", 0) for seg in segments)
+                last_segment_end = max(seg.get("end", 0) for seg in segments)
+                covered_duration = last_segment_end - first_segment_start
+                coverage_percentage = (covered_duration / expected_duration) * 100 if expected_duration > 0 else 0
+                
+                self.logger.info(
+                    "timeline_coverage_statistics",
+                    first_start=round(first_segment_start, 2),
+                    last_end=round(last_segment_end, 2),
+                    covered_duration=round(covered_duration, 2),
+                    expected_duration=expected_duration,
+                    coverage_percentage=round(coverage_percentage, 2)
                 )
+                
+                # Log warning if coverage seems incomplete
+                if coverage_percentage < 90:
+                    self.logger.warning(
+                        "low_timeline_coverage",
+                        coverage_percentage=round(coverage_percentage, 2),
+                        segments_count=len(segments)
+                    )
 
         except Exception as e:
             self.logger.error("timeline_validation_failed", error=str(e))

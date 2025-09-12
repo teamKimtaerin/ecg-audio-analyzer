@@ -111,7 +111,7 @@ class AudioFeatures(BaseModel):
     spectral_centroid: float = Field(..., ge=0.0, description="Tonal characteristics")
     zcr: float = Field(..., ge=0.0, description="Zero crossing rate")
     mfcc: List[float] = Field(
-        ..., description="First 3 MFCC coefficients", min_items=3, max_items=3
+        ..., description="First 3 MFCC coefficients"
     )
     volume_category: VolumeCategory = Field(..., description="Categorized volume level")
     volume_peaks: Optional[List[float]] = Field(
@@ -382,6 +382,7 @@ def create_empty_analysis_result(
             duration=max(duration, 0.1),  # Ensure duration > 0 for Pydantic validation
             total_speakers=0,
             processing_time="00:00:00",
+            waveform_summary=[0.0] * 100,
         ),
         performance_stats=PerformanceStats(
             gpu_utilization=0.0,

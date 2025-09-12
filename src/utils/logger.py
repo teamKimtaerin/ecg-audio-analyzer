@@ -62,10 +62,10 @@ class PerformanceMonitor:
     def get_system_metrics(self) -> Dict[str, float]:
         """Get current system performance metrics"""
         try:
-            cpu_percent = self.process.cpu_percent()
+            cpu_percent = float(self.process.cpu_percent() or 0.0)
             memory_info = self.process.memory_info()
             memory_mb = memory_info.rss / 1024 / 1024
-            memory_percent = self.process.memory_percent()
+            memory_percent = float(self.process.memory_percent() or 0.0)
 
             return {
                 "cpu_percent": cpu_percent,
@@ -101,12 +101,12 @@ class PerformanceMonitor:
                 pynvml.nvmlInit()
                 handle = pynvml.nvmlDeviceGetHandleByIndex(device)
                 util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                gpu_utilization = util.gpu
+                gpu_utilization = float(util.gpu)
             except ImportError:
                 pass
 
             return {
-                "gpu_utilization": gpu_utilization,
+                "gpu_utilization": float(gpu_utilization) if gpu_utilization is not None else None,
                 "gpu_memory_mb": gpu_memory_allocated,
                 "gpu_memory_percent": gpu_memory_percent,
             }
@@ -125,8 +125,8 @@ class PerformanceMonitor:
         error_count: int = 0,
     ) -> PerformanceMetrics:
         """Create comprehensive performance metrics"""
-        system_metrics = self.get_system_metrics()
-        gpu_metrics = self.get_gpu_metrics()
+        system_metrics: Dict[str, float] = self.get_system_metrics()
+        gpu_metrics: Dict[str, Optional[float]] = self.get_gpu_metrics()
 
         return PerformanceMetrics(
             timestamp=datetime.utcnow().isoformat(),
@@ -135,8 +135,12 @@ class PerformanceMonitor:
             duration_seconds=duration,
             throughput_items_per_sec=throughput,
             error_count=error_count,
-            **system_metrics,
-            **gpu_metrics,
+            cpu_percent=system_metrics["cpu_percent"],
+            memory_mb=system_metrics["memory_mb"],
+            memory_percent=system_metrics["memory_percent"],
+            gpu_utilization=gpu_metrics["gpu_utilization"],
+            gpu_memory_mb=gpu_metrics["gpu_memory_mb"],
+            gpu_memory_percent=gpu_metrics["gpu_memory_percent"],
         )
 
 
@@ -285,7 +289,7 @@ class ECGLogger:
 
         try:
             if device is None:
-                device = torch.cuda.current_device()
+                device = str(torch.cuda.current_device())
 
             allocated = torch.cuda.memory_allocated(device) / 1024**3  # GB
             reserved = torch.cuda.memory_reserved(device) / 1024**3  # GB

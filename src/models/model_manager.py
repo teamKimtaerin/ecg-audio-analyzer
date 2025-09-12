@@ -51,8 +51,7 @@ class ModelManager:
         self.hf_token = os.getenv("HF_TOKEN")
         if not self.hf_token:
             self.logger.warning(
-                "hf_token_not_found",
-                message="HF_TOKEN not found, some models may not be accessible",
+                "hf_token_not_found", msg="Cannot found hugging face token "
             )
 
     def get_device(self) -> str:
