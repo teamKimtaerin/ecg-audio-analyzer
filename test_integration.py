@@ -3,14 +3,10 @@
 통합 테스트 스크립트 - ECG Backend와 ML 서버 간 통신 검증
 """
 
-import asyncio
 import json
-import time
 import uuid
 from datetime import datetime
-from typing import Dict, Any
 import requests
-import aiohttp
 
 # 설정
 ML_SERVER_URL = "http://localhost:8080"
