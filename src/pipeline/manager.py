@@ -149,12 +149,14 @@ class PipelineManager:
         processing_config: ProcessingConfig,
         aws_config: Optional[AWSConfig] = None,
         speaker_config: Optional[SpeakerDiarizationConfig] = None,
+        language: str = "en",
     ):
 
         self.base_config = base_config
         self.processing_config = processing_config
         self.aws_config = aws_config
         self.speaker_config = speaker_config or SpeakerDiarizationConfig()
+        self.language = language
 
         self.logger = get_logger().bind_context(component="pipeline_manager")
 
@@ -268,7 +270,7 @@ class PipelineManager:
                 compute_type=(
                     "float16" if device and device.startswith("cuda") else "float32"
                 ),
-                language=None,  # Auto-detect
+                language=self.language,
                 hf_auth_token=hf_token,
             )
         return self._whisperx_pipeline
@@ -604,9 +606,9 @@ class PipelineManager:
                 # Stage 1: Audio Extraction
                 extraction_result = await self._run_audio_extraction(source)
                 if not extraction_result.success:
-                    return create_empty_analysis_result(
-                        filename=Path(source_str).name, duration=0.0
-                    )
+                    error_msg = f"오디오 추출 실패: {extraction_result.error or '파일을 찾을 수 없거나 유효하지 않은 형식입니다'}"
+                    self.logger.error(error_msg)
+                    raise ValueError(error_msg)
 
                 # Log duration validation results
                 if (
@@ -634,14 +636,21 @@ class PipelineManager:
                     whisperx_result = None
 
                 if not whisperx_result or "segments" not in whisperx_result:
-                    return create_empty_analysis_result(
-                        filename=Path(source_str).name,
-                        duration=expected_duration or 0.0,
-                    )
+                    error_msg = "음성 인식 실패: 오디오에서 음성을 찾을 수 없습니다"
+                    self.logger.error(error_msg)
+                    raise ValueError(error_msg)
 
                 # Stage 2.5: Timeline validation and gap detection
                 await self._validate_timeline_coverage(
                     whisperx_result, expected_duration, source_str
+                )
+
+                # Store WhisperX result and audio path for access by API server
+                self._last_whisperx_result = whisperx_result
+                self._last_audio_path = (
+                    str(extraction_result.output_path)
+                    if extraction_result.output_path
+                    else None
                 )
 
                 # For MVP: Create basic result (emotion analysis and acoustic features will be added later)
@@ -655,7 +664,7 @@ class PipelineManager:
 
                 # Save result if output path specified
                 if output_path:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
                     with open(output_path, "w") as f:
                         f.write(result.model_dump_json_formatted())
 
@@ -812,7 +821,7 @@ class PipelineManager:
         """Context manager entry"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, _exc_tb):
         """Context manager exit with cleanup"""
         self.cleanup()
 
