@@ -17,7 +17,6 @@ import logging
 import os
 from typing import Dict, Any, Optional, cast
 from datetime import datetime
-import random
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -29,7 +28,6 @@ import boto3
 
 from src.api import AnalysisConfig
 from src.utils.logger import get_logger
-from src.models.output_models import AudioFeatures
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -40,7 +38,7 @@ app = FastAPI(
 
 # AWS S3 및 Backend 설정
 s3_client = boto3.client("s3")
-S3_BUCKET = "ecg-project-pipeline-dev-video-storage-np9div7"
+S3_BUCKET = os.getenv("S3_BUCKET", "ecg-project-pipeline-dev-video-storage-np9div7")
 
 # 환경변수에서 Backend URL 가져오기 (다양한 이름 지원)
 # 로컬 개발을 위해 localhost를 기본값으로 설정
@@ -91,16 +89,6 @@ class MLProgressCallback(BaseModel):
     error_code: Optional[str] = None
 
 
-class RequestProcessRequest(BaseModel):
-    """비동기 비디오 분석 요청 (legacy)"""
-
-    video_key: str  # S3 키
-
-    # 분석 설정
-    enable_gpu: bool = True
-    emotion_detection: bool = True
-    language: str = "auto"
-    max_workers: int = 4
 
 
 class TranscribeRequest(BaseModel):
@@ -115,24 +103,8 @@ class TranscribeRequest(BaseModel):
     output_path: Optional[str] = None
 
 
-class RequestProcessResponse(BaseModel):
-    """비동기 비디오 분석 응답"""
-
-    job_id: str
-    status: str  # "processing"
 
 
-class TranscribeResponse(BaseModel):
-    """비디오 분석 응답"""
-
-    success: bool
-    processing_time: float
-    metadata: Dict[str, Any]
-    transcript_segments: list
-    speaker_segments: list
-    emotion_segments: list
-    acoustic_features: list
-    performance_stats: Optional[Dict[str, Any]] = None
 
 
 class BackendTranscribeResponse(BaseModel):
@@ -147,15 +119,6 @@ class BackendTranscribeResponse(BaseModel):
     error_code: Optional[str] = None
 
 
-class HealthResponse(BaseModel):
-    """헬스 체크 응답"""
-
-    status: str
-    service: str
-    version: str
-    gpu_available: bool
-    gpu_count: int
-    timestamp: str
 
 
 @app.post("/api/upload-video/process-video", response_model=ProcessVideoResponse)
@@ -214,160 +177,10 @@ async def process_video_api(
         )
 
 
-@app.post("/request-process", response_model=RequestProcessResponse)
-async def request_process(video_key: str, background_tasks: BackgroundTasks):
-    """
-    비동기 비디오 분석 요청 - Backend와 호환 (legacy)
-
-    Backend가 호출하는 API:
-    POST http://10.0.10.42:8080/request-process?video_key=uploads/uuid/video.mp4
-    """
-
-    try:
-        # Job ID 생성
-        job_id = str(uuid.uuid4())
-        jobs[job_id] = {"status": "processing", "video_key": video_key}
-
-        logger.info(f"비동기 분석 요청 시작 - video_key: {video_key}, job_id: {job_id}")
-
-        # 백그라운드 작업 시작
-        background_tasks.add_task(process_video_async, job_id, video_key)
-
-        return RequestProcessResponse(job_id=job_id, status="processing")
-
-    except Exception as e:
-        logger.error(f"분석 요청 실패 - Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"분석 요청 실패: {str(e)}")
 
 
-async def process_video_async(job_id: str, video_key: str):
-    """
-    백그라운드에서 비디오 분석 및 Backend로 결과 전송
-    """
-    try:
-        logger.info(f"백그라운드 분석 시작 - job_id: {job_id}, video_key: {video_key}")
-
-        # 임시 파일에 S3에서 비디오 다운로드
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-            try:
-                s3_client.download_file(S3_BUCKET, video_key, temp_file.name)
-                logger.info(f"S3에서 비디오 다운로드 완료: {video_key}")
-            except Exception as s3_error:
-                logger.warning(f"S3 다운로드 실패, 모크 데이터 사용: {s3_error}")
-
-            # 분석 설정 생성
-            config = AnalysisConfig(
-                enable_gpu=True, emotion_detection=True, language="auto", max_workers=4
-            )
-
-            try:
-                # 실제 분석 실행
-                from src.services.callback_pipeline import CallbackPipelineManager
-
-                pipeline = CallbackPipelineManager(config, fastapi_client=None)
-
-                result = await pipeline._run_pipeline_with_progress(
-                    input_source=temp_file.name,
-                    progress_callback=_dummy_progress_callback,
-                    output_path=None,
-                )
-
-                # 결과를 Backend 형식으로 변환
-                # CompleteAnalysisResult는 timeline 속성을 가짐
-                timeline_segments = getattr(result, "timeline", [])
-
-                backend_result = {
-                    "job_id": job_id,
-                    "video_key": video_key,
-                    "status": "completed",
-                    "success": True,
-                    "processing_time": (
-                        result.metadata.processing_time if result.metadata else 0
-                    ),
-                    "results": {
-                        "transcript": [
-                            {
-                                "start": seg.start_time,
-                                "end": seg.end_time,
-                                "text": getattr(seg, "text_placeholder", ""),
-                                "speaker": seg.speaker_id,
-                            }
-                            for seg in timeline_segments
-                        ],
-                        "emotions": [
-                            {
-                                "start": seg.start_time,
-                                "end": seg.end_time,
-                                "emotion": seg.emotion.emotion,
-                                "confidence": seg.emotion.confidence,
-                            }
-                            for seg in timeline_segments
-                        ],
-                        "metadata": {
-                            "duration": (
-                                result.metadata.duration if result.metadata else 0
-                            ),
-                            "speakers": (
-                                result.metadata.total_speakers if result.metadata else 0
-                            ),
-                            "language": "auto",
-                        },
-                    },
-                }
-
-            except Exception as analysis_error:
-                logger.error(f"분석 실패: {analysis_error}")
-                # 분석 실패시 모크 결과 생성
-                backend_result = {
-                    "job_id": job_id,
-                    "video_key": video_key,
-                    "status": "completed",
-                    "success": False,
-                    "error": str(analysis_error),
-                    "results": {
-                        "transcript": [
-                            {
-                                "start": 0.0,
-                                "end": 3.0,
-                                "text": "분석 실패 - 모크 데이터",
-                                "speaker": "SPEAKER_00",
-                            }
-                        ],
-                        "emotions": [],
-                        "metadata": {
-                            "duration": 0,
-                            "speakers": 0,
-                            "language": "unknown",
-                        },
-                    },
-                }
-
-            # 작업 상태 업데이트
-            jobs[job_id] = {"status": "completed", "result": backend_result}
-
-            # Backend로 결과 전송
-            try:
-                response = requests.post(
-                    f"{BACKEND_URL}/api/upload-video/results",
-                    json=backend_result,
-                    timeout=30,
-                )
-                logger.info(
-                    f"Backend로 결과 전송 완료 - job_id: {job_id}, status: {response.status_code}"
-                )
-            except Exception as backend_error:
-                logger.error(f"Backend 결과 전송 실패: {backend_error}")
-
-            logger.info(f"분석 완료 - job_id: {job_id}")
-
-    except Exception as e:
-        jobs[job_id] = {"status": "failed", "error": str(e)}
-        logger.error(f"분석 실패 - job_id: {job_id}, error: {str(e)}")
 
 
-async def _dummy_progress_callback(stage: str, progress: float, message: str = ""):
-    """진행 상황 콜백 (로그만 출력)"""
-    logger.info(f"Progress: {stage} - {progress:.1%} - {message or ''}")
 
 
 async def send_error_to_backend(
@@ -536,8 +349,8 @@ async def process_video_with_callback(job_id: str, video_url: str):
                             "word": word.get("word", ""),
                             "start": word.get("start", 0.0),
                             "end": word.get("end", 0.0),
-                            "volume_db": -20.0 + random.uniform(-5, 5),  # 샘플 값
-                            "pitch_hz": 150.0 + random.uniform(-50, 200),  # 샘플 값
+                            "volume_db": -20.0,  # 기본값
+                            "pitch_hz": 150.0,  # 기본값
                         }
                         segment_data["words"].append(word_data)
 
@@ -1036,46 +849,8 @@ async def health_check():
     return {"status": "healthy", "service": "model-server"}
 
 
-@app.post("/process-video")
-async def process_video(request: dict, background_tasks: BackgroundTasks):
-    """
-    백엔드 호환 비동기 비디오 처리 엔드포인트 (legacy)
-
-    이 엔드포인트는 기존 백엔드가 호출할 수 있도록 유지됩니다.
-    """
-    try:
-        # dict로 받은 요청을 TranscribeRequest로 변환
-        video_path = request.get("video_path", "")
-
-        transcribe_request = TranscribeRequest(
-            video_path=video_path,
-            video_url=request.get("video_url"),
-            enable_gpu=request.get("enable_gpu", True),
-            emotion_detection=request.get("emotion_detection", True),
-            language=request.get("language", "auto"),
-            max_workers=request.get("max_workers", 4),
-            output_path=request.get("output_path"),
-        )
-
-        # /transcribe 엔드포인트와 동일한 처리
-        return await transcribe(transcribe_request)
-
-    except Exception as e:
-        logger.error(f"Process video 요청 실패: {str(e)}")
-        return BackendTranscribeResponse(
-            success=False,
-            error=f"요청 처리 실패: {str(e)}",
-            error_code="REQUEST_ERROR",
-            processing_time=0.0,
-        )
 
 
-@app.post("/process-video-legacy")
-async def process_video_legacy(video_key: str, background_tasks: BackgroundTasks):
-    """
-    레거시 동기 엔드포인트 (호환성 유지)
-    """
-    return await request_process(video_key, background_tasks)
 
 
 @app.get("/")
@@ -1097,14 +872,6 @@ async def root():
     }
 
 
-@app.post("/test")
-async def test_endpoint():
-    """테스트 엔드포인트"""
-    return {
-        "status": "ok",
-        "message": "ML API 서버가 정상 작동중입니다",
-        "timestamp": datetime.now().isoformat(),
-    }
 
 
 if __name__ == "__main__":
