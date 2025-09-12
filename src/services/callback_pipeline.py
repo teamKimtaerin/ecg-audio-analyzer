@@ -12,6 +12,7 @@ from ..pipeline.manager import PipelineManager
 from ..models.output_models import CompleteAnalysisResult
 from .callback_client import FastAPIClient, ProcessingStatus, get_fastapi_client
 from ..utils.logger import get_logger
+from config.base_settings import BaseConfig, ProcessingConfig
 
 
 class CallbackPipelineManager:
@@ -20,10 +21,27 @@ class CallbackPipelineManager:
     def __init__(self, config: Any, fastapi_client: Optional[FastAPIClient] = None):
         """
         Args:
-            config: 파이프라인 설정
+            config: 파이프라인 설정 (AnalysisConfig)
             fastapi_client: FastAPI 클라이언트 (None이면 전역 인스턴스 사용)
         """
-        self.pipeline_manager = PipelineManager(config)
+        # BaseConfig와 ProcessingConfig 객체 생성
+        base_config = BaseConfig()
+        processing_config = ProcessingConfig()
+
+        # AnalysisConfig의 설정들을 BaseConfig에 적용
+        if hasattr(config, "max_workers"):
+            base_config.max_workers = config.max_workers
+        if hasattr(config, "sample_rate"):
+            base_config.sample_rate = config.sample_rate
+        if hasattr(config, "language"):
+            self.language = config.language
+        else:
+            self.language = "en"  # 기본값
+
+        # PipelineManager 초기화 (필수 파라미터 전달)
+        self.pipeline_manager = PipelineManager(
+            base_config=base_config, processing_config=processing_config, language=self.language
+        )
         self.fastapi_client = fastapi_client or get_fastapi_client()
         self.logger = get_logger(__name__)
 
@@ -58,7 +76,7 @@ class CallbackPipelineManager:
 
             # 진행 상황 콜백 함수 정의
             async def progress_callback(
-                stage: str, progress: float, message: str = None
+                stage: str, progress: float, message: Optional[str] = None
             ):
                 """파이프라인 진행 상황을 FastAPI로 전송"""
                 if self.fastapi_client:
@@ -119,8 +137,11 @@ class CallbackPipelineManager:
         )
 
         # 기존 파이프라인 매니저 사용
-        result = await self.pipeline_manager.process_video(
-            input_source=input_source, output_path=output_path
+        # Convert output_path to Path if it's a string
+        output_path_obj = Path(output_path) if isinstance(output_path, str) else output_path
+        
+        result = await self.pipeline_manager.process_single(
+            source=input_source, output_path=output_path_obj
         )
 
         # 단계별 진행 상황 시뮬레이션 (실제로는 PipelineManager 내부에서 콜백을 받아야 함)
@@ -143,20 +164,15 @@ class CallbackPipelineManager:
     def _serialize_result(self, result: CompleteAnalysisResult) -> Dict[str, Any]:
         """분석 결과를 JSON 직렬화 가능한 형태로 변환"""
         try:
-            # CompleteAnalysisResult를 딕셔너리로 변환
+            # CompleteAnalysisResult를 딕셔너리로 변환 (올바른 속성 사용)
             serialized = {
                 "metadata": {
-                    "video_path": str(result.metadata.video_path),
+                    "filename": result.metadata.filename,
                     "processing_time": result.metadata.processing_time,
-                    "analysis_timestamp": (
-                        result.metadata.analysis_timestamp.isoformat()
-                        if result.metadata.analysis_timestamp
-                        else None
-                    ),
+                    "analysis_timestamp": result.metadata.analysis_timestamp,  # 이미 문자열
                     "total_speakers": result.metadata.total_speakers,
-                    "video_duration": result.metadata.video_duration,
-                    "audio_duration": result.metadata.audio_duration,
-                    "language_detected": result.metadata.language_detected,
+                    "duration": result.metadata.duration,  # video_duration 대신 duration 사용
+                    "gpu_acceleration": result.metadata.gpu_acceleration,
                 },
                 "transcript_segments": [],
                 "speaker_segments": [],
@@ -164,52 +180,65 @@ class CallbackPipelineManager:
                 "acoustic_features": [],
                 "performance_stats": (
                     {
-                        "cpu_time": result.performance_stats.cpu_time,
-                        "memory_peak_mb": result.performance_stats.memory_peak_mb,
-                        "gpu_time": result.performance_stats.gpu_time,
-                        "total_processing_time": result.performance_stats.total_processing_time,
+                        "gpu_utilization": result.performance_stats.gpu_utilization,
+                        "peak_memory_mb": result.performance_stats.peak_memory_mb,
+                        "avg_processing_fps": result.performance_stats.avg_processing_fps,
+                        "bottleneck_stage": result.performance_stats.bottleneck_stage,
                     }
                     if result.performance_stats
                     else None
                 ),
             }
 
-            # 세그먼트 데이터 추가
-            if result.transcript_segments:
-                for segment in result.transcript_segments:
+            # timeline에서 세그먼트 데이터 변환
+            if result.timeline:
+                for segment in result.timeline:
+                    # 전사 세그먼트 추가
                     serialized["transcript_segments"].append(
                         {
                             "start_time": segment.start_time,
                             "end_time": segment.end_time,
-                            "text": segment.text,
-                            "confidence": segment.confidence,
+                            "text": segment.text_placeholder,
+                            "confidence": segment.speaker_confidence,
                             "speaker_id": segment.speaker_id,
                         }
                     )
-
-            if result.speaker_segments:
-                for segment in result.speaker_segments:
+                    
+                    # 화자 세그먼트 추가
                     serialized["speaker_segments"].append(
                         {
                             "start_time": segment.start_time,
                             "end_time": segment.end_time,
                             "speaker_id": segment.speaker_id,
-                            "confidence": segment.confidence,
+                            "confidence": segment.speaker_confidence,
                         }
                     )
-
-            if result.emotion_segments:
-                for segment in result.emotion_segments:
-                    serialized["emotion_segments"].append(
-                        {
-                            "start_time": segment.start_time,
-                            "end_time": segment.end_time,
-                            "emotion": segment.emotion,
-                            "confidence": segment.confidence,
-                            "valence": segment.valence,
-                            "arousal": segment.arousal,
-                        }
-                    )
+                    
+                    # 감정 세그먼트 추가
+                    if segment.emotion:
+                        serialized["emotion_segments"].append(
+                            {
+                                "start_time": segment.start_time,
+                                "end_time": segment.end_time,
+                                "emotion": segment.emotion.primary,
+                                "confidence": segment.emotion.confidence,
+                                "valence": segment.emotion.valence,
+                                "arousal": segment.emotion.arousal,
+                            }
+                        )
+                    
+                    # 음향 특성 추가
+                    if segment.audio_features:
+                        serialized["acoustic_features"].append(
+                            {
+                                "start_time": segment.start_time,
+                                "end_time": segment.end_time,
+                                "rms_energy": segment.audio_features.rms_energy,
+                                "rms_db": segment.audio_features.rms_db,
+                                "pitch_mean": segment.audio_features.pitch_mean,
+                                "spectral_centroid": segment.audio_features.spectral_centroid,
+                            }
+                        )
 
             return serialized
 
