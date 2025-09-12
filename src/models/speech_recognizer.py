@@ -8,82 +8,18 @@ import librosa
 import numpy as np
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
-from dataclasses import dataclass
 from ..utils.logger import get_logger
 from .model_manager import get_model_manager
 
-
-@dataclass
-class SpeechResult:
-    """Speech recognition result"""
-
-    text: str
-    confidence: float
-    language: Optional[str] = None
-    word_segments: Optional[List[Dict[str, Any]]] = None
-
-    @classmethod
-    def from_whisperx_result(cls, result: Dict[str, Any]) -> "SpeechResult":
-        """Create SpeechResult from WhisperX output"""
-        # WhisperX returns segments with word-level timestamps
-        segments = result.get("segments", [])
-
-        # Combine all text from segments
-        full_text = " ".join([seg.get("text", "").strip() for seg in segments]).strip()
-
-        # Calculate average confidence if available
-        confidences = []
-        word_segments = []
-
-        for seg in segments:
-            # Segment-level confidence
-            if "confidence" in seg:
-                confidences.append(seg["confidence"])
-
-            # Word-level information
-            words = seg.get("words", [])
-            for word in words:
-                word_segments.append(
-                    {
-                        "word": word.get("word", ""),
-                        "start": word.get("start", 0.0),
-                        "end": word.get("end", 0.0),
-                        "confidence": word.get("confidence", 0.0),
-                    }
-                )
-
-        avg_confidence = np.mean(confidences) if confidences else 0.0
-        language = result.get("language", None)
-
-        return cls(
-            text=full_text,
-            confidence=float(avg_confidence),
-            language=language,
-            word_segments=word_segments if word_segments else None,
-        )
-
-
 class WhisperXPipeline:
-    """Unified WhisperX pipeline with integrated speaker diarization"""
-
     def __init__(
         self,
         model_size: str = "base",
         device: Optional[str] = None,
         compute_type: str = "float16",
-        language: Optional[str] = None,
+        language: Optional[str] = "en",
         hf_auth_token: Optional[str] = None,
     ):
-        """
-        Initialize unified WhisperX pipeline
-
-        Args:
-            model_size: WhisperX model size (tiny, base, small, medium, large-v2)
-            device: Device to use (None for auto-detection)
-            compute_type: Compute type (float16, float32, int8)
-            language: Language code (None for auto-detection)
-            hf_auth_token: Hugging Face token for diarization model access
-        """
         self.model_size = model_size
         self.language = language
         self.compute_type = compute_type
@@ -92,14 +28,6 @@ class WhisperXPipeline:
         # Get model manager
         self.model_manager = get_model_manager(device=device)
         self.device = self.model_manager.get_device()
-
-        # Assume GPU environment (AWS instances)
-
-        self.logger = get_logger().bind_context(
-            service="whisperx_pipeline",
-            model=f"whisperx-{model_size}",
-            device=self.device,
-        )
 
         # Models will be loaded on first use
         self.whisper_model = None
@@ -111,21 +39,12 @@ class WhisperXPipeline:
     def _load_models(self):
         """Load WhisperX models"""
         if self.whisper_model is None:
-            self.logger.info("loading_whisperx_model")
-
             # Load WhisperX model (GPU-first approach)
             self.whisper_model = whisperx.load_model(
                 self.model_size,
                 device=self.device,
                 compute_type=self.compute_type,
                 language=self.language,
-            )
-
-            self.logger.info(
-                "whisperx_model_loaded",
-                model_size=self.model_size,
-                device=self.device,
-                compute_type=self.compute_type,
             )
 
     def _load_alignment_model(self, language_code: str):
@@ -135,8 +54,6 @@ class WhisperXPipeline:
                 self.alignment_model is None
                 or getattr(self, "_last_language", None) != language_code
             ):
-                self.logger.info("loading_alignment_model", language=language_code)
-
                 self.alignment_model, self.alignment_metadata = (
                     whisperx.load_align_model(
                         language_code=language_code, device=self.device
@@ -144,20 +61,13 @@ class WhisperXPipeline:
                 )
                 self._last_language = language_code
 
-                self.logger.info("alignment_model_loaded", language=language_code)
-
         except Exception as e:
-            self.logger.warning(
-                "failed_to_load_alignment_model", language=language_code, error=str(e)
-            )
             self.alignment_model = None
             self.alignment_metadata = None
 
     def _load_diarization_model(self):
         """Load diarization pipeline"""
         if self.diarization_pipeline is None:
-            self.logger.info("loading_diarization_model")
-
             try:
                 # Use pyannote directly for diarization
                 from pyannote.audio import Pipeline
@@ -173,14 +83,7 @@ class WhisperXPipeline:
                         torch.device("cuda")
                     )
 
-                self.logger.info(
-                    "diarization_model_loaded",
-                    model="pyannote/speaker-diarization-3.1",
-                    device=self.device,
-                )
-
             except Exception as e:
-                self.logger.error("failed_to_load_diarization_model", error=str(e))
                 raise
 
     def process_audio_with_diarization(
@@ -189,31 +92,8 @@ class WhisperXPipeline:
         min_speakers: int = 2,
         max_speakers: int = 4,
         sample_rate: int = 16000,
-        expected_duration: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """
-        Complete WhisperX pipeline with integrated speaker diarization
-
-        Args:
-            audio_path: Path to audio file
-            min_speakers: Minimum number of speakers
-            max_speakers: Maximum number of speakers
-            sample_rate: Target sample rate
-            expected_duration: Expected duration for validation
-
-        Returns:
-            Dictionary with transcription, alignment, and speaker diarization
-        """
-        self.logger.info(
-            "starting_whisperx_pipeline",
-            file=str(audio_path),
-            min_speakers=min_speakers,
-            max_speakers=max_speakers,
-            expected_duration=expected_duration,
-        )
-
         try:
-
             # Step 1: ASR (transcribe) with enhanced audio loading
             self._load_models()
 
@@ -223,27 +103,18 @@ class WhisperXPipeline:
                 y = y.astype(np.float32)
             
             audio_duration = len(y) / sr
-            self.logger.info("audio_loaded", duration=round(audio_duration, 2))
+            batch_size = 16
 
-            batch_size = 16  # GPU optimized batch size
-
-            # Ensure models are loaded
-            if self.whisper_model is None:
-                self._load_models()
             assert self.whisper_model is not None, "Failed to load WhisperX model"
 
-            self.logger.info("transcribing_audio")
             asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
-
             detected_language = asr_result.get("language", self.language or "en")
-            self.logger.info("language_detected", language=detected_language)
 
             # Step 2: Alignment
             if self.alignment_model is None:
                 self._load_alignment_model(detected_language)
 
             if self.alignment_model is not None:
-                self.logger.info("aligning_transcription")
                 try:
                     aligned_result = whisperx.align(
                         asr_result["segments"],
@@ -255,7 +126,6 @@ class WhisperXPipeline:
                     )
                     aligned_result["language"] = detected_language
                 except Exception as e:
-                    self.logger.warning("alignment_failed", error=str(e))
                     aligned_result = asr_result
                     aligned_result["language"] = detected_language
             else:
@@ -265,15 +135,6 @@ class WhisperXPipeline:
             # Step 3: Speaker Diarization
             self._load_diarization_model()
 
-            self.logger.info(
-                "performing_speaker_diarization",
-                min_speakers=min_speakers,
-                max_speakers=max_speakers,
-            )
-
-            # Ensure diarization pipeline is loaded
-            if self.diarization_pipeline is None:
-                self._load_diarization_model()
             assert self.diarization_pipeline is not None, "Failed to load diarization pipeline"
 
             # Use pyannote diarization with speaker constraints
@@ -282,20 +143,11 @@ class WhisperXPipeline:
             )
 
             # Step 4: Assign speakers to words
-            self.logger.info("assigning_speakers_to_words")
             try:
                 final_result = whisperx.assign_word_speakers(
                     diarization, aligned_result
                 )
-                self.logger.info("whisperx_speaker_assignment_successful")
             except Exception as e:
-                self.logger.warning(
-                    "speaker_assignment_failed",
-                    error=str(e),
-                    error_type=type(e).__name__,
-                    diarization_type=type(diarization).__name__,
-                    segments_count=len(aligned_result.get("segments", [])),
-                )
                 # Fallback: use actual diarization results to assign speakers based on timing overlap
                 final_result = aligned_result
                 final_result = self._assign_speakers_from_diarization(
@@ -307,32 +159,15 @@ class WhisperXPipeline:
                 final_result["segments"]
             )
 
-            # Basic result validation
-            segments_count = len(final_result["segments"])
-            unique_speakers = set(
-                seg.get("speaker", "UNKNOWN")
-                for seg in final_result["segments"]
-                if seg.get("speaker")
-            )
-            speakers_count = len(unique_speakers)
-
-            # Add basic metadata
             final_result["duration_metadata"] = {
                 "audio_file_duration": round(audio_duration, 2),
-                "total_segments": segments_count,
+                "total_segments": len(final_result["segments"]),
             }
 
-            self.logger.info(
-                "whisperx_pipeline_completed",
-                total_segments=segments_count,
-                unique_speakers=speakers_count,
-                speaker_list=list(unique_speakers),
-            )
 
             return final_result
 
         except Exception as e:
-            self.logger.error("whisperx_pipeline_failed", error=str(e))
             raise
 
     def _remove_duplicate_speaker_segments(self, segments: List[Dict]) -> List[Dict]:
@@ -392,9 +227,6 @@ class WhisperXPipeline:
             # Sort by start time for efficient processing
             speaker_timeline.sort(key=lambda x: x["start"])
 
-            self.logger.info(
-                "diarization_timeline_extracted", timeline_entries=len(speaker_timeline)
-            )
 
             # Assign speakers to segments with improved algorithm
             for segment in transcription_result["segments"]:
@@ -463,23 +295,16 @@ class WhisperXPipeline:
                 if seg.get("speaker")
             )
 
-            self.logger.info(
-                "speakers_assigned_from_diarization",
-                unique_speakers=len(unique_speakers),
-                speaker_list=list(unique_speakers),
-            )
 
             return transcription_result
 
         except Exception as e:
-            self.logger.error("fallback_speaker_assignment_failed", error=str(e))
-            # Simple fallback: assign basic speaker IDs
-            return self._simple_speaker_fallback(transcription_result)
+            # Return transcription result without speaker assignments
+            return transcription_result
 
     def _find_closest_speaker(
         self, seg_start: float, seg_end: float, speaker_timeline: List[Dict]
     ) -> str:
-        """Find the closest speaker turn in time"""
         seg_mid = (seg_start + seg_end) / 2
 
         min_distance = float("inf")
@@ -496,7 +321,6 @@ class WhisperXPipeline:
         return closest_speaker
 
     def _basic_segment_cleanup(self, segments: List[Dict]) -> None:
-        """Basic segment cleanup and merging"""
         if len(segments) < 2:
             return
 
@@ -529,61 +353,6 @@ class WhisperXPipeline:
                 continue
             
             i += 1
-
-    def _simple_speaker_fallback(self, transcription_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Simple fallback: assign basic speaker IDs"""
-        segments = transcription_result["segments"]
-        
-        for i, segment in enumerate(segments):
-            # Simple alternating pattern
-            speaker_id = f"SPEAKER_{(i % 2):02d}"
-            segment["speaker"] = speaker_id
-            segment["speaker_confidence"] = 0.3
-        
-        return transcription_result
-
-
-
-    def get_pipeline_summary(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get summary statistics for pipeline results
-
-        Args:
-            result: WhisperX pipeline result
-
-        Returns:
-            Dictionary with pipeline statistics
-        """
-        if not result or "segments" not in result:
-            return {}
-
-        segments = result["segments"]
-
-        # Calculate statistics
-        total_segments = len(segments)
-        segments_with_text = [s for s in segments if s.get("text", "").strip()]
-        segments_with_speakers = [s for s in segments if s.get("speaker")]
-
-        unique_speakers = len(
-            set(seg.get("speaker", "UNKNOWN") for seg in segments_with_speakers)
-        )
-
-        total_words = sum(
-            len(seg.get("text", "").split()) for seg in segments_with_text
-        )
-
-        return {
-            "total_segments": total_segments,
-            "transcribed_segments": len(segments_with_text),
-            "segments_with_speakers": len(segments_with_speakers),
-            "unique_speakers": unique_speakers,
-            "total_words": total_words,
-            "language": result.get("language", "unknown"),
-            "success_rate": (
-                len(segments_with_text) / total_segments if total_segments > 0 else 0.0
-            ),
-        }
-
 
 # Keep SpeechRecognizer as alias for backward compatibility
 SpeechRecognizer = WhisperXPipeline
