@@ -379,7 +379,7 @@ def create_empty_analysis_result(
     return CompleteAnalysisResult(
         metadata=AnalysisMetadata(
             filename=filename,
-            duration=duration,
+            duration=max(duration, 0.1),  # Ensure duration > 0 for Pydantic validation
             total_speakers=0,
             processing_time="00:00:00",
         ),
