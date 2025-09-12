@@ -1,47 +1,37 @@
-# ECG Audio Analysis - Minimal Dependencies (without parselmouth)
-# For testing and development when parselmouth installation fails
+# ECG Audio Analyzer ML API Server Dependencies
+
+# FastAPI Server
+fastapi>=0.100.0          # Main web framework
+uvicorn>=0.23.0           # ASGI server
+requests>=2.31.0          # HTTP client for backend callbacks
 
 # Audio Processing & Feature Extraction
-librosa>=0.10.0           # Optimized audio analysis
-soundfile>=0.12.0         # Fast audio I/O
+librosa>=0.10.0           # Audio analysis
+soundfile>=0.12.0         # Audio I/O
 pydub>=0.25.0            # Audio manipulation
-scipy>=1.10.0            # Scientific computing for signal processing
-scikit-learn>=1.3.0      # Machine learning utilities for feature processing
+scipy>=1.10.0            # Scientific computing
+scikit-learn>=1.3.0      # ML utilities
 
-# Core ML/AI Framework (CPU version for base requirements)
+# Core ML/AI Framework
 transformers>=4.30.0      # Hugging Face models
 torch>=2.0.0             # PyTorch framework
-torchaudio>=2.0.0        # Audio processing for PyTorch
+torchaudio>=2.0.0        # Audio processing
 
 # AWS & Cloud Infrastructure
 boto3>=1.26.0            # AWS SDK
 botocore>=1.29.0         # AWS core functionality
 
 # Performance & Utilities  
-yt-dlp>=2023.7.6         # YouTube download with acceleration
-ffmpeg-python>=0.2.0     # Hardware-accelerated video processing
+yt-dlp>=2023.7.6         # YouTube download
+ffmpeg-python>=0.2.0     # Video processing
 psutil>=5.9.0            # System monitoring
 aiofiles>=23.1.0         # Async file operations
-asyncio-throttle>=1.0.2  # Rate limiting for concurrent operations
 
 # Data Processing & Validation
 numpy>=1.24.0            # Numerical computing
 pandas>=2.0.0            # Data manipulation
-pydantic>=1.10.0         # Data validation and settings
-pydantic-settings>=2.0.0 # Configuration management
+pydantic>=2.0.0          # Data validation and settings
 
-# Logging & Monitoring
+# Logging & Configuration
 structlog>=23.1.0        # Structured logging
-rich>=13.3.0             # Rich console output
-typer>=0.9.0             # CLI framework
-
-# Testing & Development
-pytest>=7.3.0            # Testing framework
-pytest-asyncio>=0.21.0   # Async testing
-pytest-cov>=4.1.0        # Coverage reporting
-black>=23.3.0            # Code formatting
-ruff>=0.0.270            # Fast linting
-
-# Configuration & Environment
 python-dotenv>=1.0.0     # Environment variable loading
-toml>=0.10.2             # Configuration file parsing
