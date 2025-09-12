@@ -261,15 +261,27 @@ async def process_video_async(job_id: str, video_url: str):
             temp_path = temp_file.name
             
             try:
+                logger.info(f"S3에서 비디오 다운로드 시작 - Bucket: {S3_BUCKET}, Key: {file_key}")
                 s3_client.download_file(S3_BUCKET, file_key, temp_path)
-                logger.info(f"S3에서 비디오 다운로드 완료: {file_key}")
+                
+                # 다운로드된 파일 검증
+                file_size = os.path.getsize(temp_path)
+                logger.info(f"S3에서 비디오 다운로드 완료 - 파일 크기: {file_size} bytes, 경로: {temp_path}")
+                
+                if file_size == 0:
+                    raise Exception("다운로드된 파일이 비어있습니다")
+                    
                 jobs[job_id]["progress"] = 40
+                
             except Exception as s3_error:
-                logger.warning(f"S3 다운로드 실패, 모크 데이터 생성: {s3_error}")
-                # S3 다운로드 실패시 더미 데이터 생성
-                with open(temp_path, 'wb') as f:
-                    f.write(b"dummy video data for testing")
-                jobs[job_id]["progress"] = 30
+                logger.error(f"S3 다운로드 실패 - Bucket: {S3_BUCKET}, Key: {file_key}, Error: {s3_error}")
+                jobs[job_id].update({
+                    "status": "failed",
+                    "progress": 100,
+                    "error": f"S3 파일 다운로드 실패: {str(s3_error)}",
+                    "failed_at": datetime.now().isoformat()
+                })
+                return
             
             try:
                 # 진행상황 업데이트
@@ -312,14 +324,16 @@ async def process_video_async(job_id: str, video_url: str):
                 }
                 
             except Exception as analysis_error:
-                logger.error(f"분석 실패: {analysis_error}")
-                jobs[job_id]["progress"] = 100
+                logger.error(f"WhisperX 분석 실패 - job_id: {job_id}, Error: {analysis_error}")
+                logger.error(f"분석 실패 상세 정보 - Type: {type(analysis_error).__name__}, Args: {analysis_error.args}")
                 
-                # 분석 실패시 모크 결과 생성
-                backend_result = {
-                    "job_id": job_id,
-                    "result": create_mock_whisper_result()
-                }
+                jobs[job_id].update({
+                    "status": "failed",
+                    "progress": 100,
+                    "error": f"분석 실패: {str(analysis_error)}",
+                    "failed_at": datetime.now().isoformat()
+                })
+                return
             
             finally:
                 # 임시 파일 정리
@@ -354,7 +368,16 @@ async def process_video_async(job_id: str, video_url: str):
 
 async def run_actual_analysis(temp_path: str, file_key: str, job_id: str):
     """실제 WhisperX 분석 실행"""
+    logger.info(f"WhisperX 분석 시작 - job_id: {job_id}, 파일: {temp_path}")
+    
     try:
+        # 입력 파일 검증
+        if not os.path.exists(temp_path):
+            raise FileNotFoundError(f"분석할 파일이 존재하지 않습니다: {temp_path}")
+            
+        file_size = os.path.getsize(temp_path)
+        logger.info(f"분석 대상 파일 정보 - 크기: {file_size} bytes, 경로: {temp_path}")
+        
         # 분석 설정 생성
         config = AnalysisConfig(
             enable_gpu=True,
@@ -362,18 +385,32 @@ async def run_actual_analysis(temp_path: str, file_key: str, job_id: str):
             language="auto",
             max_workers=4
         )
+        logger.info(f"분석 설정 - GPU: {config.enable_gpu}, 감정분석: {config.emotion_detection}, 언어: {config.language}")
         
-        # WhisperX 파이프라인 실행 시도
-        from src.services.callback_pipeline import CallbackPipelineManager
+        # WhisperX 파이프라인 모듈 임포트
+        try:
+            from src.services.callback_pipeline import CallbackPipelineManager
+            logger.info("CallbackPipelineManager 모듈 로딩 성공")
+        except ImportError as import_error:
+            logger.error(f"CallbackPipelineManager 모듈 로딩 실패: {import_error}")
+            raise Exception(f"필수 모듈 로딩 실패: {import_error}")
         
+        # 파이프라인 인스턴스 생성
         pipeline = CallbackPipelineManager(config, fastapi_client=None)
+        logger.info("WhisperX 파이프라인 인스턴스 생성 완료")
         
-        # 진행상황 콜백 함수
+        # 진행상황 콜백 함수 (상세 로깅)
         async def progress_callback(stage: str, progress: float, message: str = None):
             # 60-85% 범위에서 진행상황 업데이트
             actual_progress = 60 + int(progress * 25)
             jobs[job_id]["progress"] = min(85, actual_progress)
-            logger.info(f"Progress: {stage} - {progress:.1%} - {message or ''}")
+            
+            detailed_message = f"[{stage}] {progress:.1%} - {message or 'Processing...'}"
+            logger.info(f"분석 진행상황 - job_id: {job_id}, {detailed_message}")
+        
+        # WhisperX 파이프라인 실행
+        logger.info(f"WhisperX 파이프라인 실행 시작 - job_id: {job_id}")
+        start_time = datetime.now()
         
         result = await pipeline._run_pipeline_with_progress(
             input_source=temp_path,
@@ -381,56 +418,64 @@ async def run_actual_analysis(temp_path: str, file_key: str, job_id: str):
             output_path=None
         )
         
+        end_time = datetime.now()
+        processing_duration = (end_time - start_time).total_seconds()
+        logger.info(f"WhisperX 파이프라인 실행 완료 - job_id: {job_id}, 처리시간: {processing_duration:.2f}초")
+        
         return result
         
     except ImportError as e:
-        logger.warning(f"WhisperX 모듈 로딩 실패: {e}")
-        raise Exception("WhisperX 모듈을 찾을 수 없습니다")
+        logger.error(f"모듈 임포트 실패 - job_id: {job_id}, Error: {e}")
+        raise Exception(f"필수 모듈을 찾을 수 없습니다: {e}")
+    except FileNotFoundError as e:
+        logger.error(f"파일 오류 - job_id: {job_id}, Error: {e}")
+        raise Exception(f"파일 처리 오류: {e}")
     except Exception as e:
-        logger.error(f"분석 실행 실패: {e}")
+        logger.error(f"분석 실행 중 예외 발생 - job_id: {job_id}, Type: {type(e).__name__}, Error: {e}")
+        logger.error(f"예외 상세 정보 - Args: {e.args}")
         raise
 
-def create_mock_whisper_result():
-    """ML_API.md 명세에 맞는 모크 Whisper 결과 생성"""
-    return {
-        "text": "안녕하세요, 이것은 모크 데이터입니다. 실제 분석은 WhisperX로 처리됩니다.",
-        "segments": [
-            {
-                "start": 0.0,
-                "end": 3.0,
-                "text": "안녕하세요, 이것은 모크 데이터입니다.",
-                "speaker": "SPEAKER_00"
-            },
-            {
-                "start": 3.0,
-                "end": 6.0,
-                "text": "실제 분석은 WhisperX로 처리됩니다.",
-                "speaker": "SPEAKER_01"
-            }
-        ],
-        "language": "ko",
-        "duration": 6.0,
-        "speakers_count": 2
-    }
 
 
 async def send_result_to_backend(result: Dict[str, Any]):
     """Backend로 결과 전송 - ML_API.md 명세 준수"""
+    job_id = result.get('job_id', 'unknown')
+    
     try:
+        logger.info(f"Backend 결과 전송 시작 - job_id: {job_id}, URL: {BACKEND_URL}/api/upload-video/result")
+        
+        # 결과 데이터 크기 로깅
+        result_size = len(str(result))
+        logger.info(f"전송할 데이터 크기 - job_id: {job_id}, Size: {result_size} bytes")
+        
         response = requests.post(
-            f"{BACKEND_URL}/api/upload-video/result",  # 단수형으로 수정
+            f"{BACKEND_URL}/api/upload-video/result",
             json=result,
             timeout=30,
             headers={"Content-Type": "application/json"}
         )
         
+        logger.info(f"Backend 응답 수신 - job_id: {job_id}, Status: {response.status_code}")
+        
         if response.status_code == 200:
-            logger.info(f"Backend로 결과 전송 성공 - job_id: {result['job_id']}")
+            logger.info(f"Backend로 결과 전송 성공 - job_id: {job_id}")
+            try:
+                response_data = response.json()
+                logger.info(f"Backend 응답 데이터 - job_id: {job_id}, Response: {response_data}")
+            except:
+                logger.info(f"Backend 응답 텍스트 - job_id: {job_id}, Response: {response.text}")
         else:
-            logger.warning(f"Backend 응답 상태: {response.status_code}, 내용: {response.text}")
+            logger.error(f"Backend 결과 전송 실패 - job_id: {job_id}, Status: {response.status_code}")
+            logger.error(f"Backend 오류 응답 - job_id: {job_id}, Response: {response.text}")
             
+    except requests.exceptions.Timeout as timeout_error:
+        logger.error(f"Backend 결과 전송 타임아웃 - job_id: {job_id}, Error: {timeout_error}")
+    except requests.exceptions.ConnectionError as conn_error:
+        logger.error(f"Backend 연결 실패 - job_id: {job_id}, URL: {BACKEND_URL}, Error: {conn_error}")
+    except requests.exceptions.RequestException as req_error:
+        logger.error(f"Backend 요청 오류 - job_id: {job_id}, Error: {req_error}")
     except Exception as backend_error:
-        logger.error(f"Backend 결과 전송 실패: {backend_error}")
+        logger.error(f"Backend 결과 전송 예외 - job_id: {job_id}, Type: {type(backend_error).__name__}, Error: {backend_error}")
 
 
 # =============================================================================
