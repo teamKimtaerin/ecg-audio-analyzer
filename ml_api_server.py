@@ -65,12 +65,14 @@ logger = get_logger(__name__)
 # Pydantic 모델들
 class ProcessVideoRequest(BaseModel):
     """Backend 호환 비디오 처리 요청 (API 명세 준수)"""
+
     job_id: str
     video_url: str
 
 
 class ProcessVideoResponse(BaseModel):
     """Backend 호환 비디오 처리 응답"""
+
     job_id: str
     status: str
     message: str
@@ -79,6 +81,7 @@ class ProcessVideoResponse(BaseModel):
 
 class MLProgressCallback(BaseModel):
     """ML 진행 상황 콜백"""
+
     job_id: str
     status: str  # processing, completed, failed
     progress: int  # 0-100
@@ -156,13 +159,15 @@ class HealthResponse(BaseModel):
 
 
 @app.post("/api/upload-video/process-video", response_model=ProcessVideoResponse)
-async def process_video_api(request: ProcessVideoRequest, background_tasks: BackgroundTasks):
+async def process_video_api(
+    request: ProcessVideoRequest, background_tasks: BackgroundTasks
+):
     """
     Backend 호환 비디오 처리 API (명세서 준수)
-    
+
     POST {ML_SERVER_URL}/api/upload-video/process-video
     Content-Type: application/json
-    
+
     Request Body:
     {
         "job_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -172,31 +177,27 @@ async def process_video_api(request: ProcessVideoRequest, background_tasks: Back
     try:
         job_id = request.job_id
         video_url = request.video_url
-        
+
         # Job 상태 추적
         jobs[job_id] = {
             "status": "accepted",
             "video_url": video_url,
-            "started_at": datetime.now().isoformat()
+            "started_at": datetime.now().isoformat(),
         }
-        
+
         logger.info(f"비디오 처리 요청 접수 - job_id: {job_id}, video_url: {video_url}")
         logger.info(f"Backend URL 설정: {BACKEND_URL}")
-        
+
         # 백그라운드 작업 시작
-        background_tasks.add_task(
-            process_video_with_callback,
-            job_id,
-            video_url
-        )
-        
+        background_tasks.add_task(process_video_with_callback, job_id, video_url)
+
         return ProcessVideoResponse(
             job_id=job_id,
             status="accepted",
             message="Processing started",
-            estimated_time=300
+            estimated_time=300,
         )
-        
+
     except Exception as e:
         logger.error(f"처리 요청 실패 - job_id: {request.job_id}, error: {str(e)}")
         # 실패 콜백 전송
@@ -207,9 +208,9 @@ async def process_video_api(request: ProcessVideoRequest, background_tasks: Back
                 "error": {
                     "code": "INVALID_REQUEST",
                     "message": str(e),
-                    "job_id": request.job_id
+                    "job_id": request.job_id,
                 }
-            }
+            },
         )
 
 
@@ -369,7 +370,9 @@ async def _dummy_progress_callback(stage: str, progress: float, message: str = "
     logger.info(f"Progress: {stage} - {progress:.1%} - {message or ''}")
 
 
-async def send_error_to_backend(job_id: str, error_message: str, error_code: str = "PROCESSING_ERROR"):
+async def send_error_to_backend(
+    job_id: str, error_message: str, error_code: str = "PROCESSING_ERROR"
+):
     """백엔드에 에러 전송"""
     try:
         payload = MLProgressCallback(
@@ -377,24 +380,21 @@ async def send_error_to_backend(job_id: str, error_message: str, error_code: str
             status="failed",
             progress=0,
             error_message=error_message,
-            error_code=error_code
+            error_code=error_code,
         ).model_dump()
-        
+
         response = requests.post(
             f"{BACKEND_URL}/api/v1/ml/ml-results",
             json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "ML-Server/1.0"
-            },
-            timeout=10
+            headers={"Content-Type": "application/json", "User-Agent": "ML-Server/1.0"},
+            timeout=10,
         )
-        
+
         if response.status_code == 200:
             logger.info(f"Error reported to backend for job {job_id}")
         else:
             logger.warning(f"Failed to report error: {response.status_code}")
-            
+
     except Exception as e:
         logger.error(f"Failed to send error to backend: {str(e)}")
 
@@ -404,28 +404,32 @@ async def download_from_url(url: str, job_id: str) -> str:
     try:
         # Progress: 다운로드 시작
         await send_progress_to_backend(job_id, 5, "비디오 다운로드 시작...")
-        
+
         # 임시 파일 생성
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
             response = requests.get(url, stream=True, timeout=60)
             response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
+
+            total_size = int(response.headers.get("content-length", 0))
             downloaded = 0
-            
+
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     temp_file.write(chunk)
                     downloaded += len(chunk)
-                    
+
                     # 다운로드 진행률 업데이트 (5-10%)
                     if total_size > 0:
                         progress = 5 + int((downloaded / total_size) * 5)
-                        await send_progress_to_backend(job_id, progress, f"다운로드 중... ({downloaded}/{total_size} bytes)")
-            
+                        await send_progress_to_backend(
+                            job_id,
+                            progress,
+                            f"다운로드 중... ({downloaded}/{total_size} bytes)",
+                        )
+
             logger.info(f"비디오 다운로드 완료: {temp_file.name}")
             return temp_file.name
-            
+
     except Exception as e:
         logger.error(f"비디오 다운로드 실패: {str(e)}")
         raise Exception(f"Failed to download video: {str(e)}")
@@ -438,20 +442,17 @@ async def send_progress_to_backend(job_id: str, progress: int, message: str = ""
             job_id=job_id,
             status="processing",
             progress=progress,  # 0-100
-            message=message or "처리 중..."
+            message=message or "처리 중...",
         ).model_dump()
 
         # 로깅을 위해 요청 정보 출력
         callback_url = f"{BACKEND_URL}/api/v1/ml/ml-results"
         logger.debug(f"콜백 전송 - URL: {callback_url}, 페이로드: {payload}")
-        
+
         response = requests.post(
             callback_url,
             json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "ML-Server/1.0"
-            },
+            headers={"Content-Type": "application/json", "User-Agent": "ML-Server/1.0"},
             timeout=10,
         )
 
@@ -469,54 +470,53 @@ async def process_video_with_callback(job_id: str, video_url: str):
     API 명세에 따른 비디오 처리 및 콜백
     """
     start_time = datetime.now()
-    
+
     try:
         # 1. 비디오 다운로드 (0-10%)
         video_path = await download_from_url(video_url, job_id)
-        
+
         # 2. 오디오 추출 (10-25%)
         await send_progress_to_backend(job_id, 10, "오디오 추출 중...")
-        
+
         # 3. 음성 구간 감지 (25-40%)
         await send_progress_to_backend(job_id, 25, "음성 구간 감지 중...")
-        
+
         # 4. 화자 식별 (40-60%)
         await send_progress_to_backend(job_id, 40, "화자 식별 중...")
-        
+
         # 분석 설정
         config = AnalysisConfig(
-            enable_gpu=True,
-            emotion_detection=True,
-            language="auto",
-            max_workers=4
+            enable_gpu=True, emotion_detection=True, language="auto", max_workers=4
         )
-        
+
         # 5. 전사 생성 (60-75%)
         await send_progress_to_backend(job_id, 60, "음성을 텍스트로 변환 중...")
-        
+
         # Pipeline 실행
         from src.services.callback_pipeline import CallbackPipelineManager
-        
+
         async def progress_callback(stage: str, progress: float, message: str = ""):
             # 60-75% 구간에 매핑
             adjusted = 60 + int(progress * 15)
-            await send_progress_to_backend(job_id, adjusted, message or stage or "전사 처리 중...")
-        
+            await send_progress_to_backend(
+                job_id, adjusted, message or stage or "전사 처리 중..."
+            )
+
         pipeline = CallbackPipelineManager(config, fastapi_client=None)
         result = await pipeline._run_pipeline_with_progress(
             input_source=video_path,
             progress_callback=progress_callback,
-            output_path=None
+            output_path=None,
         )
-        
+
         # 6. 감정 및 신뢰도 분석 (75-90%)
         await send_progress_to_backend(job_id, 75, "감정 분석 중...")
-        
+
         # WhisperX 결과 추출
         whisperx_result = None
-        if hasattr(pipeline.pipeline_manager, '_last_whisperx_result'):
+        if hasattr(pipeline.pipeline_manager, "_last_whisperx_result"):
             whisperx_result = pipeline.pipeline_manager._last_whisperx_result
-        
+
         # 결과 변환 (API 명세 준수)
         segments = []
         if whisperx_result and "segments" in whisperx_result:
@@ -524,13 +524,11 @@ async def process_video_with_callback(job_id: str, video_url: str):
                 segment_data = {
                     "start_time": seg.get("start", 0.0),
                     "end_time": seg.get("end", 0.0),
-                    "speaker": {
-                        "speaker_id": seg.get("speaker", "SPEAKER_01")
-                    },
+                    "speaker": {"speaker_id": seg.get("speaker", "SPEAKER_01")},
                     "text": seg.get("text", "").strip(),
-                    "words": []
+                    "words": [],
                 }
-                
+
                 # 단어별 정보 추가
                 if "words" in seg:
                     for word in seg["words"]:
@@ -539,83 +537,87 @@ async def process_video_with_callback(job_id: str, video_url: str):
                             "start": word.get("start", 0.0),
                             "end": word.get("end", 0.0),
                             "volume_db": -20.0 + random.uniform(-5, 5),  # 샘플 값
-                            "pitch_hz": 150.0 + random.uniform(-50, 200)  # 샘플 값
+                            "pitch_hz": 150.0 + random.uniform(-50, 200),  # 샘플 값
                         }
                         segment_data["words"].append(word_data)
-                
+
                 segments.append(segment_data)
-        
+
         # 7. 결과 정리 (90-100%)
         await send_progress_to_backend(job_id, 90, "결과 정리 중...")
-        
+
         processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         # 최종 결과 준비
         final_result = {
             "metadata": {
                 "filename": Path(video_url).name if "/" in video_url else "video.mp4",
                 "duration": result.metadata.duration if result.metadata else 0,
                 "total_segments": len(segments),
-                "unique_speakers": len(set(s["speaker"]["speaker_id"] for s in segments)) if segments else 0
+                "unique_speakers": (
+                    len(set(s["speaker"]["speaker_id"] for s in segments))
+                    if segments
+                    else 0
+                ),
             },
-            "segments": segments
+            "segments": segments,
         }
-        
+
         # 완료 콜백 전송
         await send_progress_to_backend(job_id, 100, "분석 완료")
-        
+
         # 최종 결과 전송
         complete_payload = MLProgressCallback(
-            job_id=job_id,
-            status="completed",
-            progress=100,
-            result=final_result
+            job_id=job_id, status="completed", progress=100, result=final_result
         ).model_dump()
-        
+
         response = requests.post(
             f"{BACKEND_URL}/api/v1/ml/ml-results",
             json=complete_payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "ML-Server/1.0"
-            },
-            timeout=30
+            headers={"Content-Type": "application/json", "User-Agent": "ML-Server/1.0"},
+            timeout=30,
         )
-        
+
         if response.status_code == 200:
-            logger.info(f"✅ 분석 완료 및 결과 전송 - job_id: {job_id}, 처리시간: {processing_time:.2f}초")
+            logger.info(
+                f"✅ 분석 완료 및 결과 전송 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
+            )
         else:
             logger.error(f"결과 전송 실패: {response.status_code}")
-        
+
         # Job 상태 업데이트
         jobs[job_id] = {
             "status": "completed",
             "processing_time": processing_time,
-            "completed_at": datetime.now().isoformat()
+            "completed_at": datetime.now().isoformat(),
         }
-        
+
         # 임시 파일 정리
         try:
             if Path(video_path).exists():
                 Path(video_path).unlink()
         except:
             pass
-            
+
     except Exception as e:
         logger.error(f"처리 실패 - job_id: {job_id}, error: {str(e)}")
-        
+
         # 에러 콜백 전송
         await send_error_to_backend(
             job_id,
             str(e),
-            "PROCESSING_ERROR" if "download" not in str(e).lower() else "DOWNLOAD_ERROR"
+            (
+                "PROCESSING_ERROR"
+                if "download" not in str(e).lower()
+                else "DOWNLOAD_ERROR"
+            ),
         )
-        
+
         # Job 상태 업데이트
         jobs[job_id] = {
             "status": "failed",
             "error": str(e),
-            "failed_at": datetime.now().isoformat()
+            "failed_at": datetime.now().isoformat(),
         }
 
 
@@ -685,7 +687,9 @@ async def transcribe(request: TranscribeRequest):
                 ):
                     # 65% ~ 95% 구간에서 세부 진행률 업데이트
                     adjusted_progress = 65 + int(progress * 30)  # 65%에서 95%까지
-                    await send_progress_to_backend(job_id, adjusted_progress, message or stage)
+                    await send_progress_to_backend(
+                        job_id, adjusted_progress, message or stage
+                    )
 
                 pipeline = CallbackPipelineManager(config, fastapi_client=None)
 
@@ -699,28 +703,48 @@ async def transcribe(request: TranscribeRequest):
                 await send_progress_to_backend(job_id, 95, "감정 분석 중...")
 
                 processing_time = (datetime.now() - start_time).total_seconds()
-                
+
                 # 디버깅: result 객체 구조 확인
                 logger.info(f"Result 객체 타입: {type(result)}")
                 logger.info(f"Result 속성들: {dir(result)}")
-                
+
                 # WhisperX 결과 직접 가져오기
                 whisperx_result = None
-                if hasattr(pipeline.pipeline_manager, '_last_whisperx_result'):
+                if hasattr(pipeline.pipeline_manager, "_last_whisperx_result"):
                     whisperx_result = pipeline.pipeline_manager._last_whisperx_result
-                    logger.info(f"WhisperX 결과 발견: {len(whisperx_result.get('segments', []))} segments")
+                    logger.info(
+                        f"WhisperX 결과 발견: {len(whisperx_result.get('segments', []))} segments"
+                    )
 
                 # 상세 분석 결과를 직접 반환 (simplified format)
                 detailed_result = {
                     "success": True,
                     "metadata": {
-                        "filename": result.metadata.filename if result.metadata and hasattr(result.metadata, 'filename') else video_path,
-                        "duration": result.metadata.duration if result.metadata and hasattr(result.metadata, 'duration') else 0,
+                        "filename": (
+                            result.metadata.filename
+                            if result.metadata and hasattr(result.metadata, "filename")
+                            else video_path
+                        ),
+                        "duration": (
+                            result.metadata.duration
+                            if result.metadata and hasattr(result.metadata, "duration")
+                            else 0
+                        ),
                         "sample_rate": 16000,
-                        "processed_at": result.metadata.analysis_timestamp if result.metadata and hasattr(result.metadata, 'analysis_timestamp') else datetime.now().isoformat(),
+                        "processed_at": (
+                            result.metadata.analysis_timestamp
+                            if result.metadata
+                            and hasattr(result.metadata, "analysis_timestamp")
+                            else datetime.now().isoformat()
+                        ),
                         "processing_time": processing_time,
                         "total_segments": 0,  # Will be updated
-                        "unique_speakers": result.metadata.total_speakers if result.metadata and hasattr(result.metadata, 'total_speakers') else 0,
+                        "unique_speakers": (
+                            result.metadata.total_speakers
+                            if result.metadata
+                            and hasattr(result.metadata, "total_speakers")
+                            else 0
+                        ),
                         "processing_mode": "real_ml_models",
                         "config": {
                             "enable_gpu": request.enable_gpu,
@@ -728,7 +752,7 @@ async def transcribe(request: TranscribeRequest):
                             "language": request.language,
                             "unified_model": "whisperx-base-with-diarization",
                         },
-                        "subtitle_optimization": True
+                        "subtitle_optimization": True,
                     },
                     "speakers": {},
                     "segments": [],
@@ -739,65 +763,84 @@ async def transcribe(request: TranscribeRequest):
                 if whisperx_result and "segments" in whisperx_result:
                     segments = whisperx_result["segments"]
                     logger.info(f"WhisperX 결과에서 {len(segments)} 세그먼트 추출")
-                    
+
                     # 음향 특성 추출 (오디오 파일이 존재하는 경우)
                     acoustic_features_list: list[AudioFeatures] = []
                     try:
                         from src.services.acoustic_analyzer import FastAcousticAnalyzer
-                        
+
                         # 오디오 파일 경로 확인
                         audio_path = None
-                        if hasattr(pipeline.pipeline_manager, '_last_audio_path'):
+                        if hasattr(pipeline.pipeline_manager, "_last_audio_path"):
                             audio_path = pipeline.pipeline_manager._last_audio_path
-                        elif actual_video_path.endswith('.mp4'):
+                        elif actual_video_path.endswith(".mp4"):
                             # 비디오에서 추출된 오디오 파일 찾기
-                            temp_audio = actual_video_path.replace('.mp4', '.wav')
+                            temp_audio = actual_video_path.replace(".mp4", ".wav")
                             if Path(temp_audio).exists():
                                 audio_path = temp_audio
                             else:
                                 # 임시 오디오 추출
                                 import subprocess
+
                                 temp_audio = f"/tmp/audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
-                                subprocess.run([
-                                    "ffmpeg", "-i", actual_video_path,
-                                    "-vn", "-acodec", "pcm_s16le", "-ar", "16000",
-                                    "-ac", "1", temp_audio, "-y"
-                                ], capture_output=True)
+                                subprocess.run(
+                                    [
+                                        "ffmpeg",
+                                        "-i",
+                                        actual_video_path,
+                                        "-vn",
+                                        "-acodec",
+                                        "pcm_s16le",
+                                        "-ar",
+                                        "16000",
+                                        "-ac",
+                                        "1",
+                                        temp_audio,
+                                        "-y",
+                                    ],
+                                    capture_output=True,
+                                )
                                 if Path(temp_audio).exists():
                                     audio_path = temp_audio
-                        
+
                         if audio_path and Path(audio_path).exists():
                             analyzer = FastAcousticAnalyzer(sample_rate=16000)
-                            
+
                             # 각 세그먼트에 대해 음향 특성 추출
                             for seg in segments:
                                 features = analyzer.extract_features(
                                     Path(audio_path),
                                     seg.get("start", 0.0),
-                                    seg.get("end", 0.0)
+                                    seg.get("end", 0.0),
                                 )
                                 acoustic_features_list.append(features)
-                            
-                            logger.info(f"음향 특성 추출 완료: {len(acoustic_features_list)}개 세그먼트")
+
+                            logger.info(
+                                f"음향 특성 추출 완료: {len(acoustic_features_list)}개 세그먼트"
+                            )
                     except Exception as e:
                         logger.warning(f"음향 특성 추출 실패: {e}")
                         # 기본값 사용 - AudioFeatures 객체로 생성
                         from src.models.output_models import VolumeCategory
-                        acoustic_features_list = [AudioFeatures(
-                            rms_energy=0.05,
-                            rms_db=-20.0,
-                            pitch_mean=150.0,
-                            pitch_variance=20.0,
-                            speaking_rate=1.0,
-                            amplitude_max=0.1,
-                            silence_ratio=0.2,
-                            spectral_centroid=1500.0,
-                            zcr=0.1,
-                            mfcc=[0.0, 0.0, 0.0],
-                            volume_category=VolumeCategory.MEDIUM,
-                            volume_peaks=[]
-                        ) for _ in segments]
-                    
+
+                        acoustic_features_list = [
+                            AudioFeatures(
+                                rms_energy=0.05,
+                                rms_db=-20.0,
+                                pitch_mean=150.0,
+                                pitch_variance=20.0,
+                                speaking_rate=1.0,
+                                amplitude_max=0.1,
+                                silence_ratio=0.2,
+                                spectral_centroid=1500.0,
+                                zcr=0.1,
+                                mfcc=[0.0, 0.0, 0.0],
+                                volume_category=VolumeCategory.MEDIUM,
+                                volume_peaks=[],
+                            )
+                            for _ in segments
+                        ]
+
                     # 화자별 통계 계산 (simplified)
                     speakers_stats = {}
                     for seg in segments:
@@ -805,13 +848,13 @@ async def transcribe(request: TranscribeRequest):
                         if speaker_id not in speakers_stats:
                             speakers_stats[speaker_id] = {
                                 "total_duration": 0.0,
-                                "segment_count": 0
+                                "segment_count": 0,
                             }
-                        
+
                         duration = seg.get("end", 0.0) - seg.get("start", 0.0)
                         speakers_stats[speaker_id]["total_duration"] += duration
                         speakers_stats[speaker_id]["segment_count"] += 1
-                    
+
                     # 각 세그먼트를 상세 결과에 추가
                     for i, seg in enumerate(segments):
                         # 음향 특성 가져오기 (simplified acoustic features)
@@ -825,8 +868,16 @@ async def transcribe(request: TranscribeRequest):
                                 "spectral_centroid": af_typed.spectral_centroid,
                                 "zero_crossing_rate": af_typed.zcr,
                                 "pitch_mean": af_typed.pitch_mean,
-                                "pitch_std": af_typed.pitch_variance ** 0.5 if af_typed.pitch_variance > 0 else 0.0,
-                                "mfcc_mean": af_typed.mfcc if hasattr(af_typed, 'mfcc') and af_typed.mfcc else [0.0] * 13
+                                "pitch_std": (
+                                    af_typed.pitch_variance**0.5
+                                    if af_typed.pitch_variance > 0
+                                    else 0.0
+                                ),
+                                "mfcc_mean": (
+                                    af_typed.mfcc
+                                    if hasattr(af_typed, "mfcc") and af_typed.mfcc
+                                    else [0.0] * 13
+                                ),
                             }
                         else:
                             acoustic_features_dict = {
@@ -836,35 +887,31 @@ async def transcribe(request: TranscribeRequest):
                                 "zero_crossing_rate": 0.1,
                                 "pitch_mean": 150.0,
                                 "pitch_std": 20.0,
-                                "mfcc_mean": [0.0] * 13
+                                "mfcc_mean": [0.0] * 13,
                             }
-                        
+
                         # 전체 세그먼트 데이터 (simplified format without emotion/confidence)
                         segment_data = {
                             "start_time": seg.get("start", 0.0),
                             "end_time": seg.get("end", 0.0),
                             "duration": seg.get("end", 0.0) - seg.get("start", 0.0),
-                            "speaker": {
-                                "speaker_id": seg.get("speaker", "SPEAKER_00")
-                            },
+                            "speaker": {"speaker_id": seg.get("speaker", "SPEAKER_00")},
                             "acoustic_features": acoustic_features_dict,
                             "text": seg.get("text", "").strip(),
-                            "words": []
+                            "words": [],
                         }
-                        
+
                         # Extract word-level information if available
                         if "words" in seg and audio_path and Path(audio_path).exists():
                             words = seg["words"]
                             for word in words:
                                 word_start = word.get("start", 0.0)
                                 word_end = word.get("end", 0.0)
-                                
+
                                 # Calculate acoustic features for each word
                                 try:
                                     word_features = analyzer.extract_features(
-                                        Path(audio_path),
-                                        word_start,
-                                        word_end
+                                        Path(audio_path), word_start, word_end
                                     )
                                     word_data = {
                                         "word": word.get("word", ""),
@@ -874,8 +921,8 @@ async def transcribe(request: TranscribeRequest):
                                         "acoustic_features": {
                                             "volume_db": word_features.rms_db,
                                             "pitch_hz": word_features.pitch_mean,
-                                            "spectral_centroid": word_features.spectral_centroid
-                                        }
+                                            "spectral_centroid": word_features.spectral_centroid,
+                                        },
                                     }
                                 except Exception:
                                     # Fallback values if feature extraction fails
@@ -887,23 +934,27 @@ async def transcribe(request: TranscribeRequest):
                                         "acoustic_features": {
                                             "volume_db": -20.0,
                                             "pitch_hz": 150.0,
-                                            "spectral_centroid": 1500.0
-                                        }
+                                            "spectral_centroid": 1500.0,
+                                        },
                                     }
-                                
+
                                 segment_data["words"].append(word_data)
-                        
+
                         # segments 배열에 추가
                         detailed_result["segments"].append(segment_data)
-                    
+
                     # 화자 통계 추가
                     detailed_result["speakers"] = speakers_stats
-                    
+
                     # Update total_segments in metadata
-                    detailed_result["metadata"]["total_segments"] = len(detailed_result["segments"])
+                    detailed_result["metadata"]["total_segments"] = len(
+                        detailed_result["segments"]
+                    )
                 else:
-                    logger.warning("WhisperX 결과를 찾을 수 없음 - timeline에서 추출 시도")
-                    
+                    logger.warning(
+                        "WhisperX 결과를 찾을 수 없음 - timeline에서 추출 시도"
+                    )
+
                     # timeline 세그먼트에서 데이터 추출 (폴백)
                     if hasattr(result, "timeline") and result.timeline:
                         for seg in result.timeline:
@@ -913,7 +964,9 @@ async def transcribe(request: TranscribeRequest):
                                 "end_time": seg.end_time,
                                 "duration": seg.end_time - seg.start_time,
                                 "speaker": {
-                                    "speaker_id": getattr(seg, "speaker_id", "SPEAKER_00")
+                                    "speaker_id": getattr(
+                                        seg, "speaker_id", "SPEAKER_00"
+                                    )
                                 },
                                 "acoustic_features": {
                                     "volume_db": -20.0,
@@ -922,32 +975,33 @@ async def transcribe(request: TranscribeRequest):
                                     "zero_crossing_rate": 0.1,
                                     "pitch_mean": 150.0,
                                     "pitch_std": 20.0,
-                                    "mfcc_mean": [0.0] * 13
+                                    "mfcc_mean": [0.0] * 13,
                                 },
-                                "text": getattr(seg, "text_placeholder", "[TRANSCRIPTION_PENDING]"),
+                                "text": getattr(
+                                    seg, "text_placeholder", "[TRANSCRIPTION_PENDING]"
+                                ),
                                 "language": "ko",
-                                "words": []  # No word-level data available in fallback
+                                "words": [],  # No word-level data available in fallback
                             }
                             detailed_result["segments"].append(segment_data)
 
-
                 # Remove performance_stats from main result (keep it minimal)
-                
+
                 # Remove optimization_stats to keep response minimal
 
                 # Progress: 완료 (100%)
                 await send_progress_to_backend(job_id, 100, "분석 완료")
-                
+
                 logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
                 logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
-                
+
                 # 결과를 output 폴더에 저장
                 output_dir = Path("/Users/ahntaeju/project/ecg-audio-analyzer/output")
                 output_dir.mkdir(exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_file = output_dir / f"api_result_{timestamp}.json"
-                
-                with open(output_file, 'w', encoding='utf-8') as f:
+
+                with open(output_file, "w", encoding="utf-8") as f:
                     json.dump(detailed_result, f, ensure_ascii=False, indent=2)
                 logger.info(f"결과 저장됨: {output_file}")
 
@@ -1039,7 +1093,7 @@ async def root():
             "health": "GET /health - 헬스 체크",
             "docs": "GET /docs - API 문서",
         },
-        "backend_url": BACKEND_URL
+        "backend_url": BACKEND_URL,
     }
 
 

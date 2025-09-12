@@ -647,8 +647,12 @@ class PipelineManager:
 
                 # Store WhisperX result and audio path for access by API server
                 self._last_whisperx_result = whisperx_result
-                self._last_audio_path = str(extraction_result.output_path) if extraction_result.output_path else None
-                
+                self._last_audio_path = (
+                    str(extraction_result.output_path)
+                    if extraction_result.output_path
+                    else None
+                )
+
                 # For MVP: Create basic result (emotion analysis and acoustic features will be added later)
                 self._update_progress("result_synthesis")
                 result = await self._create_basic_result(

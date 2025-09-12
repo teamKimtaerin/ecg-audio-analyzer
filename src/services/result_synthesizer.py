@@ -33,11 +33,11 @@ def format_processing_time(seconds: float) -> str:
     """Convert seconds to HH:MM:SS format"""
     if seconds < 0:
         seconds = 0
-    
+
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     seconds = int(seconds % 60)
-    
+
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
@@ -78,8 +78,10 @@ class SimplifiedResultSynthesizer:
         # Generate simple volume peaks based on segment duration
         segment_duration = speaker_segment.duration
         num_peaks = max(10, int(segment_duration * 5))  # ~5 peaks per second
-        volume_peaks = [-20.0 + (i % 3) * 2.0 for i in range(num_peaks)]  # Simple wave pattern
-        
+        volume_peaks = [
+            -20.0 + (i % 3) * 2.0 for i in range(num_peaks)
+        ]  # Simple wave pattern
+
         audio_features = AudioFeatures(
             rms_energy=0.05,
             rms_db=-26.0,
@@ -112,7 +114,7 @@ class SimplifiedResultSynthesizer:
                 neutral=0.4,
             ),
         )
-        
+
         # Basic subtitle styling
         subtitle_styling = SubtitleStyling(
             size_multiplier=1.0,
@@ -164,9 +166,11 @@ class SimplifiedResultSynthesizer:
             all_peaks = []
             for segment in timeline:
                 try:
-                    if (hasattr(segment, "audio_features")
+                    if (
+                        hasattr(segment, "audio_features")
                         and hasattr(segment.audio_features, "volume_peaks")
-                        and segment.audio_features.volume_peaks):
+                        and segment.audio_features.volume_peaks
+                    ):
                         all_peaks.extend(segment.audio_features.volume_peaks)
                 except (AttributeError, TypeError):
                     # Skip segments with missing or invalid audio_features
@@ -199,7 +203,9 @@ class SimplifiedResultSynthesizer:
         # Determine bottleneck
         # Use a default extraction time since extraction_time_seconds doesn't exist
         extraction_time = 1.0  # Default estimation
-        diarization_time = getattr(synthesis_input.diarization_result, 'processing_time', 1.0)
+        diarization_time = getattr(
+            synthesis_input.diarization_result, "processing_time", 1.0
+        )
 
         times = {
             "audio_extraction": extraction_time,
@@ -213,9 +219,15 @@ class SimplifiedResultSynthesizer:
 
         # Estimate memory usage (simplified)
         # Calculate approximate file size based on duration and sample rate
-        sample_rate = getattr(synthesis_input.audio_extraction_result, 'sample_rate', 16000)
-        estimated_size_mb = (synthesis_input.duration * sample_rate * 2) / (1024 * 1024)  # 16-bit audio
-        segments_count = len(getattr(synthesis_input.diarization_result, 'segments', []))
+        sample_rate = getattr(
+            synthesis_input.audio_extraction_result, "sample_rate", 16000
+        )
+        estimated_size_mb = (synthesis_input.duration * sample_rate * 2) / (
+            1024 * 1024
+        )  # 16-bit audio
+        segments_count = len(
+            getattr(synthesis_input.diarization_result, "segments", [])
+        )
         peak_memory = (
             estimated_size_mb * 2  # Audio processing
             + segments_count * 0.001  # Segments
@@ -267,7 +279,9 @@ class SimplifiedResultSynthesizer:
             waveform_summary = self._create_waveform_summary(timeline)
 
             # Create metadata
-            processing_time_seconds = time.time() - synthesis_input.processing_start_time
+            processing_time_seconds = (
+                time.time() - synthesis_input.processing_start_time
+            )
             metadata = AnalysisMetadata(
                 filename=synthesis_input.filename,
                 duration=synthesis_input.duration,
@@ -305,7 +319,9 @@ class SimplifiedResultSynthesizer:
             self.logger.error("synthesis_failed", error=str(e))
 
             # Return minimal result on failure
-            failure_processing_time = time.time() - synthesis_input.processing_start_time
+            failure_processing_time = (
+                time.time() - synthesis_input.processing_start_time
+            )
             return CompleteAnalysisResult(
                 metadata=AnalysisMetadata(
                     filename=synthesis_input.filename,

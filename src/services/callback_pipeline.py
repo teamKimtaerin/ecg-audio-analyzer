@@ -40,7 +40,9 @@ class CallbackPipelineManager:
 
         # PipelineManager 초기화 (필수 파라미터 전달)
         self.pipeline_manager = PipelineManager(
-            base_config=base_config, processing_config=processing_config, language=self.language
+            base_config=base_config,
+            processing_config=processing_config,
+            language=self.language,
         )
         self.fastapi_client = fastapi_client or get_fastapi_client()
         self.logger = get_logger(__name__)
@@ -138,8 +140,10 @@ class CallbackPipelineManager:
 
         # 기존 파이프라인 매니저 사용
         # Convert output_path to Path if it's a string
-        output_path_obj = Path(output_path) if isinstance(output_path, str) else output_path
-        
+        output_path_obj = (
+            Path(output_path) if isinstance(output_path, str) else output_path
+        )
+
         result = await self.pipeline_manager.process_single(
             source=input_source, output_path=output_path_obj
         )
@@ -203,7 +207,7 @@ class CallbackPipelineManager:
                             "speaker_id": segment.speaker_id,
                         }
                     )
-                    
+
                     # 화자 세그먼트 추가
                     serialized["speaker_segments"].append(
                         {
@@ -213,7 +217,7 @@ class CallbackPipelineManager:
                             "confidence": segment.speaker_confidence,
                         }
                     )
-                    
+
                     # 감정 세그먼트 추가
                     if segment.emotion:
                         serialized["emotion_segments"].append(
@@ -226,7 +230,7 @@ class CallbackPipelineManager:
                                 "arousal": segment.emotion.arousal,
                             }
                         )
-                    
+
                     # 음향 특성 추가
                     if segment.audio_features:
                         serialized["acoustic_features"].append(
