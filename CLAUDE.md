@@ -27,7 +27,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **AudioExtractor** (`src/services/audio_extractor.py`) - MP4/URL → WAV conversion with ffmpeg and yt-dlp
 - **FastAcousticAnalyzer** (`src/services/acoustic_analyzer.py`) - Real-time acoustic feature extraction
 - **ML API Server** (`ml_api_server.py`) - FastAPI server with progress callbacks for ECS backend integration
-- **CallbackPipelineManager** (`src/services/callback_pipeline.py`) - Pipeline with real-time progress reporting
 
 ### Configuration
 - **`config/base_settings.py`** - Core performance settings, file handling, memory limits
