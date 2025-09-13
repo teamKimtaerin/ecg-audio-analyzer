@@ -3,102 +3,42 @@ Model Configuration Settings
 GPU-optimized model parameters for high-performance audio analysis
 """
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class SpeakerDiarizationConfig:
     """Configuration for pyannote-audio speaker diarization"""
 
-    # Model selection
-    model_name: str = "pyannote/speaker-diarization"
-    model_version: str = "3.1"
-    pipeline_config: Optional[str] = None
+    # Model selection (matches actual implementation)
+    model_name: str = "pyannote/speaker-diarization-3.1"
 
-    # Processing parameters
-    min_speakers: int = 1
-    max_speakers: int = (
-        4  # Increased for better 3-speaker detection (slight flexibility)
-    )
-    segmentation_onset: float = 0.65  # More selective speech detection
-    segmentation_offset: float = 0.65  # More selective speech detection
+    # Processing parameters (aligned with actual usage)
+    min_speakers: int = 2
+    max_speakers: int = 8
 
     # GPU optimization
     device: str = "cuda:0"
     batch_size: int = 8
-    enable_fp16: bool = True  # Half precision for speed
-
-    # Performance tuning (balanced accuracy + speed)
-    clustering_method: str = "centroid"  # Faster method for speed optimization
-    min_segment_duration: float = 1.5  # Reduced for faster processing
-    min_speakers_count: int = 1
-    max_speakers_count: int = 3
-    min_cluster_size: int = 2  # Prevent single-segment speakers
-    min_speaker_duration: float = 5.0  # Reduced threshold for faster processing
-
-    # Speed optimization flags
-    enable_fast_mode: bool = True  # Enable faster but slightly less accurate processing
-    chunk_size_seconds: float = 30.0  # Process in smaller chunks
-
-    # Enhanced mode specific parameters (optimized for 3-speaker detection)
-    enhanced_mode_similarity_threshold: float = (
-        0.7  # Lower threshold for better 3-speaker separation
-    )
-    enhanced_mode_min_segment_duration: float = (
-        1.0  # Shorter segments for better resolution
-    )
-    enhanced_mode_clustering_threshold: float = (
-        0.6  # More aggressive clustering for 3 speakers
-    )
-    enhanced_mode_noise_reduction: float = 0.05  # 5% threshold for enhanced accuracy
-
-    # Quality settings
-    voice_activity_detection: bool = True
-    overlapped_speech_detection: bool = True
-    speaker_change_detection_threshold: float = 0.5
+    enable_fp16: bool = True
 
 
 @dataclass
-class EmotionAnalysisConfig:
-    """Configuration for emotion analysis models"""
+class WhisperXConfig:
+    """Configuration for WhisperX speech recognition and alignment"""
 
-    # Model selection
-    model_name: str = "facebook/wav2vec2-large-960h-lv60-self"
-    emotion_classifier: str = "j-hartmann/emotion-english-distilroberta-base"
+    # Model settings (matches actual implementation)
+    model_size: str = "base"
+    language: Optional[str] = "en"
+    compute_type: str = "float16"
 
-    # Emotion categories
-    emotion_labels: List[str] = field(
-        default_factory=lambda: [
-            "joy",
-            "sadness",
-            "anger",
-            "fear",
-            "surprise",
-            "disgust",
-            "neutral",
-        ]
-    )
-
-    # Processing parameters
+    # Audio processing
     sample_rate: int = 16000
-    window_length: float = 2.0  # 2-second windows
-    window_overlap: float = 0.5  # 50% overlap
 
     # GPU optimization
-    device: str = "cuda:0"
+    device: Optional[str] = None  # Auto-detect
     batch_size: int = 16
-    enable_fp16: bool = True
-    max_sequence_length: int = 512
-
-    # Classification thresholds
-    confidence_threshold: float = 0.6
-    emotion_intensity_scaling: bool = True
-    enable_valence_arousal: bool = True
-
-    # Performance settings
-    enable_caching: bool = True
-    cache_embeddings: bool = True
 
 
 @dataclass

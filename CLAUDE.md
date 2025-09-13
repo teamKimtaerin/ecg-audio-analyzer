@@ -28,6 +28,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **FastAcousticAnalyzer** (`src/services/acoustic_analyzer.py`) - Real-time acoustic feature extraction
 - **ML API Server** (`ml_api_server.py`) - FastAPI server with progress callbacks for ECS backend integration
 
+### Utility Modules
+- **GPUOptimizer** (`src/utils/gpu_optimizer.py`) - GPU memory management and device allocation
+- **AudioCleaner** (`src/utils/audio_cleaner.py`) - Audio preprocessing and cleanup utilities
+- **Logger** (`src/utils/logger.py`) - Structured logging configuration
+
 ### Configuration
 - **`config/base_settings.py`** - Core performance settings, file handling, memory limits
 - **`config/model_configs.py`** - ML model parameters optimized for GPU (FP16, batch sizes)
@@ -65,6 +70,18 @@ bandit -r src/ config/ ml_api_server.py
 
 # Clean artifacts
 find /Users/ahntaeju/project/ecg-audio-analyzer -name "__pycache__" -type d -exec rm -rf {} +
+
+# Run using pipeline manager directly
+PYTHONPATH=. python -m src.pipeline.manager --help
+```
+
+### Testing
+```bash
+# No formal test framework yet - test by running the ML API server
+python ml_api_server.py --host 0.0.0.0 --port 8080
+
+# Test individual components with Python REPL
+PYTHONPATH=. python -c "from src.models.speech_recognizer import WhisperXPipeline; print('WhisperX loaded successfully')"
 ```
 
 ### Docker & Deployment
