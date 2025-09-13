@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import tempfile
 import uuid
+import re
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -198,6 +199,33 @@ async def download_from_url(
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+            # S3 URL인지 확인하고 boto3로 다운로드
+            if url.startswith("https://") and ".s3." in url:
+                # S3 URL 파싱: https://bucket.s3.region.amazonaws.com/key
+                s3_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
+                match = re.match(s3_pattern, url)
+                
+                if match:
+                    bucket_name = match.group(1)
+                    key = match.group(3)
+                    
+                    logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
+                    
+                    # boto3로 S3에서 다운로드
+                    s3_client.download_file(bucket_name, key, temp_file.name)
+                    
+                    await send_callback(
+                        job_id,
+                        "processing",
+                        10,
+                        "S3에서 다운로드 완료",
+                        callback_base_url=callback_base_url,
+                    )
+                    
+                    logger.info(f"S3 다운로드 완료: {temp_file.name}")
+                    return temp_file.name
+            
+            # 일반 HTTP URL 처리
             response = requests.get(url, stream=True, timeout=60)
             response.raise_for_status()
 
@@ -219,7 +247,7 @@ async def download_from_url(
                             callback_base_url=callback_base_url,
                         )
 
-            logger.info(f"비디오 다운로드 완료: {temp_file.name}")
+            logger.info(f"HTTP 다운로드 완료: {temp_file.name}")
             return temp_file.name
 
     except Exception as e:
