@@ -3,9 +3,10 @@ Base Configuration Settings
 Performance-optimized configuration for ECG Audio Analysis Pipeline
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -28,10 +29,14 @@ class BaseConfig:
     bit_depth: int = 16
     channels: int = 1  # Mono audio for speech analysis
 
+    # Authentication and API keys
+    hugging_face_token: Optional[str] = field(
+        default_factory=lambda: os.getenv("HF_TOKEN")
+    )
+
     # Logging configuration
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    enable_performance_logging: bool = True
 
     # File handling
     supported_formats: List[str] = field(
@@ -83,22 +88,3 @@ class ProcessingConfig:
     track_processing_time: bool = True
     track_memory_usage: bool = True
     enable_profiling: bool = False  # Enable for development only
-
-
-@dataclass
-class ValidationConfig:
-    """Configuration for input validation and quality checks"""
-
-    # Audio quality validation
-    min_duration_seconds: float = 1.0
-    max_duration_seconds: float = 14400  # 4 hours max
-    min_sample_rate: int = 8000
-    max_sample_rate: int = 48000
-
-    # Content validation
-    min_speech_ratio: float = 0.1  # At least 10% should contain speech
-    max_silence_ratio: float = 0.9  # Maximum 90% silence allowed
-
-    # Quality thresholds
-    min_audio_quality_score: float = 0.3
-    enable_quality_checks: bool = True

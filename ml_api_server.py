@@ -22,7 +22,6 @@ import requests
 import boto3
 
 from src.utils.logger import get_logger
-from src.utils.audio_cleaner import AudioCleaner
 from src.pipeline.manager import PipelineManager
 from config.base_settings import BaseConfig, ProcessingConfig
 
@@ -54,6 +53,12 @@ class ProcessVideoRequest(BaseModel):
 
     job_id: str
     video_url: str
+    # 백엔드에서 보내는 추가 필드들
+    fastapi_base_url: Optional[str] = None  # 동적 콜백 URL
+    enable_gpu: bool = True
+    emotion_detection: bool = True
+    language: str = "auto"
+    max_workers: int = 4
 
 
 class ProcessVideoResponse(BaseModel):
@@ -62,6 +67,7 @@ class ProcessVideoResponse(BaseModel):
     job_id: str
     status: str
     message: str
+    status_url: Optional[str] = None  # 추가: 상태 조회 URL
     estimated_time: Optional[int] = 300
 
 
@@ -80,7 +86,8 @@ class MLProgressCallback(BaseModel):
 class TranscribeRequest(BaseModel):
     """백엔드 호환 전사 요청"""
 
-    video_path: str
+    video_path: str  # Deprecated: 하위 호환성을 위해 유지
+    audio_path: Optional[str] = None  # 새로운 필드: S3 오디오 파일 경로
     video_url: Optional[str] = None
     enable_gpu: bool = True
     emotion_detection: bool = True
@@ -118,10 +125,13 @@ async def send_callback(
     result: Optional[Dict] = None,
     error_message: Optional[str] = None,
     error_code: Optional[str] = None,
+    callback_base_url: Optional[str] = None,
 ):
     """Send progress/error callback to backend"""
-    if not ENABLE_CALLBACKS:
-        logger.debug(f"Callback disabled - {status}: {message} ({progress}%)")
+    # 동적 콜백 URL 결정
+    base_url = callback_base_url or BACKEND_URL
+    if not base_url or not base_url.strip():
+        logger.debug(f"No callback URL configured - {status}: {message} ({progress}%)")
         return
 
     try:
@@ -135,34 +145,55 @@ async def send_callback(
             error_code=error_code,
         ).model_dump()
 
+        # 백엔드 API 경로에 맞춰 수정 (기존: /api/v1/ml/ml-results)
+        callback_endpoint = f"{base_url}/api/upload-video/result"
+
         response = requests.post(
-            f"{BACKEND_URL}/api/v1/ml/ml-results",
+            callback_endpoint,
             json=payload,
             headers={"Content-Type": "application/json", "User-Agent": "ML-Server/1.0"},
             timeout=30 if result else 10,
         )
 
         if response.status_code == 200:
-            logger.info(f"Callback sent: {status} - {message} ({progress}%)")
+            logger.info(
+                f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)"
+            )
         else:
-            logger.warning(f"Callback failed: {response.status_code}")
+            logger.warning(
+                f"Callback failed to {callback_endpoint}: {response.status_code}"
+            )
 
     except Exception as e:
-        logger.error(f"Callback error: {str(e)}")
+        logger.error(f"Callback error to {base_url}: {str(e)}")
 
 
-async def download_from_url(url: str, job_id: str) -> str:
+async def download_from_url(
+    url: str, job_id: str, callback_base_url: Optional[str] = None
+) -> str:
     """URL에서 비디오 다운로드 또는 로컬 파일 확인"""
     try:
         # 로컬 파일 경로인지 확인
         local_path = Path(url)
         if local_path.exists():
             logger.info(f"로컬 파일 사용: {url}")
-            await send_callback(job_id, "processing", 10, "로컬 파일 확인 완료")
+            await send_callback(
+                job_id,
+                "processing",
+                10,
+                "로컬 파일 확인 완료",
+                callback_base_url=callback_base_url,
+            )
             return str(local_path.absolute())
 
         # URL 다운로드
-        await send_callback(job_id, "processing", 5, "비디오 다운로드 시작...")
+        await send_callback(
+            job_id,
+            "processing",
+            5,
+            "비디오 다운로드 시작...",
+            callback_base_url=callback_base_url,
+        )
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
             response = requests.get(url, stream=True, timeout=60)
@@ -183,6 +214,7 @@ async def download_from_url(url: str, job_id: str) -> str:
                             "processing",
                             progress,
                             f"다운로드 중... ({downloaded}/{total_size} bytes)",
+                            callback_base_url=callback_base_url,
                         )
 
             logger.info(f"비디오 다운로드 완료: {temp_file.name}")
@@ -323,15 +355,29 @@ def process_whisperx_segments(
     return processed_segments, speakers_stats
 
 
-async def process_video_core(video_path: str, language: str = "en") -> Dict[str, Any]:
-    """비디오 처리 핵심 로직 (재사용 가능)"""
+async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
+    """오디오/비디오 처리 핵심 로직 (오디오 우선)"""
     # Pipeline 실행
-    logger.info(f"Pipeline 처리 시작: {Path(video_path).name}")
+    file_path_obj = Path(file_path)
+    logger.info(f"Pipeline 처리 시작: {file_path_obj.name}")
+
+    # 파일 타입에 따른 처리 방식 결정
+    is_audio_file = file_path_obj.suffix.lower() in [
+        ".wav",
+        ".mp3",
+        ".flac",
+        ".aac",
+        ".m4a",
+    ]
+    if is_audio_file:
+        logger.info("오디오 파일 직접 처리")
+    else:
+        logger.info("비디오 파일에서 오디오 추출 후 처리")
+
     pipeline = create_pipeline(language=language)
-    video_path_obj = Path(video_path)
 
     result = await pipeline.process_single(
-        source=video_path_obj,
+        source=file_path_obj,
         output_path=None,
     )
     logger.info("Pipeline 처리 완료")
@@ -345,15 +391,16 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
     audio_path = None
     if hasattr(pipeline, "_last_audio_path") and pipeline._last_audio_path:
         audio_path = Path(pipeline._last_audio_path)
-    elif video_path.endswith(".mp4"):
-        try:
-            cleaner = AudioCleaner(target_sr=16000)
-            audio_result = cleaner.process(video_path, output_path="temp")
-            if isinstance(audio_result, str):
-                audio_path = Path(audio_result)
-                logger.info(f"AudioCleaner로 오디오 추출 완료: {audio_path}")
-        except Exception as e:
-            logger.error(f"AudioCleaner 오디오 추출 실패: {e}")
+    # NOTE: 오디오 파일 직접 처리 시 AudioCleaner 사용 안 함 (Backend에서 이미 오디오 추출)
+    # elif file_path.endswith(".mp4"):
+    #     try:
+    #         cleaner = AudioCleaner(target_sr=16000)
+    #         audio_result = cleaner.process(file_path, output_path="temp")
+    #         if isinstance(audio_result, str):
+    #             audio_path = Path(audio_result)
+    #             logger.info(f"AudioCleaner로 오디오 추출 완료: {audio_path}")
+    #     except Exception as e:
+    #         logger.error(f"AudioCleaner 오디오 추출 실패: {e}")
 
     # 세그먼트 처리
     logger.info("WhisperX 결과 처리 시작")
@@ -366,7 +413,7 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
 
     # 메타데이터 생성
     metadata = {
-        "filename": Path(video_path).name,
+        "filename": Path(file_path).name,
         "duration": result.metadata.duration if result.metadata else 0,
         "total_segments": len(processed_segments),
         "unique_speakers": len(speakers_stats),
@@ -400,15 +447,20 @@ async def process_video_api(
 
         logger.info(f"비디오 처리 요청 접수 - job_id: {job_id}")
 
-        # 백그라운드 작업 시작
+        # 백그라운드 작업 시작 (추가 파라미터와 함께)
         background_tasks.add_task(
-            process_video_with_callback, job_id, request.video_url
+            process_video_with_callback,
+            job_id,
+            request.video_url,
+            request.fastapi_base_url,
+            request.language,
         )
 
         return ProcessVideoResponse(
             job_id=job_id,
-            status="accepted",
-            message="Processing started",
+            status="processing",  # "accepted" → "processing"으로 변경
+            message="비디오 처리가 시작되었습니다",
+            status_url=f"/api/upload-video/status/{job_id}",  # 추가
             estimated_time=300,
         )
 
@@ -420,6 +472,7 @@ async def process_video_api(
             0,
             error_message=str(e),
             error_code="INVALID_REQUEST",
+            callback_base_url=request.fastapi_base_url,
         )
         raise HTTPException(
             status_code=400,
@@ -433,7 +486,12 @@ async def process_video_api(
         )
 
 
-async def process_video_with_callback(job_id: str, video_url: str):
+async def process_video_with_callback(
+    job_id: str,
+    video_url: str,
+    callback_base_url: Optional[str] = None,
+    language: str = "en",
+):
     """API 명세에 따른 비디오 처리 및 콜백"""
     start_time = datetime.now()
     video_path = None
@@ -451,26 +509,50 @@ async def process_video_with_callback(job_id: str, video_url: str):
 
         # 1. 비디오 다운로드
         logger.info(f"작업 시작: {job_id}")
-        video_path = await download_from_url(video_url, job_id)
-        await send_callback(job_id, "processing", milestones[0][0], milestones[0][1])
+        video_path = await download_from_url(video_url, job_id, callback_base_url)
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[0][0],
+            milestones[0][1],
+            callback_base_url=callback_base_url,
+        )
         logger.info("비디오 준비 완료, ML 처리 시작")
 
         # 2-5. Pipeline 처리 (진행상황 업데이트)
         for progress, message in milestones[1:4]:
-            await send_callback(job_id, "processing", progress, message)
+            await send_callback(
+                job_id,
+                "processing",
+                progress,
+                message,
+                callback_base_url=callback_base_url,
+            )
 
         # 비디오 처리 실행
         logger.info("ML 파이프라인 실행 중...")
-        result = await process_video_core(video_path, language="en")
+        result = await process_audio_core(video_path, language=language)
         logger.info("ML 파이프라인 처리 완료")
 
         # 6. 감정 분석
-        await send_callback(job_id, "processing", milestones[4][0], milestones[4][1])
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[4][0],
+            milestones[4][1],
+            callback_base_url=callback_base_url,
+        )
 
         # 7. 결과 정리
-        await send_callback(job_id, "processing", milestones[5][0], milestones[5][1])
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[5][0],
+            milestones[5][1],
+            callback_base_url=callback_base_url,
+        )
 
-        # API 응답 형식으로 변환
+        # API 응답 형식으로 변환 (백엔드가 기대하는 형식)
         segments_for_api = []
         for seg in result["segments"]:
             segment_data = {
@@ -493,14 +575,29 @@ async def process_video_with_callback(job_id: str, video_url: str):
 
         processing_time = (datetime.now() - start_time).total_seconds()
 
-        # 최종 결과
+        # 백엔드가 기대하는 결과 구조로 변환
         final_result = {
-            "metadata": result["metadata"],
+            "text": " ".join([seg["text"] for seg in segments_for_api]),  # 전체 텍스트
             "segments": segments_for_api,
+            "language": language,
+            "duration": result["metadata"]["duration"],
+            "metadata": {
+                "model_version": "whisperx-base",
+                "processing_time": processing_time,
+                "unique_speakers": result["metadata"]["unique_speakers"],
+                "total_segments": result["metadata"]["total_segments"],
+            },
         }
 
         # 완료 콜백 전송
-        await send_callback(job_id, "completed", 100, "분석 완료", result=final_result)
+        await send_callback(
+            job_id,
+            "completed",
+            100,
+            "분석 완료",
+            result=final_result,
+            callback_base_url=callback_base_url,
+        )
 
         logger.info(
             f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
@@ -520,7 +617,12 @@ async def process_video_with_callback(job_id: str, video_url: str):
             "DOWNLOAD_ERROR" if "download" in str(e).lower() else "PROCESSING_ERROR"
         )
         await send_callback(
-            job_id, "failed", 0, error_message=str(e), error_code=error_code
+            job_id,
+            "failed",
+            0,
+            error_message=str(e),
+            error_code=error_code,
+            callback_base_url=callback_base_url,
         )
 
         jobs[job_id] = {
@@ -550,40 +652,65 @@ async def transcribe(request: TranscribeRequest):
         # 가상의 job_id 생성 (진행상황 추적용)
         job_id = str(uuid.uuid4())
 
-        # Progress milestones
-        progress_steps = [
-            (5, "파일 검증 중..."),
-            (15, "오디오 추출 중..."),
-            (25, "음성 구간 분석 중..."),
-            (65, "음성을 텍스트로 변환 중..."),
-            (95, "감정 분석 중..."),
-            (100, "분석 완료"),
-        ]
+        # Progress milestones (오디오 우선 처리)
+        if request.audio_path:
+            progress_steps = [
+                (5, "오디오 파일 검증 중..."),
+                (20, "음성 구간 분석 중..."),
+                (65, "음성을 텍스트로 변환 중..."),
+                (95, "감정 분석 중..."),
+                (100, "분석 완료"),
+            ]
+        else:
+            # 하위 호환성: 비디오에서 오디오 추출이 필요한 경우
+            progress_steps = [
+                (5, "비디오 파일 검증 중..."),
+                (15, "오디오 추출 중..."),
+                (25, "음성 구간 분석 중..."),
+                (65, "음성을 텍스트로 변환 중..."),
+                (95, "감정 분석 중..."),
+                (100, "분석 완료"),
+            ]
 
         # 첫 진행상황 업데이트
         await send_callback(
             job_id, "processing", progress_steps[0][0], progress_steps[0][1]
         )
 
-        # 비디오 파일 준비
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+        # 오디오 파일 준비 (오디오 우선, 비디오는 fallback)
+        audio_s3_path = request.audio_path or request.video_path  # 하위 호환성
+        file_extension = (
+            ".wav" if request.audio_path else ".mp4"
+        )  # 오디오면 .wav, 비디오면 .mp4
+
+        with tempfile.NamedTemporaryFile(
+            suffix=file_extension, delete=False
+        ) as temp_file:
             try:
-                # S3에서 파일 다운로드 시도
-                s3_client.download_file(S3_BUCKET, request.video_path, temp_file.name)
-                logger.info(f"S3에서 비디오 다운로드 완료: {request.video_path}")
-                actual_video_path = temp_file.name
+                # S3에서 오디오/비디오 파일 다운로드 시도
+                s3_client.download_file(S3_BUCKET, audio_s3_path, temp_file.name)
+                if request.audio_path:
+                    logger.info(f"S3에서 오디오 다운로드 완료: {request.audio_path}")
+                else:
+                    logger.info(
+                        f"S3에서 비디오 다운로드 완료 (오디오 추출 필요): {request.video_path}"
+                    )
+                actual_file_path = temp_file.name
             except Exception as s3_error:
                 logger.warning(f"S3 다운로드 실패, 로컬 경로 사용: {s3_error}")
-                actual_video_path = request.video_path
+                actual_file_path = audio_s3_path
 
-            # 진행상황 업데이트
-            for progress, message in progress_steps[1:4]:
+            # 진행상황 업데이트 (첫 번째 단계 이후 분석 전까지)
+            analysis_start_index = (
+                2 if request.audio_path else 3
+            )  # 오디오는 2단계부터, 비디오는 3단계부터
+            for progress, message in progress_steps[1:analysis_start_index]:
                 await send_callback(job_id, "processing", progress, message)
 
             try:
-                # 비디오 처리 실행
-                result = await process_video_core(
-                    actual_video_path, language=request.language
+                # 오디오/비디오 처리 실행
+                result = await process_audio_core(
+                    actual_file_path, language=request.language
                 )
 
                 # 감정 분석 진행상황

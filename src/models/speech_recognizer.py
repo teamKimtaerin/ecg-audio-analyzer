@@ -95,7 +95,7 @@ class WhisperXPipeline:
         self,
         audio_path: Union[str, Path],
         min_speakers: int = 2,
-        max_speakers: int = 4,
+        max_speakers: int = 8,
         sample_rate: int = 16000,
     ) -> Dict[str, Any]:
         try:

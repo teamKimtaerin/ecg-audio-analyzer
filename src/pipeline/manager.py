@@ -23,7 +23,7 @@ from ..models.output_models import (
 from ..utils.logger import get_logger
 from config.base_settings import BaseConfig, ProcessingConfig
 from config.aws_settings import AWSConfig
-from config.model_configs import SpeakerDiarizationConfig
+from config.model_configs import SpeakerDiarizationConfig, WhisperXConfig
 
 
 class PipelineManager:
@@ -38,12 +38,14 @@ class PipelineManager:
         processing_config: ProcessingConfig,
         aws_config: Optional[AWSConfig] = None,
         speaker_config: Optional[SpeakerDiarizationConfig] = None,
+        whisperx_config: Optional[WhisperXConfig] = None,
         language: str = "en",
     ):
         self.base_config = base_config
         self.processing_config = processing_config
         self.aws_config = aws_config
         self.speaker_config = speaker_config or SpeakerDiarizationConfig()
+        self.whisperx_config = whisperx_config or WhisperXConfig()
         self.language = language
 
         self.logger = get_logger().bind_context(component="pipeline_manager")
@@ -86,15 +88,17 @@ class PipelineManager:
         """Get or create WhisperX pipeline instance"""
         if self._whisperx_pipeline is None:
             device = self.aws_config.cuda_device if self.aws_config else None
-            hf_token = getattr(self.base_config, "hugging_face_token", None)
+            hf_token = self.base_config.hugging_face_token
 
             self._whisperx_pipeline = WhisperXPipeline(
-                model_size="base",
-                device=device,
+                model_size=self.whisperx_config.model_size,
+                device=device or self.whisperx_config.device,
                 compute_type=(
-                    "float16" if device and device.startswith("cuda") else "float32"
+                    self.whisperx_config.compute_type
+                    if device and device.startswith("cuda")
+                    else "float32"
                 ),
-                language=self.language,
+                language=self.whisperx_config.language or self.language,
                 hf_auth_token=hf_token,
             )
         return self._whisperx_pipeline
@@ -190,9 +194,9 @@ class PipelineManager:
             def whisperx_wrapper():
                 return pipeline.process_audio_with_diarization(
                     audio_path=audio_path,
-                    min_speakers=2,
-                    max_speakers=4,
-                    sample_rate=16000,
+                    min_speakers=self.speaker_config.min_speakers,
+                    max_speakers=self.speaker_config.max_speakers,
+                    sample_rate=self.whisperx_config.sample_rate,
                 )
 
             # Run WhisperX pipeline in thread pool
