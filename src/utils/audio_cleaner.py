@@ -13,8 +13,6 @@ from ..utils.logger import get_logger
 
 
 class AudioCleaner:
-    """Simplified audio preprocessor for WhisperX optimization"""
-
     def __init__(self, target_sr: int = 16000, top_db: float = 10.0):
         """
         Initialize audio cleaner

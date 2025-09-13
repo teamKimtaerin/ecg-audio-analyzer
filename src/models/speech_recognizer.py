@@ -6,10 +6,10 @@ import whisperx
 import torch
 import librosa
 import numpy as np
+import os
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
-from ..utils.logger import get_logger
-from .model_manager import get_model_manager
+
 
 class WhisperXPipeline:
     def __init__(
@@ -23,18 +23,23 @@ class WhisperXPipeline:
         self.model_size = model_size
         self.language = language
         self.compute_type = compute_type
-        self.hf_auth_token = hf_auth_token
+        self.hf_auth_token = hf_auth_token or os.getenv("HF_TOKEN")
 
-        # Get model manager
-        self.model_manager = get_model_manager(device=device)
-        self.device = self.model_manager.get_device()
+        # Device detection
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+
+        # Adjust compute type for CPU
+        if self.device == "cpu" and self.compute_type == "float16":
+            self.compute_type = "float32"
 
         # Models will be loaded on first use
         self.whisper_model = None
         self.alignment_model = None
         self.alignment_metadata = None
         self.diarization_pipeline = None
-
 
     def _load_models(self):
         """Load WhisperX models"""
@@ -61,7 +66,7 @@ class WhisperXPipeline:
                 )
                 self._last_language = language_code
 
-        except Exception as e:
+        except Exception:
             self.alignment_model = None
             self.alignment_metadata = None
 
@@ -83,7 +88,7 @@ class WhisperXPipeline:
                         torch.device("cuda")
                     )
 
-            except Exception as e:
+            except Exception:
                 raise
 
     def process_audio_with_diarization(
@@ -101,7 +106,7 @@ class WhisperXPipeline:
             y, sr = librosa.load(str(audio_path), sr=sample_rate)
             if y.dtype != np.float32:
                 y = y.astype(np.float32)
-            
+
             audio_duration = len(y) / sr
             batch_size = 16
 
@@ -125,7 +130,7 @@ class WhisperXPipeline:
                         return_char_alignments=False,
                     )
                     aligned_result["language"] = detected_language
-                except Exception as e:
+                except Exception:
                     aligned_result = asr_result
                     aligned_result["language"] = detected_language
             else:
@@ -135,7 +140,9 @@ class WhisperXPipeline:
             # Step 3: Speaker Diarization
             self._load_diarization_model()
 
-            assert self.diarization_pipeline is not None, "Failed to load diarization pipeline"
+            assert (
+                self.diarization_pipeline is not None
+            ), "Failed to load diarization pipeline"
 
             # Use pyannote diarization with speaker constraints
             diarization = self.diarization_pipeline(
@@ -147,7 +154,7 @@ class WhisperXPipeline:
                 final_result = whisperx.assign_word_speakers(
                     diarization, aligned_result
                 )
-            except Exception as e:
+            except Exception:
                 # Fallback: use actual diarization results to assign speakers based on timing overlap
                 final_result = aligned_result
                 final_result = self._assign_speakers_from_diarization(
@@ -164,10 +171,9 @@ class WhisperXPipeline:
                 "total_segments": len(final_result["segments"]),
             }
 
-
             return final_result
 
-        except Exception as e:
+        except Exception:
             raise
 
     def _remove_duplicate_speaker_segments(self, segments: List[Dict]) -> List[Dict]:
@@ -226,7 +232,6 @@ class WhisperXPipeline:
 
             # Sort by start time for efficient processing
             speaker_timeline.sort(key=lambda x: x["start"])
-
 
             # Assign speakers to segments with improved algorithm
             for segment in transcription_result["segments"]:
@@ -289,16 +294,16 @@ class WhisperXPipeline:
             # Simple post-processing: basic segment cleanup
             self._basic_segment_cleanup(transcription_result["segments"])
 
-            unique_speakers = set(
+            # Track unique speakers for debugging
+            _ = set(
                 seg.get("speaker", "UNKNOWN")
                 for seg in transcription_result["segments"]
                 if seg.get("speaker")
             )
 
-
             return transcription_result
 
-        except Exception as e:
+        except Exception:
             # Return transcription result without speaker assignments
             return transcription_result
 
@@ -335,24 +340,25 @@ class WhisperXPipeline:
                 # Merge segments
                 current_text = current.get("text", "").strip()
                 next_text = next_seg.get("text", "").strip()
-                
+
                 if current_text and next_text:
                     current["text"] = current_text + " " + next_text
                 elif next_text:
                     current["text"] = next_text
-                
+
                 current["end"] = next_seg.get("end", current.get("end"))
-                
+
                 # Merge word-level information if available
                 if "words" in current and "words" in next_seg:
                     current["words"].extend(next_seg["words"])
                 elif "words" in next_seg:
                     current["words"] = next_seg["words"]
-                
+
                 segments.pop(i + 1)
                 continue
-            
+
             i += 1
+
 
 # Keep SpeechRecognizer as alias for backward compatibility
 SpeechRecognizer = WhisperXPipeline
