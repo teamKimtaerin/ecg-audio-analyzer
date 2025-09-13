@@ -8,6 +8,8 @@ from datetime import datetime
 import tempfile
 import uuid
 
+from dotenv import load_dotenv
+load_dotenv()
 # 프로젝트 루트를 Python 경로에 추가
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -34,8 +36,8 @@ app = FastAPI(
 
 # AWS S3 및 Backend 설정
 s3_client = boto3.client("s3")
-S3_BUCKET = os.getenv("S3_BUCKET", "ecg-project-pipeline-dev-video-storage-np9div7")
-BACKEND_URL = os.getenv("BACKEND_URL", os.getenv("ECG_BACKEND_URL", None))
+S3_BUCKET = os.getenv("S3_BUCKET_NAME", os.getenv("S3_BUCKET", ""))
+BACKEND_URL = os.getenv("BACKEND_URL", "")
 ENABLE_CALLBACKS = bool(BACKEND_URL and BACKEND_URL.strip())
 
 # In-memory job tracking
