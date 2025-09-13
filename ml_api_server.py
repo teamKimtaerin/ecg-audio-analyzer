@@ -48,20 +48,26 @@ logger = get_logger(__name__)
 
 # ========== Pydantic Models ==========
 
+
 class ProcessVideoRequest(BaseModel):
     """Backend 호환 비디오 처리 요청"""
+
     job_id: str
     video_url: str
 
+
 class ProcessVideoResponse(BaseModel):
     """Backend 호환 비디오 처리 응답"""
+
     job_id: str
     status: str
     message: str
     estimated_time: Optional[int] = 300
 
+
 class MLProgressCallback(BaseModel):
     """ML 진행 상황 콜백"""
+
     job_id: str
     status: str  # processing, completed, failed
     progress: int  # 0-100
@@ -70,16 +76,20 @@ class MLProgressCallback(BaseModel):
     error_message: Optional[str] = None
     error_code: Optional[str] = None
 
+
 class TranscribeRequest(BaseModel):
     """백엔드 호환 전사 요청"""
+
     video_path: str
     video_url: Optional[str] = None
     enable_gpu: bool = True
     emotion_detection: bool = True
     language: str = "en"
 
+
 class BackendTranscribeResponse(BaseModel):
     """상세 분석 응답"""
+
     success: bool
     metadata: Optional[Dict[str, Any]] = None
     speakers: Optional[Dict[str, Any]] = None
@@ -91,8 +101,8 @@ class BackendTranscribeResponse(BaseModel):
 
 # ========== Helper Functions ==========
 
+
 def create_pipeline(language: str = "en") -> PipelineManager:
-    """Create and initialize pipeline manager"""
     return PipelineManager(
         base_config=BaseConfig(),
         processing_config=ProcessingConfig(),
@@ -100,15 +110,20 @@ def create_pipeline(language: str = "en") -> PipelineManager:
     )
 
 
-async def send_callback(job_id: str, status: str, progress: int, 
-                        message: str = "", result: Optional[Dict] = None,
-                        error_message: Optional[str] = None, 
-                        error_code: Optional[str] = None):
+async def send_callback(
+    job_id: str,
+    status: str,
+    progress: int,
+    message: str = "",
+    result: Optional[Dict] = None,
+    error_message: Optional[str] = None,
+    error_code: Optional[str] = None,
+):
     """Send progress/error callback to backend"""
     if not ENABLE_CALLBACKS:
         logger.debug(f"Callback disabled - {status}: {message} ({progress}%)")
         return
-    
+
     try:
         payload = MLProgressCallback(
             job_id=job_id,
@@ -145,7 +160,7 @@ async def download_from_url(url: str, job_id: str) -> str:
             logger.info(f"로컬 파일 사용: {url}")
             await send_callback(job_id, "processing", 10, "로컬 파일 확인 완료")
             return str(local_path.absolute())
-        
+
         # URL 다운로드
         await send_callback(job_id, "processing", 5, "비디오 다운로드 시작...")
 
@@ -164,8 +179,10 @@ async def download_from_url(url: str, job_id: str) -> str:
                     if total_size > 0:
                         progress = 5 + int((downloaded / total_size) * 5)
                         await send_callback(
-                            job_id, "processing", progress,
-                            f"다운로드 중... ({downloaded}/{total_size} bytes)"
+                            job_id,
+                            "processing",
+                            progress,
+                            f"다운로드 중... ({downloaded}/{total_size} bytes)",
                         )
 
             logger.info(f"비디오 다운로드 완료: {temp_file.name}")
@@ -192,82 +209,99 @@ def get_default_acoustic_features() -> Dict[str, Any]:
 def extract_acoustic_features(audio_path: Path, segments: list) -> list[Dict[str, Any]]:
     """Extract acoustic features for segments"""
     acoustic_features_list = []
-    
+
     try:
         from src.services.acoustic_analyzer import FastAcousticAnalyzer
+
         analyzer = FastAcousticAnalyzer(sample_rate=16000)
-        
+
         for seg in segments:
             features = analyzer.extract_features(
                 audio_path,
                 seg.get("start", 0.0),
                 seg.get("end", 0.0),
             )
-            
-            acoustic_features_list.append({
-                "volume_db": features.rms_db,
-                "pitch_hz": features.pitch_mean,
-                "spectral_centroid": features.spectral_centroid,
-                "zero_crossing_rate": features.zcr,
-                "pitch_mean": features.pitch_mean,
-                "pitch_std": features.pitch_variance**0.5 if features.pitch_variance > 0 else 0.0,
-                "mfcc_mean": features.mfcc if hasattr(features, "mfcc") and features.mfcc else [0.0] * 13,
-            })
-            
+
+            acoustic_features_list.append(
+                {
+                    "volume_db": features.rms_db,
+                    "pitch_hz": features.pitch_mean,
+                    "spectral_centroid": features.spectral_centroid,
+                    "zero_crossing_rate": features.zcr,
+                    "pitch_mean": features.pitch_mean,
+                    "pitch_std": (
+                        features.pitch_variance**0.5
+                        if features.pitch_variance > 0
+                        else 0.0
+                    ),
+                    "mfcc_mean": (
+                        features.mfcc
+                        if hasattr(features, "mfcc") and features.mfcc
+                        else [0.0] * 13
+                    ),
+                }
+            )
+
         logger.info(f"음향 특성 추출 완료: {len(acoustic_features_list)}개 세그먼트")
-        
+
     except Exception as e:
         logger.warning(f"음향 특성 추출 실패: {e}")
         # Return default features for all segments
         acoustic_features_list = [get_default_acoustic_features() for _ in segments]
-    
+
     return acoustic_features_list
 
 
-def process_whisperx_segments(whisperx_result: Optional[Dict], audio_path: Optional[Path] = None) -> tuple[list, dict]:
+def process_whisperx_segments(
+    whisperx_result: Optional[Dict], audio_path: Optional[Path] = None
+) -> tuple[list, dict]:
     """WhisperX 결과를 통합 처리"""
     if not whisperx_result or "segments" not in whisperx_result:
         logger.warning("WhisperX 결과가 없거나 세그먼트를 찾을 수 없음")
         return [], {}
-    
+
     segments = whisperx_result["segments"]
-    
+
     # 음향 특성 추출
     acoustic_features_list = []
     if audio_path and audio_path.exists():
         acoustic_features_list = extract_acoustic_features(audio_path, segments)
     else:
         acoustic_features_list = [get_default_acoustic_features() for _ in segments]
-    
+
     # 세그먼트 처리
     processed_segments = []
     speakers_stats = {}
-    
+
     for i, seg in enumerate(segments):
         speaker_id = seg.get("speaker", "SPEAKER_00")
-        
+
         # Update speaker stats
         if speaker_id not in speakers_stats:
             speakers_stats[speaker_id] = {
                 "total_duration": 0.0,
                 "segment_count": 0,
             }
-        
+
         duration = seg.get("end", 0.0) - seg.get("start", 0.0)
         speakers_stats[speaker_id]["total_duration"] += duration
         speakers_stats[speaker_id]["segment_count"] += 1
-        
+
         # Build segment data
         segment_data = {
             "start_time": seg.get("start", 0.0),
             "end_time": seg.get("end", 0.0),
             "duration": duration,
             "speaker_id": speaker_id,
-            "acoustic_features": acoustic_features_list[i] if i < len(acoustic_features_list) else get_default_acoustic_features(),
+            "acoustic_features": (
+                acoustic_features_list[i]
+                if i < len(acoustic_features_list)
+                else get_default_acoustic_features()
+            ),
             "text": seg.get("text", "").strip(),
             "words": [],
         }
-        
+
         # Process words if available
         if "words" in seg:
             for word in seg["words"]:
@@ -283,9 +317,9 @@ def process_whisperx_segments(whisperx_result: Optional[Dict], audio_path: Optio
                     },
                 }
                 segment_data["words"].append(word_data)
-        
+
         processed_segments.append(segment_data)
-    
+
     return processed_segments, speakers_stats
 
 
@@ -295,18 +329,18 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
     logger.info(f"Pipeline 처리 시작: {Path(video_path).name}")
     pipeline = create_pipeline(language=language)
     video_path_obj = Path(video_path)
-    
+
     result = await pipeline.process_single(
         source=video_path_obj,
         output_path=None,
     )
     logger.info("Pipeline 처리 완료")
-    
+
     # WhisperX 결과 추출
     whisperx_result = None
     if hasattr(pipeline, "_last_whisperx_result"):
         whisperx_result = pipeline._last_whisperx_result
-    
+
     # 오디오 경로 가져오기
     audio_path = None
     if hasattr(pipeline, "_last_audio_path") and pipeline._last_audio_path:
@@ -320,12 +354,16 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
                 logger.info(f"AudioCleaner로 오디오 추출 완료: {audio_path}")
         except Exception as e:
             logger.error(f"AudioCleaner 오디오 추출 실패: {e}")
-    
+
     # 세그먼트 처리
     logger.info("WhisperX 결과 처리 시작")
-    processed_segments, speakers_stats = process_whisperx_segments(whisperx_result, audio_path)
-    logger.info(f"세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자")
-    
+    processed_segments, speakers_stats = process_whisperx_segments(
+        whisperx_result, audio_path
+    )
+    logger.info(
+        f"세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자"
+    )
+
     # 메타데이터 생성
     metadata = {
         "filename": Path(video_path).name,
@@ -333,7 +371,7 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
         "total_segments": len(processed_segments),
         "unique_speakers": len(speakers_stats),
     }
-    
+
     return {
         "metadata": metadata,
         "segments": processed_segments,
@@ -344,6 +382,7 @@ async def process_video_core(video_path: str, language: str = "en") -> Dict[str,
 
 # ========== API Endpoints ==========
 
+
 @app.post("/api/upload-video/process-video", response_model=ProcessVideoResponse)
 async def process_video_api(
     request: ProcessVideoRequest, background_tasks: BackgroundTasks
@@ -351,7 +390,7 @@ async def process_video_api(
     """Backend 호환 비디오 처리 API"""
     try:
         job_id = request.job_id
-        
+
         # Job 상태 추적
         jobs[job_id] = {
             "status": "accepted",
@@ -362,7 +401,9 @@ async def process_video_api(
         logger.info(f"비디오 처리 요청 접수 - job_id: {job_id}")
 
         # 백그라운드 작업 시작
-        background_tasks.add_task(process_video_with_callback, job_id, request.video_url)
+        background_tasks.add_task(
+            process_video_with_callback, job_id, request.video_url
+        )
 
         return ProcessVideoResponse(
             job_id=job_id,
@@ -373,8 +414,13 @@ async def process_video_api(
 
     except Exception as e:
         logger.error(f"처리 요청 실패 - job_id: {request.job_id}, error: {str(e)}")
-        await send_callback(request.job_id, "failed", 0, 
-                          error_message=str(e), error_code="INVALID_REQUEST")
+        await send_callback(
+            request.job_id,
+            "failed",
+            0,
+            error_message=str(e),
+            error_code="INVALID_REQUEST",
+        )
         raise HTTPException(
             status_code=400,
             detail={
@@ -402,28 +448,28 @@ async def process_video_with_callback(job_id: str, video_url: str):
             (75, "감정 분석 중..."),
             (90, "결과 정리 중..."),
         ]
-        
+
         # 1. 비디오 다운로드
         logger.info(f"작업 시작: {job_id}")
         video_path = await download_from_url(video_url, job_id)
         await send_callback(job_id, "processing", milestones[0][0], milestones[0][1])
         logger.info("비디오 준비 완료, ML 처리 시작")
-        
+
         # 2-5. Pipeline 처리 (진행상황 업데이트)
         for progress, message in milestones[1:4]:
             await send_callback(job_id, "processing", progress, message)
-        
+
         # 비디오 처리 실행
         logger.info("ML 파이프라인 실행 중...")
         result = await process_video_core(video_path, language="en")
         logger.info("ML 파이프라인 처리 완료")
-        
+
         # 6. 감정 분석
         await send_callback(job_id, "processing", milestones[4][0], milestones[4][1])
-        
+
         # 7. 결과 정리
         await send_callback(job_id, "processing", milestones[5][0], milestones[5][1])
-        
+
         # API 응답 형식으로 변환
         segments_for_api = []
         for seg in result["segments"]:
@@ -444,20 +490,22 @@ async def process_video_with_callback(job_id: str, video_url: str):
                 ],
             }
             segments_for_api.append(segment_data)
-        
+
         processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         # 최종 결과
         final_result = {
             "metadata": result["metadata"],
             "segments": segments_for_api,
         }
-        
+
         # 완료 콜백 전송
         await send_callback(job_id, "completed", 100, "분석 완료", result=final_result)
-        
-        logger.info(f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초")
-        
+
+        logger.info(
+            f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
+        )
+
         # Job 상태 업데이트
         jobs[job_id] = {
             "status": "completed",
@@ -467,17 +515,20 @@ async def process_video_with_callback(job_id: str, video_url: str):
 
     except Exception as e:
         logger.error(f"처리 실패 - job_id: {job_id}, error: {str(e)}")
-        
-        error_code = "DOWNLOAD_ERROR" if "download" in str(e).lower() else "PROCESSING_ERROR"
-        await send_callback(job_id, "failed", 0, 
-                          error_message=str(e), error_code=error_code)
-        
+
+        error_code = (
+            "DOWNLOAD_ERROR" if "download" in str(e).lower() else "PROCESSING_ERROR"
+        )
+        await send_callback(
+            job_id, "failed", 0, error_message=str(e), error_code=error_code
+        )
+
         jobs[job_id] = {
             "status": "failed",
             "error": str(e),
             "failed_at": datetime.now().isoformat(),
         }
-    
+
     finally:
         # 임시 파일 정리 (다운로드된 파일만)
         if video_path and Path(video_path).exists() and "/tmp" in video_path:
@@ -488,17 +539,17 @@ async def process_video_with_callback(job_id: str, video_url: str):
                 pass
 
 
-@app.post("/transcribe", response_model=BackendTranscribeResponse)
+@app.post("/transcribe")
 async def transcribe(request: TranscribeRequest):
     """백엔드 호환 동기 전사 API"""
     start_time = datetime.now()
 
     try:
         logger.info(f"전사 요청 시작 - video_path: {request.video_path}")
-        
+
         # 가상의 job_id 생성 (진행상황 추적용)
         job_id = str(uuid.uuid4())
-        
+
         # Progress milestones
         progress_steps = [
             (5, "파일 검증 중..."),
@@ -508,10 +559,12 @@ async def transcribe(request: TranscribeRequest):
             (95, "감정 분석 중..."),
             (100, "분석 완료"),
         ]
-        
+
         # 첫 진행상황 업데이트
-        await send_callback(job_id, "processing", progress_steps[0][0], progress_steps[0][1])
-        
+        await send_callback(
+            job_id, "processing", progress_steps[0][0], progress_steps[0][1]
+        )
+
         # 비디오 파일 준비
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
             try:
@@ -522,21 +575,25 @@ async def transcribe(request: TranscribeRequest):
             except Exception as s3_error:
                 logger.warning(f"S3 다운로드 실패, 로컬 경로 사용: {s3_error}")
                 actual_video_path = request.video_path
-            
+
             # 진행상황 업데이트
             for progress, message in progress_steps[1:4]:
                 await send_callback(job_id, "processing", progress, message)
-            
+
             try:
                 # 비디오 처리 실행
-                result = await process_video_core(actual_video_path, language=request.language)
-                
+                result = await process_video_core(
+                    actual_video_path, language=request.language
+                )
+
                 # 감정 분석 진행상황
-                await send_callback(job_id, "processing", progress_steps[4][0], progress_steps[4][1])
-                
+                await send_callback(
+                    job_id, "processing", progress_steps[4][0], progress_steps[4][1]
+                )
+
                 processing_time = (datetime.now() - start_time).total_seconds()
-                
-                # 상세 분석 결과 생성
+
+                # Option C 형식으로 결과 생성 (객체 기반 상세 구조)
                 detailed_result = {
                     "success": True,
                     "metadata": {
@@ -556,37 +613,41 @@ async def transcribe(request: TranscribeRequest):
                     "speakers": result["speakers"],
                     "segments": result["segments"],
                     "processing_time": processing_time,
+                    "error": None,
+                    "error_code": None,
                 }
-                
+
                 # 완료 진행상황
-                await send_callback(job_id, "processing", progress_steps[5][0], progress_steps[5][1])
-                
+                await send_callback(
+                    job_id, "processing", progress_steps[5][0], progress_steps[5][1]
+                )
+
                 logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
                 logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
-                
-                return BackendTranscribeResponse(**detailed_result)
-                
+
+                return detailed_result
+
             except Exception as analysis_error:
                 logger.error(f"분석 실패: {analysis_error}")
                 processing_time = (datetime.now() - start_time).total_seconds()
-                
-                return BackendTranscribeResponse(
-                    success=False,
-                    error=f"분석 중 오류가 발생했습니다: {str(analysis_error)}",
-                    error_code="ANALYSIS_ERROR",
-                    processing_time=processing_time,
-                )
+
+                return {
+                    "success": False,
+                    "error": f"분석 중 오류가 발생했습니다: {str(analysis_error)}",
+                    "error_code": "ANALYSIS_ERROR",
+                    "processing_time": processing_time,
+                }
 
     except Exception as e:
         processing_time = (datetime.now() - start_time).total_seconds()
         logger.error(f"전사 요청 실패 - Error: {str(e)}")
-        
-        return BackendTranscribeResponse(
-            success=False,
-            error=f"요청 처리 실패: {str(e)}",
-            error_code="REQUEST_ERROR",
-            processing_time=processing_time,
-        )
+
+        return {
+            "success": False,
+            "error": f"요청 처리 실패: {str(e)}",
+            "error_code": "REQUEST_ERROR",
+            "processing_time": processing_time,
+        }
 
 
 @app.get("/health")
@@ -632,6 +693,7 @@ if __name__ == "__main__":
     # GPU 확인
     try:
         import torch
+
         if torch.cuda.is_available():
             logger.info(f"   GPU: {torch.cuda.device_count()}개 사용 가능")
             for i in range(torch.cuda.device_count()):

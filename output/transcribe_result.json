@@ -1,1 +1,3453 @@
-{"success":true,"metadata":{"filename":"friends.mp4","duration":143.4,"total_segments":30,"unique_speakers":4,"sample_rate":16000,"processed_at":"2025-09-13T04:27:46.140217","processing_time":163.422622,"processing_mode":"real_ml_models","config":{"enable_gpu":false,"segment_length":5.0,"language":"en","unified_model":"whisperx-base-with-diarization"},"subtitle_optimization":true},"speakers":{"SPEAKER_03":{"total_duration":24.81699999999999,"segment_count":9},"SPEAKER_01":{"total_duration":25.820999999999998,"segment_count":13},"SPEAKER_02":{"total_duration":27.158,"segment_count":7},"SPEAKER_00":{"total_duration":0.9659999999999798,"segment_count":1}},"segments":[{"start_time":4.908,"end_time":8.754,"duration":3.845999999999999,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-22.255,"pitch_hz":225.587,"spectral_centroid":2423.728,"zero_crossing_rate":0.05,"pitch_mean":225.587,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"You know, we should all do. Go see a musical.","words":[{"word":"You","start_time":4.908,"end_time":4.988,"duration":0.08000000000000007,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"know,","start_time":5.008,"end_time":5.168,"duration":0.16000000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"we","start_time":5.188,"end_time":5.269,"duration":0.0810000000000004,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"should","start_time":5.289,"end_time":5.449,"duration":0.16000000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"all","start_time":5.649,"end_time":5.809,"duration":0.16000000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"do.","start_time":5.869,"end_time":6.05,"duration":0.18100000000000005,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Go","start_time":6.11,"end_time":7.752,"duration":1.6419999999999995,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"see","start_time":7.812,"end_time":8.033,"duration":0.2209999999999992,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":8.113,"end_time":8.153,"duration":0.040000000000000924,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"musical.","start_time":8.273,"end_time":8.754,"duration":0.48099999999999987,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":12.279,"end_time":12.74,"duration":0.4610000000000003,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-20.097,"pitch_hz":295.265,"spectral_centroid":1432.602,"zero_crossing_rate":0.05,"pitch_mean":295.265,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Sure.","words":[{"word":"Sure.","start_time":12.279,"end_time":12.74,"duration":0.4610000000000003,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":12.78,"end_time":20.351,"duration":7.571,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-20.955,"pitch_hz":299.653,"spectral_centroid":2351.048,"zero_crossing_rate":0.05,"pitch_mean":299.653,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"And you know which one we should see? The 1996 Tony Award winner.","words":[{"word":"And","start_time":12.78,"end_time":12.84,"duration":0.0600000000000005,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":15.023,"end_time":15.103,"duration":0.08000000000000007,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"know","start_time":15.123,"end_time":15.203,"duration":0.08000000000000007,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"which","start_time":15.223,"end_time":15.343,"duration":0.11999999999999922,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"one","start_time":15.404,"end_time":15.464,"duration":0.0600000000000005,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"we","start_time":15.504,"end_time":15.544,"duration":0.040000000000000924,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"should","start_time":15.584,"end_time":15.744,"duration":0.16000000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"see?","start_time":15.804,"end_time":16.004,"duration":0.20000000000000107,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"The","start_time":16.024,"end_time":16.085,"duration":0.06099999999999994,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"1996","start_time":17.587,"end_time":19.269,"duration":1.6819999999999986,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Tony","start_time":19.369,"end_time":19.73,"duration":0.36100000000000065,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Award","start_time":19.77,"end_time":20.091,"duration":0.3210000000000015,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"winner.","start_time":20.131,"end_time":20.351,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":22.474,"end_time":23.996,"duration":1.5219999999999985,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-22.295,"pitch_hz":349.885,"spectral_centroid":2225.563,"zero_crossing_rate":0.05,"pitch_mean":349.885,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Do you happen to know the name of that one?","words":[{"word":"Do","start_time":22.474,"end_time":22.534,"duration":0.05999999999999872,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":22.554,"end_time":22.634,"duration":0.08000000000000185,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"happen","start_time":22.694,"end_time":22.895,"duration":0.2010000000000005,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"to","start_time":22.935,"end_time":23.015,"duration":0.08000000000000185,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"know","start_time":23.035,"end_time":23.135,"duration":0.10000000000000142,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"the","start_time":23.175,"end_time":23.255,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"name","start_time":23.315,"end_time":23.536,"duration":0.22100000000000009,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"of","start_time":23.596,"end_time":23.636,"duration":0.03999999999999915,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"that","start_time":23.676,"end_time":23.816,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"one?","start_time":23.896,"end_time":23.996,"duration":0.09999999999999787,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":25.378,"end_time":26.22,"duration":0.8419999999999987,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-18.097,"pitch_hz":254.251,"spectral_centroid":1952.647,"zero_crossing_rate":0.05,"pitch_mean":254.251,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"I don't know, Greece.","words":[{"word":"I","start_time":25.378,"end_time":25.398,"duration":0.019999999999999574,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"don't","start_time":25.418,"end_time":25.519,"duration":0.10099999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"know,","start_time":25.539,"end_time":25.639,"duration":0.09999999999999787,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Greece.","start_time":25.899,"end_time":26.22,"duration":0.32099999999999795,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":28.563,"end_time":29.004,"duration":0.4410000000000025,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-16.352,"pitch_hz":150.0,"spectral_centroid":1929.994,"zero_crossing_rate":0.05,"pitch_mean":150.0,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"No.","words":[{"word":"No.","start_time":28.563,"end_time":29.004,"duration":0.4410000000000025,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":32.028,"end_time":32.569,"duration":0.5410000000000039,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-24.271,"pitch_hz":189.424,"spectral_centroid":2454.874,"zero_crossing_rate":0.05,"pitch_mean":189.424,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Rent.","words":[{"word":"Rent.","start_time":32.028,"end_time":32.569,"duration":0.5410000000000039,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":33.815,"end_time":36.579,"duration":2.764000000000003,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-21.134,"pitch_hz":359.186,"spectral_centroid":2364.846,"zero_crossing_rate":0.05,"pitch_mean":359.186,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Yes! Rint!","words":[{"word":"Yes!","start_time":33.815,"end_time":34.616,"duration":0.8010000000000019,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Rint!","start_time":34.636,"end_time":36.579,"duration":1.9429999999999978,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":36.599,"end_time":37.68,"duration":1.081000000000003,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-17.841,"pitch_hz":318.356,"spectral_centroid":1683.969,"zero_crossing_rate":0.05,"pitch_mean":318.356,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Okay, so when do you want to go?","words":[{"word":"Okay,","start_time":36.599,"end_time":36.959,"duration":0.36000000000000654,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"so","start_time":36.979,"end_time":37.099,"duration":0.11999999999999744,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"when","start_time":37.119,"end_time":37.2,"duration":0.08100000000000307,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"do","start_time":37.22,"end_time":37.26,"duration":0.03999999999999915,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":37.28,"end_time":37.34,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"want","start_time":37.36,"end_time":37.44,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"to","start_time":37.46,"end_time":37.5,"duration":0.03999999999999915,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"go?","start_time":37.56,"end_time":37.68,"duration":0.11999999999999744,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":38.161,"end_time":38.361,"duration":0.19999999999999574,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-19.47,"pitch_hz":150.0,"spectral_centroid":2075.168,"zero_crossing_rate":0.05,"pitch_mean":150.0,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"What?","words":[{"word":"What?","start_time":38.161,"end_time":38.361,"duration":0.19999999999999574,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":39.222,"end_time":40.464,"duration":1.2419999999999973,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-20.857,"pitch_hz":228.855,"spectral_centroid":2389.545,"zero_crossing_rate":0.05,"pitch_mean":228.855,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Oh, I'm sorry I can't, I'm busy.","words":[{"word":"Oh,","start_time":39.222,"end_time":39.302,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I'm","start_time":39.322,"end_time":39.443,"duration":0.12099999999999511,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"sorry","start_time":39.483,"end_time":39.663,"duration":0.17999999999999972,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I","start_time":39.683,"end_time":39.743,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"can't,","start_time":39.803,"end_time":40.063,"duration":0.2600000000000051,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I'm","start_time":40.123,"end_time":40.184,"duration":0.06099999999999994,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"busy.","start_time":40.204,"end_time":40.464,"duration":0.259999999999998,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":44.229,"end_time":48.995,"duration":4.765999999999998,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-20.293,"pitch_hz":183.721,"spectral_centroid":2142.483,"zero_crossing_rate":0.05,"pitch_mean":183.721,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Hey, man, it is so hard to shop for girls.","words":[{"word":"Hey,","start_time":44.229,"end_time":44.309,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"man,","start_time":46.132,"end_time":46.552,"duration":0.4200000000000017,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it","start_time":46.572,"end_time":46.632,"duration":0.05999999999999517,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"is","start_time":46.732,"end_time":46.792,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"so","start_time":46.913,"end_time":47.193,"duration":0.28000000000000114,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"hard","start_time":47.313,"end_time":47.614,"duration":0.3009999999999948,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"to","start_time":47.674,"end_time":47.774,"duration":0.10000000000000142,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"shop","start_time":47.894,"end_time":48.194,"duration":0.30000000000000426,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":48.254,"end_time":48.395,"duration":0.14100000000000534,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"girls.","start_time":48.495,"end_time":48.995,"duration":0.5,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":50.738,"end_time":52.861,"duration":2.1229999999999976,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-19.91,"pitch_hz":282.826,"spectral_centroid":2403.942,"zero_crossing_rate":0.05,"pitch_mean":282.826,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Yes, it is at office max.","words":[{"word":"Yes,","start_time":50.738,"end_time":50.918,"duration":0.17999999999999972,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it","start_time":50.978,"end_time":51.038,"duration":0.05999999999999517,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"is","start_time":51.198,"end_time":51.339,"duration":0.14099999999999824,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"at","start_time":51.379,"end_time":51.559,"duration":0.17999999999999972,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"office","start_time":51.839,"end_time":52.22,"duration":0.3810000000000002,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"max.","start_time":52.4,"end_time":52.861,"duration":0.4609999999999985,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":55.905,"end_time":56.646,"duration":0.7409999999999997,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-18.199,"pitch_hz":337.389,"spectral_centroid":2072.081,"zero_crossing_rate":0.05,"pitch_mean":337.389,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"What did you get her?","words":[{"word":"What","start_time":55.905,"end_time":56.025,"duration":0.11999999999999744,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"did","start_time":56.065,"end_time":56.165,"duration":0.10000000000000142,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":56.205,"end_time":56.285,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"get","start_time":56.345,"end_time":56.505,"duration":0.1600000000000037,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her?","start_time":56.566,"end_time":56.646,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":56.686,"end_time":59.89,"duration":3.2040000000000006,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-26.736,"pitch_hz":184.767,"spectral_centroid":2140.555,"zero_crossing_rate":0.05,"pitch_mean":184.767,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"A pen.","words":[{"word":"A","start_time":56.686,"end_time":56.706,"duration":0.020000000000003126,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"pen.","start_time":59.189,"end_time":59.89,"duration":0.7010000000000005,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":61.372,"end_time":64.618,"duration":3.245999999999995,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-18.854,"pitch_hz":268.907,"spectral_centroid":2161.793,"zero_crossing_rate":0.05,"pitch_mean":268.907,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"It's two gifts in one. It's a pen. That's also a clock.","words":[{"word":"It's","start_time":61.372,"end_time":61.552,"duration":0.17999999999999972,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"two","start_time":61.572,"end_time":61.733,"duration":0.16099999999999426,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"gifts","start_time":61.773,"end_time":61.973,"duration":0.19999999999999574,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"in","start_time":62.033,"end_time":62.113,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"one.","start_time":62.214,"end_time":62.334,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"It's","start_time":62.354,"end_time":62.454,"duration":0.10000000000000142,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":62.514,"end_time":62.534,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"pen.","start_time":62.594,"end_time":62.895,"duration":0.30100000000000193,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"That's","start_time":63.195,"end_time":63.416,"duration":0.22099999999999653,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"also","start_time":63.536,"end_time":63.877,"duration":0.3410000000000011,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":63.897,"end_time":63.917,"duration":0.020000000000003126,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"clock.","start_time":64.137,"end_time":64.618,"duration":0.48099999999999454,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":67.624,"end_time":68.706,"duration":1.0820000000000078,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-20.152,"pitch_hz":284.934,"spectral_centroid":1833.615,"zero_crossing_rate":0.05,"pitch_mean":284.934,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"You can't give her that.","words":[{"word":"You","start_time":67.624,"end_time":67.744,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"can't","start_time":67.804,"end_time":68.044,"duration":0.23999999999999488,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"give","start_time":68.105,"end_time":68.285,"duration":0.1799999999999926,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her","start_time":68.325,"end_time":68.405,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"that.","start_time":68.485,"end_time":68.706,"duration":0.22100000000000364,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":69.487,"end_time":74.757,"duration":5.27000000000001,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-18.653,"pitch_hz":263.991,"spectral_centroid":1890.71,"zero_crossing_rate":0.05,"pitch_mean":263.991,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Why not? Because she's not 11. And it's not the seventh night of Hanukkah.","words":[{"word":"Why","start_time":69.487,"end_time":69.547,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"not?","start_time":69.567,"end_time":69.768,"duration":0.20100000000000762,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Because","start_time":69.828,"end_time":70.048,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"she's","start_time":70.068,"end_time":70.229,"duration":0.16100000000000136,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"not","start_time":70.289,"end_time":70.409,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"11.","start_time":70.429,"end_time":70.689,"duration":0.2599999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"And","start_time":70.73,"end_time":73.074,"duration":2.343999999999994,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it's","start_time":73.094,"end_time":73.194,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"not","start_time":73.214,"end_time":73.334,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"the","start_time":73.374,"end_time":73.435,"duration":0.06100000000000705,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"seventh","start_time":73.455,"end_time":73.755,"duration":0.29999999999999716,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"night","start_time":73.795,"end_time":73.915,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"of","start_time":73.936,"end_time":73.976,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Hanukkah.","start_time":74.016,"end_time":74.757,"duration":0.7409999999999997,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":78.179,"end_time":84.669,"duration":6.489999999999995,"speaker_id":"SPEAKER_03","acoustic_features":{"volume_db":-22.335,"pitch_hz":289.008,"spectral_centroid":2355.139,"zero_crossing_rate":0.05,"pitch_mean":289.008,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Honey, what he means by that is, while this is a very nice gift, maybe it's just not something a boyfriend gives?","words":[{"word":"Honey,","start_time":78.179,"end_time":78.96,"duration":0.7809999999999917,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"what","start_time":78.98,"end_time":79.121,"duration":0.14099999999999113,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"he","start_time":79.161,"end_time":79.241,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"means","start_time":79.301,"end_time":79.481,"duration":0.1799999999999926,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"by","start_time":79.541,"end_time":79.621,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"that","start_time":79.681,"end_time":79.822,"duration":0.14100000000000534,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"is,","start_time":79.882,"end_time":79.962,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"while","start_time":80.543,"end_time":80.703,"duration":0.1599999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"this","start_time":80.723,"end_time":80.843,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"is","start_time":80.883,"end_time":80.963,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":81.004,"end_time":81.044,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"very","start_time":81.184,"end_time":81.484,"duration":0.29999999999999716,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"nice","start_time":81.564,"end_time":81.765,"duration":0.20100000000000762,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"gift,","start_time":81.845,"end_time":82.105,"duration":0.2600000000000051,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"maybe","start_time":82.486,"end_time":82.706,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it's","start_time":82.726,"end_time":82.806,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"just","start_time":82.847,"end_time":82.987,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"not","start_time":83.027,"end_time":83.187,"duration":0.1599999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"something","start_time":83.227,"end_time":83.528,"duration":0.30100000000000193,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":83.548,"end_time":83.568,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"boyfriend","start_time":83.888,"end_time":84.329,"duration":0.4409999999999883,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"gives?","start_time":84.369,"end_time":84.669,"duration":0.29999999999999716,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":85.05,"end_time":91.861,"duration":6.811000000000007,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-19.766,"pitch_hz":255.715,"spectral_centroid":2275.8,"zero_crossing_rate":0.05,"pitch_mean":255.715,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Sure it is. She needs a pen for work. She's writing. She turns it over. Whoa! It's time for my date with Joey!","words":[{"word":"Sure","start_time":85.05,"end_time":85.25,"duration":0.20000000000000284,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it","start_time":85.331,"end_time":85.451,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"is.","start_time":85.471,"end_time":85.851,"duration":0.37999999999999545,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"She","start_time":85.891,"end_time":86.833,"duration":0.9419999999999931,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"needs","start_time":86.893,"end_time":87.053,"duration":0.1599999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":87.113,"end_time":87.133,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"pen","start_time":87.173,"end_time":87.354,"duration":0.18099999999999739,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":87.394,"end_time":87.514,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"work.","start_time":87.574,"end_time":87.875,"duration":0.30100000000000193,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"She's","start_time":88.335,"end_time":88.516,"duration":0.1810000000000116,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"writing.","start_time":88.616,"end_time":89.016,"duration":0.4000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"She","start_time":89.057,"end_time":89.237,"duration":0.1799999999999926,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"turns","start_time":89.277,"end_time":89.497,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it","start_time":89.557,"end_time":89.597,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"over.","start_time":89.698,"end_time":89.858,"duration":0.1600000000000108,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Whoa!","start_time":89.918,"end_time":90.299,"duration":0.3810000000000002,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"It's","start_time":90.599,"end_time":90.699,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"time","start_time":90.719,"end_time":90.819,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":90.839,"end_time":90.94,"duration":0.10099999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"my","start_time":90.98,"end_time":91.1,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"date","start_time":91.12,"end_time":91.26,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"with","start_time":91.3,"end_time":91.42,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Joey!","start_time":91.44,"end_time":91.861,"duration":0.4210000000000065,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":94.866,"end_time":95.547,"duration":0.6809999999999974,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-20.719,"pitch_hz":350.248,"spectral_centroid":1650.206,"zero_crossing_rate":0.05,"pitch_mean":350.248,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"All right, look, look.","words":[{"word":"All","start_time":94.866,"end_time":94.926,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"right,","start_time":94.946,"end_time":95.066,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"look,","start_time":95.086,"end_time":95.287,"duration":0.20100000000000762,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"look.","start_time":95.307,"end_time":95.547,"duration":0.23999999999999488,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":96.769,"end_time":99.093,"duration":2.323999999999998,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-20.27,"pitch_hz":222.701,"spectral_centroid":1760.64,"zero_crossing_rate":0.05,"pitch_mean":222.701,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"What did you get for Angela Delvecchio for her birthday?","words":[{"word":"What","start_time":96.769,"end_time":96.869,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"did","start_time":96.909,"end_time":96.989,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":97.009,"end_time":97.089,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"get","start_time":97.109,"end_time":97.21,"duration":0.10099999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":97.25,"end_time":97.33,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Angela","start_time":97.41,"end_time":97.73,"duration":0.3200000000000074,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"Delvecchio","start_time":97.771,"end_time":98.331,"duration":0.5600000000000023,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":98.372,"end_time":98.472,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her","start_time":98.532,"end_time":98.632,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"birthday?","start_time":98.692,"end_time":99.093,"duration":0.40100000000001046,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":99.894,"end_time":103.039,"duration":3.144999999999996,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-20.65,"pitch_hz":195.514,"spectral_centroid":1936.464,"zero_crossing_rate":0.05,"pitch_mean":195.514,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"She didn't have a birthday while we were going out. For three years,","words":[{"word":"She","start_time":99.894,"end_time":99.974,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"didn't","start_time":100.014,"end_time":100.174,"duration":0.1600000000000108,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"have","start_time":100.194,"end_time":100.315,"duration":0.12099999999999511,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":100.335,"end_time":100.375,"duration":0.04000000000000625,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"birthday","start_time":100.415,"end_time":100.695,"duration":0.2799999999999869,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"while","start_time":100.735,"end_time":100.856,"duration":0.12099999999999511,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"we","start_time":100.896,"end_time":100.956,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"were","start_time":100.976,"end_time":101.076,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"going","start_time":101.116,"end_time":101.276,"duration":0.1599999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"out.","start_time":101.356,"end_time":101.456,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"For","start_time":101.877,"end_time":101.977,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"three","start_time":102.077,"end_time":102.318,"duration":0.24099999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"years,","start_time":102.378,"end_time":103.039,"duration":0.6610000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":106.276,"end_time":110.762,"duration":4.486000000000004,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-20.441,"pitch_hz":288.47,"spectral_centroid":2214.72,"zero_crossing_rate":0.05,"pitch_mean":288.47,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Look, it's too late and I got an audition. I can't shop anymore.","words":[{"word":"Look,","start_time":106.276,"end_time":107.097,"duration":0.820999999999998,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it's","start_time":107.117,"end_time":107.237,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"too","start_time":107.337,"end_time":107.578,"duration":0.24099999999999966,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"late","start_time":107.678,"end_time":108.018,"duration":0.3400000000000034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"and","start_time":108.158,"end_time":108.259,"duration":0.10099999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I","start_time":108.319,"end_time":108.419,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"got","start_time":108.439,"end_time":108.559,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"an","start_time":108.619,"end_time":108.699,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"audition.","start_time":108.759,"end_time":109.08,"duration":0.32099999999999795,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I","start_time":109.12,"end_time":109.16,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"can't","start_time":109.24,"end_time":109.48,"duration":0.2400000000000091,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"shop","start_time":109.6,"end_time":109.961,"duration":0.3610000000000042,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"anymore.","start_time":110.081,"end_time":110.762,"duration":0.6809999999999974,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":110.802,"end_time":116.169,"duration":5.36699999999999,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-19.063,"pitch_hz":218.16,"spectral_centroid":1790.373,"zero_crossing_rate":0.05,"pitch_mean":218.16,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"I will go out and I will try to find something for her, okay?","words":[{"word":"I","start_time":110.802,"end_time":110.822,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"will","start_time":113.285,"end_time":113.465,"duration":0.18000000000000682,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"go","start_time":113.525,"end_time":113.665,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"out","start_time":113.806,"end_time":113.906,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"and","start_time":114.006,"end_time":114.086,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"I","start_time":114.126,"end_time":114.166,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"will","start_time":114.186,"end_time":114.326,"duration":0.13999999999998636,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"try","start_time":114.346,"end_time":114.466,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"to","start_time":114.506,"end_time":114.567,"duration":0.06099999999999284,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"find","start_time":114.647,"end_time":114.887,"duration":0.23999999999999488,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"something","start_time":114.947,"end_time":115.267,"duration":0.3199999999999932,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"for","start_time":115.348,"end_time":115.568,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her,","start_time":115.608,"end_time":115.748,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"okay?","start_time":115.768,"end_time":116.169,"duration":0.40099999999999625,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":116.97,"end_time":117.771,"duration":0.8010000000000019,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-19.224,"pitch_hz":219.131,"spectral_centroid":2085.769,"zero_crossing_rate":0.05,"pitch_mean":219.131,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Thanks, man.","words":[{"word":"Thanks,","start_time":116.97,"end_time":117.39,"duration":0.4200000000000017,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"man.","start_time":117.47,"end_time":117.771,"duration":0.30100000000000193,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":118.472,"end_time":120.694,"duration":2.2220000000000084,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-21.225,"pitch_hz":214.502,"spectral_centroid":1621.533,"zero_crossing_rate":0.05,"pitch_mean":214.502,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"And oh, while you're at it, could you get her a card?","words":[{"word":"And","start_time":118.472,"end_time":118.552,"duration":0.0800000000000125,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"oh,","start_time":118.652,"end_time":119.313,"duration":0.6610000000000014,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"while","start_time":119.333,"end_time":119.473,"duration":0.14000000000000057,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you're","start_time":119.493,"end_time":119.613,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"at","start_time":119.633,"end_time":119.713,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it,","start_time":119.753,"end_time":119.813,"duration":0.060000000000002274,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"could","start_time":119.833,"end_time":119.953,"duration":0.12000000000000455,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":119.973,"end_time":120.054,"duration":0.08100000000000307,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"get","start_time":120.074,"end_time":120.174,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her","start_time":120.194,"end_time":120.274,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":120.314,"end_time":120.334,"duration":0.020000000000010232,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"card?","start_time":120.394,"end_time":120.694,"duration":0.29999999999999716,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":122.296,"end_time":124.399,"duration":2.1029999999999944,"speaker_id":"SPEAKER_01","acoustic_features":{"volume_db":-17.075,"pitch_hz":320.246,"spectral_centroid":1304.054,"zero_crossing_rate":0.05,"pitch_mean":320.246,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Would you like me to write her a little poem as well?","words":[{"word":"Would","start_time":122.296,"end_time":122.417,"duration":0.12099999999999511,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"you","start_time":122.457,"end_time":122.557,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"like","start_time":122.597,"end_time":122.877,"duration":0.28000000000000114,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"me","start_time":122.917,"end_time":122.957,"duration":0.03999999999999204,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"to","start_time":122.997,"end_time":123.037,"duration":0.04000000000000625,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"write","start_time":123.057,"end_time":123.198,"duration":0.14099999999999113,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"her","start_time":123.238,"end_time":123.318,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":123.338,"end_time":123.358,"duration":0.020000000000010232,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"little","start_time":123.378,"end_time":123.558,"duration":0.18000000000000682,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"poem","start_time":123.618,"end_time":123.979,"duration":0.3610000000000042,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"as","start_time":124.059,"end_time":124.139,"duration":0.0799999999999983,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"well?","start_time":124.179,"end_time":124.399,"duration":0.21999999999999886,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":125.861,"end_time":128.284,"duration":2.4229999999999876,"speaker_id":"SPEAKER_02","acoustic_features":{"volume_db":-21.109,"pitch_hz":219.16,"spectral_centroid":1887.283,"zero_crossing_rate":0.05,"pitch_mean":219.16,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"Or just get a card that has a poem already in it?","words":[{"word":"Or","start_time":125.861,"end_time":125.981,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"just","start_time":126.462,"end_time":126.642,"duration":0.1799999999999926,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"get","start_time":126.742,"end_time":126.862,"duration":0.11999999999999034,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":126.922,"end_time":126.942,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"card","start_time":126.982,"end_time":127.143,"duration":0.16100000000000136,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"that","start_time":127.163,"end_time":127.263,"duration":0.10000000000000853,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"has","start_time":127.283,"end_time":127.383,"duration":0.09999999999999432,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"a","start_time":127.423,"end_time":127.443,"duration":0.01999999999999602,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"poem","start_time":127.463,"end_time":127.683,"duration":0.22000000000001307,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"already","start_time":127.743,"end_time":127.924,"duration":0.1810000000000116,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"in","start_time":127.944,"end_time":128.004,"duration":0.05999999999998806,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}},{"word":"it?","start_time":128.024,"end_time":128.284,"duration":0.2599999999999909,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]},{"start_time":142.473,"end_time":143.439,"duration":0.9659999999999798,"speaker_id":"SPEAKER_00","acoustic_features":{"volume_db":-33.1,"pitch_hz":220.755,"spectral_centroid":1224.143,"zero_crossing_rate":0.05,"pitch_mean":220.755,"pitch_std":10.0,"mfcc_mean":[12.0,-8.0,4.0]},"text":"you","words":[{"word":"you","start_time":142.473,"end_time":143.439,"duration":0.9659999999999798,"acoustic_features":{"volume_db":-20.0,"pitch_hz":150.0,"spectral_centroid":1500.0}}]}],"processing_time":163.422622,"error":null,"error_code":null}
+{
+  "success": true,
+  "metadata": {
+    "filename": "friends.mp4",
+    "duration": 143.4,
+    "total_segments": 30,
+    "unique_speakers": 4,
+    "sample_rate": 16000,
+    "processed_at": "2025-09-13T15:20:37.900736",
+    "processing_time": 171.213045,
+    "processing_mode": "real_ml_models",
+    "config": {
+      "enable_gpu": true,
+      "segment_length": 5.0,
+      "language": "en",
+      "unified_model": "whisperx-base-with-diarization"
+    },
+    "subtitle_optimization": true
+  },
+  "speakers": {
+    "SPEAKER_03": {
+      "total_duration": 24.81699999999999,
+      "segment_count": 9
+    },
+    "SPEAKER_01": {
+      "total_duration": 25.820999999999998,
+      "segment_count": 13
+    },
+    "SPEAKER_02": {
+      "total_duration": 27.158,
+      "segment_count": 7
+    },
+    "SPEAKER_00": {
+      "total_duration": 0.9829999999999757,
+      "segment_count": 1
+    }
+  },
+  "segments": [
+    {
+      "start_time": 4.908,
+      "end_time": 8.754,
+      "duration": 3.845999999999999,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -22.255,
+        "pitch_hz": 225.587,
+        "spectral_centroid": 2423.728,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 225.587,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "You know, we should all do. Go see a musical.",
+      "words": [
+        {
+          "word": "You",
+          "start_time": 4.908,
+          "end_time": 4.988,
+          "duration": 0.08000000000000007,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "know,",
+          "start_time": 5.008,
+          "end_time": 5.168,
+          "duration": 0.16000000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "we",
+          "start_time": 5.188,
+          "end_time": 5.269,
+          "duration": 0.0810000000000004,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "should",
+          "start_time": 5.289,
+          "end_time": 5.449,
+          "duration": 0.16000000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "all",
+          "start_time": 5.649,
+          "end_time": 5.809,
+          "duration": 0.16000000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "do.",
+          "start_time": 5.869,
+          "end_time": 6.05,
+          "duration": 0.18100000000000005,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Go",
+          "start_time": 6.11,
+          "end_time": 7.752,
+          "duration": 1.6419999999999995,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "see",
+          "start_time": 7.812,
+          "end_time": 8.033,
+          "duration": 0.2209999999999992,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 8.113,
+          "end_time": 8.153,
+          "duration": 0.040000000000000924,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "musical.",
+          "start_time": 8.273,
+          "end_time": 8.754,
+          "duration": 0.48099999999999987,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 12.279,
+      "end_time": 12.74,
+      "duration": 0.4610000000000003,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -20.097,
+        "pitch_hz": 295.265,
+        "spectral_centroid": 1432.602,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 295.265,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Sure.",
+      "words": [
+        {
+          "word": "Sure.",
+          "start_time": 12.279,
+          "end_time": 12.74,
+          "duration": 0.4610000000000003,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 12.78,
+      "end_time": 20.351,
+      "duration": 7.571,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -20.955,
+        "pitch_hz": 299.653,
+        "spectral_centroid": 2351.048,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 299.653,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "And you know which one we should see? The 1996 Tony Award winner.",
+      "words": [
+        {
+          "word": "And",
+          "start_time": 12.78,
+          "end_time": 12.84,
+          "duration": 0.0600000000000005,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 15.023,
+          "end_time": 15.103,
+          "duration": 0.08000000000000007,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "know",
+          "start_time": 15.123,
+          "end_time": 15.203,
+          "duration": 0.08000000000000007,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "which",
+          "start_time": 15.223,
+          "end_time": 15.343,
+          "duration": 0.11999999999999922,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "one",
+          "start_time": 15.404,
+          "end_time": 15.464,
+          "duration": 0.0600000000000005,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "we",
+          "start_time": 15.504,
+          "end_time": 15.544,
+          "duration": 0.040000000000000924,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "should",
+          "start_time": 15.584,
+          "end_time": 15.744,
+          "duration": 0.16000000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "see?",
+          "start_time": 15.804,
+          "end_time": 16.004,
+          "duration": 0.20000000000000107,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "The",
+          "start_time": 16.024,
+          "end_time": 16.085,
+          "duration": 0.06099999999999994,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "1996",
+          "start_time": 17.587,
+          "end_time": 19.269,
+          "duration": 1.6819999999999986,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Tony",
+          "start_time": 19.369,
+          "end_time": 19.73,
+          "duration": 0.36100000000000065,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Award",
+          "start_time": 19.77,
+          "end_time": 20.091,
+          "duration": 0.3210000000000015,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "winner.",
+          "start_time": 20.131,
+          "end_time": 20.351,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 22.474,
+      "end_time": 23.996,
+      "duration": 1.5219999999999985,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -22.295,
+        "pitch_hz": 349.885,
+        "spectral_centroid": 2225.563,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 349.885,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Do you happen to know the name of that one?",
+      "words": [
+        {
+          "word": "Do",
+          "start_time": 22.474,
+          "end_time": 22.534,
+          "duration": 0.05999999999999872,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 22.554,
+          "end_time": 22.634,
+          "duration": 0.08000000000000185,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "happen",
+          "start_time": 22.694,
+          "end_time": 22.895,
+          "duration": 0.2010000000000005,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "to",
+          "start_time": 22.935,
+          "end_time": 23.015,
+          "duration": 0.08000000000000185,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "know",
+          "start_time": 23.035,
+          "end_time": 23.135,
+          "duration": 0.10000000000000142,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "the",
+          "start_time": 23.175,
+          "end_time": 23.255,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "name",
+          "start_time": 23.315,
+          "end_time": 23.536,
+          "duration": 0.22100000000000009,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "of",
+          "start_time": 23.596,
+          "end_time": 23.636,
+          "duration": 0.03999999999999915,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "that",
+          "start_time": 23.676,
+          "end_time": 23.816,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "one?",
+          "start_time": 23.896,
+          "end_time": 23.996,
+          "duration": 0.09999999999999787,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 25.378,
+      "end_time": 26.22,
+      "duration": 0.8419999999999987,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -18.097,
+        "pitch_hz": 254.251,
+        "spectral_centroid": 1952.647,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 254.251,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "I don't know, Greece.",
+      "words": [
+        {
+          "word": "I",
+          "start_time": 25.378,
+          "end_time": 25.398,
+          "duration": 0.019999999999999574,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "don't",
+          "start_time": 25.418,
+          "end_time": 25.519,
+          "duration": 0.10099999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "know,",
+          "start_time": 25.539,
+          "end_time": 25.639,
+          "duration": 0.09999999999999787,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Greece.",
+          "start_time": 25.899,
+          "end_time": 26.22,
+          "duration": 0.32099999999999795,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 28.563,
+      "end_time": 29.004,
+      "duration": 0.4410000000000025,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -16.352,
+        "pitch_hz": 150.0,
+        "spectral_centroid": 1929.994,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 150.0,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "No.",
+      "words": [
+        {
+          "word": "No.",
+          "start_time": 28.563,
+          "end_time": 29.004,
+          "duration": 0.4410000000000025,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 32.028,
+      "end_time": 32.569,
+      "duration": 0.5410000000000039,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -24.271,
+        "pitch_hz": 189.424,
+        "spectral_centroid": 2454.874,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 189.424,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Rent.",
+      "words": [
+        {
+          "word": "Rent.",
+          "start_time": 32.028,
+          "end_time": 32.569,
+          "duration": 0.5410000000000039,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 33.815,
+      "end_time": 36.579,
+      "duration": 2.764000000000003,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -21.134,
+        "pitch_hz": 359.186,
+        "spectral_centroid": 2364.846,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 359.186,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Yes! Rint!",
+      "words": [
+        {
+          "word": "Yes!",
+          "start_time": 33.815,
+          "end_time": 34.616,
+          "duration": 0.8010000000000019,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Rint!",
+          "start_time": 34.636,
+          "end_time": 36.579,
+          "duration": 1.9429999999999978,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 36.599,
+      "end_time": 37.68,
+      "duration": 1.081000000000003,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -17.841,
+        "pitch_hz": 318.356,
+        "spectral_centroid": 1683.969,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 318.356,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Okay, so when do you want to go?",
+      "words": [
+        {
+          "word": "Okay,",
+          "start_time": 36.599,
+          "end_time": 36.959,
+          "duration": 0.36000000000000654,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "so",
+          "start_time": 36.979,
+          "end_time": 37.099,
+          "duration": 0.11999999999999744,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "when",
+          "start_time": 37.119,
+          "end_time": 37.2,
+          "duration": 0.08100000000000307,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "do",
+          "start_time": 37.22,
+          "end_time": 37.26,
+          "duration": 0.03999999999999915,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 37.28,
+          "end_time": 37.34,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "want",
+          "start_time": 37.36,
+          "end_time": 37.44,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "to",
+          "start_time": 37.46,
+          "end_time": 37.5,
+          "duration": 0.03999999999999915,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "go?",
+          "start_time": 37.56,
+          "end_time": 37.68,
+          "duration": 0.11999999999999744,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 38.161,
+      "end_time": 38.361,
+      "duration": 0.19999999999999574,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -19.47,
+        "pitch_hz": 150.0,
+        "spectral_centroid": 2075.168,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 150.0,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "What?",
+      "words": [
+        {
+          "word": "What?",
+          "start_time": 38.161,
+          "end_time": 38.361,
+          "duration": 0.19999999999999574,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 39.222,
+      "end_time": 40.464,
+      "duration": 1.2419999999999973,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -20.857,
+        "pitch_hz": 228.855,
+        "spectral_centroid": 2389.545,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 228.855,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Oh, I'm sorry I can't, I'm busy.",
+      "words": [
+        {
+          "word": "Oh,",
+          "start_time": 39.222,
+          "end_time": 39.302,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I'm",
+          "start_time": 39.322,
+          "end_time": 39.443,
+          "duration": 0.12099999999999511,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "sorry",
+          "start_time": 39.483,
+          "end_time": 39.663,
+          "duration": 0.17999999999999972,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I",
+          "start_time": 39.683,
+          "end_time": 39.743,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "can't,",
+          "start_time": 39.803,
+          "end_time": 40.063,
+          "duration": 0.2600000000000051,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I'm",
+          "start_time": 40.123,
+          "end_time": 40.184,
+          "duration": 0.06099999999999994,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "busy.",
+          "start_time": 40.204,
+          "end_time": 40.464,
+          "duration": 0.259999999999998,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 44.229,
+      "end_time": 48.995,
+      "duration": 4.765999999999998,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -20.293,
+        "pitch_hz": 183.721,
+        "spectral_centroid": 2142.483,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 183.721,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Hey, man, it is so hard to shop for girls.",
+      "words": [
+        {
+          "word": "Hey,",
+          "start_time": 44.229,
+          "end_time": 44.309,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "man,",
+          "start_time": 46.132,
+          "end_time": 46.552,
+          "duration": 0.4200000000000017,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it",
+          "start_time": 46.572,
+          "end_time": 46.632,
+          "duration": 0.05999999999999517,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "is",
+          "start_time": 46.732,
+          "end_time": 46.792,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "so",
+          "start_time": 46.913,
+          "end_time": 47.193,
+          "duration": 0.28000000000000114,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "hard",
+          "start_time": 47.313,
+          "end_time": 47.614,
+          "duration": 0.3009999999999948,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "to",
+          "start_time": 47.674,
+          "end_time": 47.774,
+          "duration": 0.10000000000000142,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "shop",
+          "start_time": 47.894,
+          "end_time": 48.194,
+          "duration": 0.30000000000000426,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 48.254,
+          "end_time": 48.395,
+          "duration": 0.14100000000000534,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "girls.",
+          "start_time": 48.495,
+          "end_time": 48.995,
+          "duration": 0.5,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 50.738,
+      "end_time": 52.861,
+      "duration": 2.1229999999999976,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -19.91,
+        "pitch_hz": 282.826,
+        "spectral_centroid": 2403.942,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 282.826,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Yes, it is at office max.",
+      "words": [
+        {
+          "word": "Yes,",
+          "start_time": 50.738,
+          "end_time": 50.918,
+          "duration": 0.17999999999999972,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it",
+          "start_time": 50.978,
+          "end_time": 51.038,
+          "duration": 0.05999999999999517,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "is",
+          "start_time": 51.198,
+          "end_time": 51.339,
+          "duration": 0.14099999999999824,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "at",
+          "start_time": 51.379,
+          "end_time": 51.559,
+          "duration": 0.17999999999999972,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "office",
+          "start_time": 51.839,
+          "end_time": 52.22,
+          "duration": 0.3810000000000002,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "max.",
+          "start_time": 52.4,
+          "end_time": 52.861,
+          "duration": 0.4609999999999985,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 55.905,
+      "end_time": 56.646,
+      "duration": 0.7409999999999997,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -18.199,
+        "pitch_hz": 337.389,
+        "spectral_centroid": 2072.081,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 337.389,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "What did you get her?",
+      "words": [
+        {
+          "word": "What",
+          "start_time": 55.905,
+          "end_time": 56.025,
+          "duration": 0.11999999999999744,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "did",
+          "start_time": 56.065,
+          "end_time": 56.165,
+          "duration": 0.10000000000000142,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 56.205,
+          "end_time": 56.285,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "get",
+          "start_time": 56.345,
+          "end_time": 56.505,
+          "duration": 0.1600000000000037,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her?",
+          "start_time": 56.566,
+          "end_time": 56.646,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 56.686,
+      "end_time": 59.89,
+      "duration": 3.2040000000000006,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -26.736,
+        "pitch_hz": 184.767,
+        "spectral_centroid": 2140.555,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 184.767,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "A pen.",
+      "words": [
+        {
+          "word": "A",
+          "start_time": 56.686,
+          "end_time": 56.706,
+          "duration": 0.020000000000003126,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "pen.",
+          "start_time": 59.189,
+          "end_time": 59.89,
+          "duration": 0.7010000000000005,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 61.372,
+      "end_time": 64.618,
+      "duration": 3.245999999999995,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -18.854,
+        "pitch_hz": 268.907,
+        "spectral_centroid": 2161.793,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 268.907,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "It's two gifts in one. It's a pen. That's also a clock.",
+      "words": [
+        {
+          "word": "It's",
+          "start_time": 61.372,
+          "end_time": 61.552,
+          "duration": 0.17999999999999972,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "two",
+          "start_time": 61.572,
+          "end_time": 61.733,
+          "duration": 0.16099999999999426,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "gifts",
+          "start_time": 61.773,
+          "end_time": 61.973,
+          "duration": 0.19999999999999574,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "in",
+          "start_time": 62.033,
+          "end_time": 62.113,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "one.",
+          "start_time": 62.214,
+          "end_time": 62.334,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "It's",
+          "start_time": 62.354,
+          "end_time": 62.454,
+          "duration": 0.10000000000000142,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 62.514,
+          "end_time": 62.534,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "pen.",
+          "start_time": 62.594,
+          "end_time": 62.895,
+          "duration": 0.30100000000000193,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "That's",
+          "start_time": 63.195,
+          "end_time": 63.416,
+          "duration": 0.22099999999999653,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "also",
+          "start_time": 63.536,
+          "end_time": 63.877,
+          "duration": 0.3410000000000011,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 63.897,
+          "end_time": 63.917,
+          "duration": 0.020000000000003126,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "clock.",
+          "start_time": 64.137,
+          "end_time": 64.618,
+          "duration": 0.48099999999999454,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 67.624,
+      "end_time": 68.706,
+      "duration": 1.0820000000000078,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -20.152,
+        "pitch_hz": 284.934,
+        "spectral_centroid": 1833.615,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 284.934,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "You can't give her that.",
+      "words": [
+        {
+          "word": "You",
+          "start_time": 67.624,
+          "end_time": 67.744,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "can't",
+          "start_time": 67.804,
+          "end_time": 68.044,
+          "duration": 0.23999999999999488,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "give",
+          "start_time": 68.105,
+          "end_time": 68.285,
+          "duration": 0.1799999999999926,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her",
+          "start_time": 68.325,
+          "end_time": 68.405,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "that.",
+          "start_time": 68.485,
+          "end_time": 68.706,
+          "duration": 0.22100000000000364,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 69.487,
+      "end_time": 74.757,
+      "duration": 5.27000000000001,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -18.653,
+        "pitch_hz": 263.991,
+        "spectral_centroid": 1890.71,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 263.991,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Why not? Because she's not 11. And it's not the seventh night of Hanukkah.",
+      "words": [
+        {
+          "word": "Why",
+          "start_time": 69.487,
+          "end_time": 69.547,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "not?",
+          "start_time": 69.567,
+          "end_time": 69.768,
+          "duration": 0.20100000000000762,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Because",
+          "start_time": 69.828,
+          "end_time": 70.048,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "she's",
+          "start_time": 70.068,
+          "end_time": 70.229,
+          "duration": 0.16100000000000136,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "not",
+          "start_time": 70.289,
+          "end_time": 70.409,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "11.",
+          "start_time": 70.429,
+          "end_time": 70.689,
+          "duration": 0.2599999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "And",
+          "start_time": 70.73,
+          "end_time": 73.074,
+          "duration": 2.343999999999994,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it's",
+          "start_time": 73.094,
+          "end_time": 73.194,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "not",
+          "start_time": 73.214,
+          "end_time": 73.334,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "the",
+          "start_time": 73.374,
+          "end_time": 73.435,
+          "duration": 0.06100000000000705,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "seventh",
+          "start_time": 73.455,
+          "end_time": 73.755,
+          "duration": 0.29999999999999716,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "night",
+          "start_time": 73.795,
+          "end_time": 73.915,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "of",
+          "start_time": 73.936,
+          "end_time": 73.976,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Hanukkah.",
+          "start_time": 74.016,
+          "end_time": 74.757,
+          "duration": 0.7409999999999997,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 78.179,
+      "end_time": 84.669,
+      "duration": 6.489999999999995,
+      "speaker_id": "SPEAKER_03",
+      "acoustic_features": {
+        "volume_db": -22.335,
+        "pitch_hz": 289.008,
+        "spectral_centroid": 2355.139,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 289.008,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Honey, what he means by that is, while this is a very nice gift, maybe it's just not something a boyfriend gives?",
+      "words": [
+        {
+          "word": "Honey,",
+          "start_time": 78.179,
+          "end_time": 78.96,
+          "duration": 0.7809999999999917,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "what",
+          "start_time": 78.98,
+          "end_time": 79.121,
+          "duration": 0.14099999999999113,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "he",
+          "start_time": 79.161,
+          "end_time": 79.241,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "means",
+          "start_time": 79.301,
+          "end_time": 79.481,
+          "duration": 0.1799999999999926,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "by",
+          "start_time": 79.541,
+          "end_time": 79.621,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "that",
+          "start_time": 79.681,
+          "end_time": 79.822,
+          "duration": 0.14100000000000534,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "is,",
+          "start_time": 79.882,
+          "end_time": 79.962,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "while",
+          "start_time": 80.543,
+          "end_time": 80.703,
+          "duration": 0.1599999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "this",
+          "start_time": 80.723,
+          "end_time": 80.843,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "is",
+          "start_time": 80.883,
+          "end_time": 80.963,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 81.004,
+          "end_time": 81.044,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "very",
+          "start_time": 81.184,
+          "end_time": 81.484,
+          "duration": 0.29999999999999716,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "nice",
+          "start_time": 81.564,
+          "end_time": 81.765,
+          "duration": 0.20100000000000762,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "gift,",
+          "start_time": 81.845,
+          "end_time": 82.105,
+          "duration": 0.2600000000000051,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "maybe",
+          "start_time": 82.486,
+          "end_time": 82.706,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it's",
+          "start_time": 82.726,
+          "end_time": 82.806,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "just",
+          "start_time": 82.847,
+          "end_time": 82.987,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "not",
+          "start_time": 83.027,
+          "end_time": 83.187,
+          "duration": 0.1599999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "something",
+          "start_time": 83.227,
+          "end_time": 83.528,
+          "duration": 0.30100000000000193,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 83.548,
+          "end_time": 83.568,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "boyfriend",
+          "start_time": 83.888,
+          "end_time": 84.329,
+          "duration": 0.4409999999999883,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "gives?",
+          "start_time": 84.369,
+          "end_time": 84.669,
+          "duration": 0.29999999999999716,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 85.05,
+      "end_time": 91.861,
+      "duration": 6.811000000000007,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -19.766,
+        "pitch_hz": 255.715,
+        "spectral_centroid": 2275.8,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 255.715,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Sure it is. She needs a pen for work. She's writing. She turns it over. Whoa! It's time for my date with Joey!",
+      "words": [
+        {
+          "word": "Sure",
+          "start_time": 85.05,
+          "end_time": 85.25,
+          "duration": 0.20000000000000284,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it",
+          "start_time": 85.331,
+          "end_time": 85.451,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "is.",
+          "start_time": 85.471,
+          "end_time": 85.851,
+          "duration": 0.37999999999999545,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "She",
+          "start_time": 85.891,
+          "end_time": 86.833,
+          "duration": 0.9419999999999931,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "needs",
+          "start_time": 86.893,
+          "end_time": 87.053,
+          "duration": 0.1599999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 87.113,
+          "end_time": 87.133,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "pen",
+          "start_time": 87.173,
+          "end_time": 87.354,
+          "duration": 0.18099999999999739,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 87.394,
+          "end_time": 87.514,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "work.",
+          "start_time": 87.574,
+          "end_time": 87.875,
+          "duration": 0.30100000000000193,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "She's",
+          "start_time": 88.335,
+          "end_time": 88.516,
+          "duration": 0.1810000000000116,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "writing.",
+          "start_time": 88.616,
+          "end_time": 89.016,
+          "duration": 0.4000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "She",
+          "start_time": 89.057,
+          "end_time": 89.237,
+          "duration": 0.1799999999999926,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "turns",
+          "start_time": 89.277,
+          "end_time": 89.497,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it",
+          "start_time": 89.557,
+          "end_time": 89.597,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "over.",
+          "start_time": 89.698,
+          "end_time": 89.858,
+          "duration": 0.1600000000000108,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Whoa!",
+          "start_time": 89.918,
+          "end_time": 90.299,
+          "duration": 0.3810000000000002,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "It's",
+          "start_time": 90.599,
+          "end_time": 90.699,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "time",
+          "start_time": 90.719,
+          "end_time": 90.819,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 90.839,
+          "end_time": 90.94,
+          "duration": 0.10099999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "my",
+          "start_time": 90.98,
+          "end_time": 91.1,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "date",
+          "start_time": 91.12,
+          "end_time": 91.26,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "with",
+          "start_time": 91.3,
+          "end_time": 91.42,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Joey!",
+          "start_time": 91.44,
+          "end_time": 91.861,
+          "duration": 0.4210000000000065,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 94.866,
+      "end_time": 95.547,
+      "duration": 0.6809999999999974,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -20.719,
+        "pitch_hz": 350.248,
+        "spectral_centroid": 1650.206,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 350.248,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "All right, look, look.",
+      "words": [
+        {
+          "word": "All",
+          "start_time": 94.866,
+          "end_time": 94.926,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "right,",
+          "start_time": 94.946,
+          "end_time": 95.066,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "look,",
+          "start_time": 95.086,
+          "end_time": 95.287,
+          "duration": 0.20100000000000762,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "look.",
+          "start_time": 95.307,
+          "end_time": 95.547,
+          "duration": 0.23999999999999488,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 96.769,
+      "end_time": 99.093,
+      "duration": 2.323999999999998,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -20.27,
+        "pitch_hz": 222.701,
+        "spectral_centroid": 1760.64,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 222.701,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "What did you get for Angela Delvecchio for her birthday?",
+      "words": [
+        {
+          "word": "What",
+          "start_time": 96.769,
+          "end_time": 96.869,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "did",
+          "start_time": 96.909,
+          "end_time": 96.989,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 97.009,
+          "end_time": 97.089,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "get",
+          "start_time": 97.109,
+          "end_time": 97.21,
+          "duration": 0.10099999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 97.25,
+          "end_time": 97.33,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Angela",
+          "start_time": 97.41,
+          "end_time": 97.73,
+          "duration": 0.3200000000000074,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "Delvecchio",
+          "start_time": 97.771,
+          "end_time": 98.331,
+          "duration": 0.5600000000000023,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 98.372,
+          "end_time": 98.472,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her",
+          "start_time": 98.532,
+          "end_time": 98.632,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "birthday?",
+          "start_time": 98.692,
+          "end_time": 99.093,
+          "duration": 0.40100000000001046,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 99.894,
+      "end_time": 103.039,
+      "duration": 3.144999999999996,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -20.65,
+        "pitch_hz": 195.514,
+        "spectral_centroid": 1936.464,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 195.514,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "She didn't have a birthday while we were going out. For three years,",
+      "words": [
+        {
+          "word": "She",
+          "start_time": 99.894,
+          "end_time": 99.974,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "didn't",
+          "start_time": 100.014,
+          "end_time": 100.174,
+          "duration": 0.1600000000000108,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "have",
+          "start_time": 100.194,
+          "end_time": 100.315,
+          "duration": 0.12099999999999511,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 100.335,
+          "end_time": 100.375,
+          "duration": 0.04000000000000625,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "birthday",
+          "start_time": 100.415,
+          "end_time": 100.695,
+          "duration": 0.2799999999999869,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "while",
+          "start_time": 100.735,
+          "end_time": 100.856,
+          "duration": 0.12099999999999511,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "we",
+          "start_time": 100.896,
+          "end_time": 100.956,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "were",
+          "start_time": 100.976,
+          "end_time": 101.076,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "going",
+          "start_time": 101.116,
+          "end_time": 101.276,
+          "duration": 0.1599999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "out.",
+          "start_time": 101.356,
+          "end_time": 101.456,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "For",
+          "start_time": 101.877,
+          "end_time": 101.977,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "three",
+          "start_time": 102.077,
+          "end_time": 102.318,
+          "duration": 0.24099999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "years,",
+          "start_time": 102.378,
+          "end_time": 103.039,
+          "duration": 0.6610000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 106.276,
+      "end_time": 110.762,
+      "duration": 4.486000000000004,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -20.441,
+        "pitch_hz": 288.47,
+        "spectral_centroid": 2214.72,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 288.47,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Look, it's too late and I got an audition. I can't shop anymore.",
+      "words": [
+        {
+          "word": "Look,",
+          "start_time": 106.276,
+          "end_time": 107.097,
+          "duration": 0.820999999999998,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it's",
+          "start_time": 107.117,
+          "end_time": 107.237,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "too",
+          "start_time": 107.337,
+          "end_time": 107.578,
+          "duration": 0.24099999999999966,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "late",
+          "start_time": 107.678,
+          "end_time": 108.018,
+          "duration": 0.3400000000000034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "and",
+          "start_time": 108.158,
+          "end_time": 108.259,
+          "duration": 0.10099999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I",
+          "start_time": 108.319,
+          "end_time": 108.419,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "got",
+          "start_time": 108.439,
+          "end_time": 108.559,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "an",
+          "start_time": 108.619,
+          "end_time": 108.699,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "audition.",
+          "start_time": 108.759,
+          "end_time": 109.08,
+          "duration": 0.32099999999999795,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I",
+          "start_time": 109.12,
+          "end_time": 109.16,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "can't",
+          "start_time": 109.24,
+          "end_time": 109.48,
+          "duration": 0.2400000000000091,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "shop",
+          "start_time": 109.6,
+          "end_time": 109.961,
+          "duration": 0.3610000000000042,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "anymore.",
+          "start_time": 110.081,
+          "end_time": 110.762,
+          "duration": 0.6809999999999974,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 110.802,
+      "end_time": 116.169,
+      "duration": 5.36699999999999,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -19.063,
+        "pitch_hz": 218.16,
+        "spectral_centroid": 1790.373,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 218.16,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "I will go out and I will try to find something for her, okay?",
+      "words": [
+        {
+          "word": "I",
+          "start_time": 110.802,
+          "end_time": 110.822,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "will",
+          "start_time": 113.285,
+          "end_time": 113.465,
+          "duration": 0.18000000000000682,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "go",
+          "start_time": 113.525,
+          "end_time": 113.665,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "out",
+          "start_time": 113.806,
+          "end_time": 113.906,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "and",
+          "start_time": 114.006,
+          "end_time": 114.086,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "I",
+          "start_time": 114.126,
+          "end_time": 114.166,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "will",
+          "start_time": 114.186,
+          "end_time": 114.326,
+          "duration": 0.13999999999998636,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "try",
+          "start_time": 114.346,
+          "end_time": 114.466,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "to",
+          "start_time": 114.506,
+          "end_time": 114.567,
+          "duration": 0.06099999999999284,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "find",
+          "start_time": 114.647,
+          "end_time": 114.887,
+          "duration": 0.23999999999999488,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "something",
+          "start_time": 114.947,
+          "end_time": 115.267,
+          "duration": 0.3199999999999932,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "for",
+          "start_time": 115.348,
+          "end_time": 115.568,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her,",
+          "start_time": 115.608,
+          "end_time": 115.748,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "okay?",
+          "start_time": 115.768,
+          "end_time": 116.169,
+          "duration": 0.40099999999999625,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 116.97,
+      "end_time": 117.771,
+      "duration": 0.8010000000000019,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -19.224,
+        "pitch_hz": 219.131,
+        "spectral_centroid": 2085.769,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 219.131,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Thanks, man.",
+      "words": [
+        {
+          "word": "Thanks,",
+          "start_time": 116.97,
+          "end_time": 117.39,
+          "duration": 0.4200000000000017,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "man.",
+          "start_time": 117.47,
+          "end_time": 117.771,
+          "duration": 0.30100000000000193,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 118.472,
+      "end_time": 120.694,
+      "duration": 2.2220000000000084,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -21.225,
+        "pitch_hz": 214.502,
+        "spectral_centroid": 1621.533,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 214.502,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "And oh, while you're at it, could you get her a card?",
+      "words": [
+        {
+          "word": "And",
+          "start_time": 118.472,
+          "end_time": 118.552,
+          "duration": 0.0800000000000125,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "oh,",
+          "start_time": 118.652,
+          "end_time": 119.313,
+          "duration": 0.6610000000000014,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "while",
+          "start_time": 119.333,
+          "end_time": 119.473,
+          "duration": 0.14000000000000057,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you're",
+          "start_time": 119.493,
+          "end_time": 119.613,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "at",
+          "start_time": 119.633,
+          "end_time": 119.713,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it,",
+          "start_time": 119.753,
+          "end_time": 119.813,
+          "duration": 0.060000000000002274,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "could",
+          "start_time": 119.833,
+          "end_time": 119.953,
+          "duration": 0.12000000000000455,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 119.973,
+          "end_time": 120.054,
+          "duration": 0.08100000000000307,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "get",
+          "start_time": 120.074,
+          "end_time": 120.174,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her",
+          "start_time": 120.194,
+          "end_time": 120.274,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 120.314,
+          "end_time": 120.334,
+          "duration": 0.020000000000010232,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "card?",
+          "start_time": 120.394,
+          "end_time": 120.694,
+          "duration": 0.29999999999999716,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 122.296,
+      "end_time": 124.399,
+      "duration": 2.1029999999999944,
+      "speaker_id": "SPEAKER_01",
+      "acoustic_features": {
+        "volume_db": -17.075,
+        "pitch_hz": 320.246,
+        "spectral_centroid": 1304.054,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 320.246,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Would you like me to write her a little poem as well?",
+      "words": [
+        {
+          "word": "Would",
+          "start_time": 122.296,
+          "end_time": 122.417,
+          "duration": 0.12099999999999511,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "you",
+          "start_time": 122.457,
+          "end_time": 122.557,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "like",
+          "start_time": 122.597,
+          "end_time": 122.877,
+          "duration": 0.28000000000000114,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "me",
+          "start_time": 122.917,
+          "end_time": 122.957,
+          "duration": 0.03999999999999204,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "to",
+          "start_time": 122.997,
+          "end_time": 123.037,
+          "duration": 0.04000000000000625,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "write",
+          "start_time": 123.057,
+          "end_time": 123.198,
+          "duration": 0.14099999999999113,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "her",
+          "start_time": 123.238,
+          "end_time": 123.318,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 123.338,
+          "end_time": 123.358,
+          "duration": 0.020000000000010232,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "little",
+          "start_time": 123.378,
+          "end_time": 123.558,
+          "duration": 0.18000000000000682,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "poem",
+          "start_time": 123.618,
+          "end_time": 123.979,
+          "duration": 0.3610000000000042,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "as",
+          "start_time": 124.059,
+          "end_time": 124.139,
+          "duration": 0.0799999999999983,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "well?",
+          "start_time": 124.179,
+          "end_time": 124.399,
+          "duration": 0.21999999999999886,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 125.861,
+      "end_time": 128.284,
+      "duration": 2.4229999999999876,
+      "speaker_id": "SPEAKER_02",
+      "acoustic_features": {
+        "volume_db": -21.109,
+        "pitch_hz": 219.16,
+        "spectral_centroid": 1887.283,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 219.16,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "Or just get a card that has a poem already in it?",
+      "words": [
+        {
+          "word": "Or",
+          "start_time": 125.861,
+          "end_time": 125.981,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "just",
+          "start_time": 126.462,
+          "end_time": 126.642,
+          "duration": 0.1799999999999926,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "get",
+          "start_time": 126.742,
+          "end_time": 126.862,
+          "duration": 0.11999999999999034,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 126.922,
+          "end_time": 126.942,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "card",
+          "start_time": 126.982,
+          "end_time": 127.143,
+          "duration": 0.16100000000000136,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "that",
+          "start_time": 127.163,
+          "end_time": 127.263,
+          "duration": 0.10000000000000853,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "has",
+          "start_time": 127.283,
+          "end_time": 127.383,
+          "duration": 0.09999999999999432,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "a",
+          "start_time": 127.423,
+          "end_time": 127.443,
+          "duration": 0.01999999999999602,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "poem",
+          "start_time": 127.463,
+          "end_time": 127.683,
+          "duration": 0.22000000000001307,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "already",
+          "start_time": 127.743,
+          "end_time": 127.924,
+          "duration": 0.1810000000000116,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "in",
+          "start_time": 127.944,
+          "end_time": 128.004,
+          "duration": 0.05999999999998806,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        },
+        {
+          "word": "it?",
+          "start_time": 128.024,
+          "end_time": 128.284,
+          "duration": 0.2599999999999909,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    },
+    {
+      "start_time": 142.473,
+      "end_time": 143.456,
+      "duration": 0.9829999999999757,
+      "speaker_id": "SPEAKER_00",
+      "acoustic_features": {
+        "volume_db": -33.162,
+        "pitch_hz": 220.755,
+        "spectral_centroid": 1213.801,
+        "zero_crossing_rate": 0.05,
+        "pitch_mean": 220.755,
+        "pitch_std": 10.0,
+        "mfcc_mean": [
+          12.0,
+          -8.0,
+          4.0
+        ]
+      },
+      "text": "you",
+      "words": [
+        {
+          "word": "you",
+          "start_time": 142.473,
+          "end_time": 143.456,
+          "duration": 0.9829999999999757,
+          "acoustic_features": {
+            "volume_db": -20.0,
+            "pitch_hz": 150.0,
+            "spectral_centroid": 1500.0
+          }
+        }
+      ]
+    }
+  ],
+  "processing_time": 171.213045,
+  "error": null,
+  "error_code": null
+}
