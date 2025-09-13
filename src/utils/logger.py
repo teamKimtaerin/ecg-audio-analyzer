@@ -13,6 +13,7 @@ import structlog
 
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -89,7 +90,7 @@ class ECGLogger:
     def timer(self, stage: str):
         """Simple timer context manager"""
         start_time = time.time()
-        
+
         try:
             self.logger.info("stage_started", stage=stage)
             yield
@@ -99,7 +100,9 @@ class ECGLogger:
             raise
         finally:
             duration = time.time() - start_time
-            self.logger.info("stage_duration", stage=stage, duration_seconds=round(duration, 2))
+            self.logger.info(
+                "stage_duration", stage=stage, duration_seconds=round(duration, 2)
+            )
 
 
 # Global logger instance
@@ -119,6 +122,6 @@ def get_logger(name: str = "ecg-audio-analyzer", **kwargs) -> ECGLogger:
 def setup_logging(level: str = "INFO") -> ECGLogger:
     """Setup global logging configuration"""
     global _global_logger
-    
+
     _global_logger = ECGLogger(level=level)
     return _global_logger

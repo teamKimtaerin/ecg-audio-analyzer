@@ -1,18 +1,19 @@
 """
-Pipeline Manager - Streamlined Service Orchestration
+Pipeline Manager - Simplified Service Orchestration
 Single Responsibility: Coordinate analysis workflow efficiently
 """
 
 import asyncio
 import time
 import traceback
+import psutil
+import torch
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-from .resource_manager import ResourceManager
-from .progress_tracker import ProgressTracker
-from .stage_executor import StageExecutor
+from ..services.audio_extractor import AudioExtractor
+from ..models.speech_recognizer import WhisperXPipeline
 from ..models.output_models import (
     CompleteAnalysisResult,
     AnalysisMetadata,
@@ -27,7 +28,7 @@ from config.model_configs import SpeakerDiarizationConfig
 
 class PipelineManager:
     """
-    Streamlined pipeline orchestration manager.
+    Simplified pipeline orchestration manager.
     Single Responsibility: Coordinate analysis services efficiently.
     """
 
@@ -47,66 +48,180 @@ class PipelineManager:
 
         self.logger = get_logger().bind_context(component="pipeline_manager")
 
-        # Initialize components
-        max_gpu_workers = aws_config.concurrent_workers if aws_config else 2
-        self.resource_manager = ResourceManager(
-            max_concurrent_gpu_tasks=max_gpu_workers
-        )
+        # Simple progress tracking
+        self.current_stage = "initialization"
+        self.completed_stages = []
+        self.error_count = 0
+
+        # Thread pool for I/O operations
         self.thread_pool = ThreadPoolExecutor(max_workers=base_config.max_workers)
 
-        # Pipeline stage configuration
-        self.stage_config = self._get_stage_config()
+        # GPU availability check
+        self.gpu_available = torch.cuda.is_available()
 
-        # Initialize progress tracker
-        self.progress_tracker = ProgressTracker(self.stage_config)
-
-        # Initialize stage executor
-        self.stage_executor = StageExecutor(
-            base_config, processing_config, aws_config, language, self.thread_pool
-        )
-
-        self.logger.info(
-            "pipeline_manager_initialized",
-            total_stages=self.progress_tracker.progress.total_stages,
-            gpu_workers=max_gpu_workers,
-            thread_workers=base_config.max_workers,
-        )
+        # Service instances (lazy initialization)
+        self._audio_extractor: Optional[AudioExtractor] = None
+        self._whisperx_pipeline: Optional[WhisperXPipeline] = None
 
         # Store results for API access
         self._last_whisperx_result = None
         self._last_audio_path = None
 
-    def _get_stage_config(self) -> Dict[str, Dict]:
-        """Get simplified stage configuration for essential stages only"""
-        return {
-            "audio_extraction": {"required": True},
-            "whisperx_pipeline": {"required": True},
-            "result_synthesis": {"required": True},
-        }
+        self.logger.info(
+            "pipeline_manager_initialized",
+            gpu_available=self.gpu_available,
+            thread_workers=base_config.max_workers,
+        )
+
+    def _get_audio_extractor(self) -> AudioExtractor:
+        """Get or create audio extractor instance"""
+        if self._audio_extractor is None:
+            self._audio_extractor = AudioExtractor(
+                target_sr=self.base_config.sample_rate,
+                temp_dir=self.base_config.temp_dir,
+            )
+        return self._audio_extractor
+
+    def _get_whisperx_pipeline(self) -> WhisperXPipeline:
+        """Get or create WhisperX pipeline instance"""
+        if self._whisperx_pipeline is None:
+            device = self.aws_config.cuda_device if self.aws_config else None
+            hf_token = getattr(self.base_config, "hugging_face_token", None)
+
+            self._whisperx_pipeline = WhisperXPipeline(
+                model_size="base",
+                device=device,
+                compute_type=(
+                    "float16" if device and device.startswith("cuda") else "float32"
+                ),
+                language=self.language,
+                hf_auth_token=hf_token,
+            )
+        return self._whisperx_pipeline
+
+    def _update_progress(self, stage: str):
+        """Update current stage"""
+        self.current_stage = stage
+        self.logger.info("progress_updated", stage=stage)
+
+    def _mark_stage_completed(self, stage: str):
+        """Mark stage as completed"""
+        if stage not in self.completed_stages:
+            self.completed_stages.append(stage)
+            self.logger.info("stage_completed", stage=stage)
+
+    def _get_resource_usage(self) -> Dict[str, float]:
+        """Get current resource usage"""
+        try:
+            process = psutil.Process()
+            cpu_percent = process.cpu_percent()
+            memory_mb = process.memory_info().rss / 1024 / 1024
+
+            gpu_memory_mb = 0.0
+            if self.gpu_available:
+                try:
+                    device = torch.cuda.current_device()
+                    gpu_memory_mb = torch.cuda.memory_allocated(device) / 1024 / 1024
+                except Exception:
+                    pass
+
+            return {
+                "cpu_percent": cpu_percent,
+                "memory_mb": memory_mb,
+                "gpu_memory_mb": gpu_memory_mb,
+            }
+        except Exception:
+            return {"cpu_percent": 0.0, "memory_mb": 0.0, "gpu_memory_mb": 0.0}
 
     async def preload_models(self, enable_warmup: bool = True) -> Dict[str, Any]:
-        """Preload models to reduce first-time processing latency"""
+        """Preload WhisperX model by creating pipeline instance"""
         try:
-            from ..models.model_manager import get_model_manager
-
-            model_manager = get_model_manager()
-
-            # Run preloading in thread pool
-            loop = asyncio.get_event_loop()
-
-            preload_results = await loop.run_in_executor(
-                self.thread_pool,
-                model_manager.preload_models,
-                True,  # load_speaker
-                True,  # load_whisperx
-                False,  # load_emotion (optional)
-            )
-
-            return {"status": "success", "models": preload_results}
+            # Simply create WhisperX pipeline to preload models
+            pipeline = self._get_whisperx_pipeline()
+            if pipeline:
+                self.logger.info("whisperx_model_preloaded")
+                return {"status": "success", "models": {"whisperx_model": True}}
+            else:
+                return {
+                    "status": "failed",
+                    "error": "Failed to create WhisperX pipeline",
+                }
 
         except Exception as e:
             self.logger.error("model_preloading_failed", error=str(e))
             return {"status": "failed", "error": str(e)}
+
+    async def _execute_audio_extraction(self, source: Union[str, Path]):
+        """Execute audio extraction stage"""
+        self.logger.info("executing_audio_extraction", source=str(source))
+
+        try:
+            extractor = self._get_audio_extractor()
+
+            # Run in thread pool for I/O intensive operation
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                self.thread_pool, extractor.extract, source
+            )
+
+            if result.success:
+                self.logger.info("audio_extraction_completed", duration=result.duration)
+            else:
+                self.logger.error("audio_extraction_failed", error=result.error)
+
+            return result
+
+        except Exception as e:
+            self.logger.error("audio_extraction_stage_failed", error=str(e))
+            from ..services.audio_extractor import AudioExtractionResult
+
+            return AudioExtractionResult(
+                success=False, error=str(e), output_path=None, duration=0.0
+            )
+
+    async def _execute_whisperx_pipeline(self, audio_path: Path) -> Dict[str, Any]:
+        """Execute WhisperX integrated pipeline"""
+        self.logger.info("executing_whisperx_pipeline", audio_path=str(audio_path))
+
+        try:
+            pipeline = self._get_whisperx_pipeline()
+
+            # Create wrapper function
+            def whisperx_wrapper():
+                return pipeline.process_audio_with_diarization(
+                    audio_path=audio_path,
+                    min_speakers=2,
+                    max_speakers=4,
+                    sample_rate=16000,
+                )
+
+            # Run WhisperX pipeline in thread pool
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(self.thread_pool, whisperx_wrapper)
+
+            if result and "segments" in result:
+                segments_count = len(result["segments"])
+                speakers = {
+                    seg.get("speaker")
+                    for seg in result["segments"]
+                    if seg.get("speaker")
+                }
+
+                self.logger.info(
+                    "whisperx_pipeline_completed",
+                    speakers=len(speakers),
+                    segments=segments_count,
+                    language=result.get("language", "unknown"),
+                )
+            else:
+                self.logger.error("whisperx_pipeline_no_result")
+                result = {"segments": [], "language": self.language}
+
+            return result
+
+        except Exception as e:
+            self.logger.error("whisperx_pipeline_failed", error=str(e))
+            return {"segments": [], "language": self.language, "error": str(e)}
 
     def _create_basic_result(
         self,
@@ -138,10 +253,10 @@ class PipelineManager:
         )
 
         # Create performance stats
-        resource_usage = self.resource_manager.get_resource_usage()
+        resource_usage = self._get_resource_usage()
         performance_stats = PerformanceStats(
-            gpu_utilization=0.0,  # Will be updated by resource manager
-            peak_memory_mb=int(resource_usage.peak_memory_mb),
+            gpu_utilization=0.0,
+            peak_memory_mb=int(resource_usage["memory_mb"]),
             avg_processing_fps=0.0,
             bottleneck_stage="whisperx_pipeline",
         )
@@ -149,7 +264,7 @@ class PipelineManager:
         # Create basic result with available data
         result = CompleteAnalysisResult(
             metadata=metadata,
-            timeline=[],  # Will be populated by ResultSynthesizer
+            timeline=[],
             performance_stats=performance_stats,
         )
 
@@ -169,10 +284,8 @@ class PipelineManager:
 
             try:
                 # Stage 1: Audio Extraction
-                self.progress_tracker.update_stage("audio_extraction")
-                extraction_result = await self.stage_executor.execute_audio_extraction(
-                    source
-                )
+                self._update_progress("audio_extraction")
+                extraction_result = await self._execute_audio_extraction(source)
 
                 # Validate extraction result
                 if extraction_result.error or not extraction_result.output_path:
@@ -180,21 +293,14 @@ class PipelineManager:
                     self.logger.error("audio_extraction_failed", error=error_msg)
                     raise ValueError(error_msg)
 
-                self.progress_tracker.mark_stage_completed("audio_extraction")
+                self._mark_stage_completed("audio_extraction")
 
                 # Stage 2: WhisperX Pipeline
-                self.progress_tracker.update_stage("whisperx_pipeline")
-
-                # Get expected duration for validation
-                expected_duration = getattr(
-                    extraction_result, "original_duration", extraction_result.duration
-                )
+                self._update_progress("whisperx_pipeline")
 
                 if extraction_result.output_path:
-                    whisperx_result = (
-                        await self.stage_executor.execute_whisperx_pipeline(
-                            extraction_result.output_path, self.resource_manager
-                        )
+                    whisperx_result = await self._execute_whisperx_pipeline(
+                        extraction_result.output_path
                     )
                 else:
                     whisperx_result = {}
@@ -205,19 +311,7 @@ class PipelineManager:
                     self.logger.error("whisperx_failed", error=error_msg)
                     raise ValueError(error_msg)
 
-                self.progress_tracker.mark_stage_completed("whisperx_pipeline")
-
-                # Stage 3: Timeline validation
-                # Check for timeline coverage gaps
-                if whisperx_result.get("segments"):
-                    segments = whisperx_result["segments"]
-                    last_end = segments[-1].get("end", 0) if segments else 0
-                    coverage_ratio = last_end / expected_duration if expected_duration > 0 else 0
-                    
-                    if coverage_ratio < 0.8:  # Less than 80% coverage
-                        warning = f"Low timeline coverage: {coverage_ratio:.1%} of expected duration"
-                        self.logger.warning("timeline_validation_warning", warning=warning)
-                    self.progress_tracker.add_warning()
+                self._mark_stage_completed("whisperx_pipeline")
 
                 # Store results for API access
                 self._last_whisperx_result = whisperx_result
@@ -227,12 +321,12 @@ class PipelineManager:
                     else None
                 )
 
-                # Stage 4: Result synthesis
-                self.progress_tracker.update_stage("result_synthesis")
+                # Stage 3: Result synthesis
+                self._update_progress("result_synthesis")
                 result = self._create_basic_result(
                     source, extraction_result, whisperx_result
                 )
-                self.progress_tracker.mark_stage_completed("result_synthesis")
+                self._mark_stage_completed("result_synthesis")
 
                 # Save result if output path specified
                 if output_path:
@@ -255,7 +349,7 @@ class PipelineManager:
                 return result
 
             except Exception as e:
-                self.progress_tracker.add_error()
+                self.error_count += 1
                 error_msg = str(e)
                 self.logger.error(
                     "pipeline_failed",
@@ -274,20 +368,27 @@ class PipelineManager:
 
     def get_progress(self):
         """Get current pipeline progress"""
-        return self.progress_tracker.get_progress()
+        total_stages = 3  # audio_extraction, whisperx_pipeline, result_synthesis
+        progress_percentage = (len(self.completed_stages) / total_stages) * 100
+
+        return {
+            "current_stage": self.current_stage,
+            "completed_stages": self.completed_stages,
+            "progress_percentage": progress_percentage,
+            "error_count": self.error_count,
+        }
 
     def get_resource_usage(self):
         """Get current resource usage"""
-        return self.resource_manager.get_resource_usage()
+        return self._get_resource_usage()
 
     def cleanup(self):
         """Clean up pipeline resources"""
         try:
-            # Clean up stage executor
-            self.stage_executor.cleanup()
-
             # Clean up GPU memory
-            self.resource_manager.cleanup_gpu_memory()
+            if self.gpu_available:
+                torch.cuda.empty_cache()
+                self.logger.debug("gpu_memory_cleared")
 
             # Shutdown thread pool
             self.thread_pool.shutdown(wait=True)
