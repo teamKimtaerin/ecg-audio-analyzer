@@ -156,26 +156,44 @@ async def send_callback(
         )
 
         if response.status_code == 200:
-            logger.info(f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)")
+            logger.info(
+                f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)"
+            )
         else:
-            logger.warning(f"Callback failed to {callback_endpoint}: {response.status_code}")
+            logger.warning(
+                f"Callback failed to {callback_endpoint}: {response.status_code}"
+            )
 
     except Exception as e:
         logger.error(f"Callback error to {base_url}: {str(e)}")
 
 
-async def download_from_url(url: str, job_id: str, callback_base_url: Optional[str] = None) -> str:
+async def download_from_url(
+    url: str, job_id: str, callback_base_url: Optional[str] = None
+) -> str:
     """URL에서 비디오 다운로드 또는 로컬 파일 확인"""
     try:
         # 로컬 파일 경로인지 확인
         local_path = Path(url)
         if local_path.exists():
             logger.info(f"로컬 파일 사용: {url}")
-            await send_callback(job_id, "processing", 10, "로컬 파일 확인 완료", callback_base_url=callback_base_url)
+            await send_callback(
+                job_id,
+                "processing",
+                10,
+                "로컬 파일 확인 완료",
+                callback_base_url=callback_base_url,
+            )
             return str(local_path.absolute())
 
         # URL 다운로드
-        await send_callback(job_id, "processing", 5, "비디오 다운로드 시작...", callback_base_url=callback_base_url)
+        await send_callback(
+            job_id,
+            "processing",
+            5,
+            "비디오 다운로드 시작...",
+            callback_base_url=callback_base_url,
+        )
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
             response = requests.get(url, stream=True, timeout=60)
@@ -431,11 +449,11 @@ async def process_video_api(
 
         # 백그라운드 작업 시작 (추가 파라미터와 함께)
         background_tasks.add_task(
-            process_video_with_callback, 
-            job_id, 
+            process_video_with_callback,
+            job_id,
             request.video_url,
             request.fastapi_base_url,
-            request.language
+            request.language,
         )
 
         return ProcessVideoResponse(
@@ -469,10 +487,10 @@ async def process_video_api(
 
 
 async def process_video_with_callback(
-    job_id: str, 
+    job_id: str,
     video_url: str,
     callback_base_url: Optional[str] = None,
-    language: str = "en"
+    language: str = "en",
 ):
     """API 명세에 따른 비디오 처리 및 콜백"""
     start_time = datetime.now()
@@ -492,12 +510,24 @@ async def process_video_with_callback(
         # 1. 비디오 다운로드
         logger.info(f"작업 시작: {job_id}")
         video_path = await download_from_url(video_url, job_id, callback_base_url)
-        await send_callback(job_id, "processing", milestones[0][0], milestones[0][1], callback_base_url=callback_base_url)
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[0][0],
+            milestones[0][1],
+            callback_base_url=callback_base_url,
+        )
         logger.info("비디오 준비 완료, ML 처리 시작")
 
         # 2-5. Pipeline 처리 (진행상황 업데이트)
         for progress, message in milestones[1:4]:
-            await send_callback(job_id, "processing", progress, message, callback_base_url=callback_base_url)
+            await send_callback(
+                job_id,
+                "processing",
+                progress,
+                message,
+                callback_base_url=callback_base_url,
+            )
 
         # 비디오 처리 실행
         logger.info("ML 파이프라인 실행 중...")
@@ -505,10 +535,22 @@ async def process_video_with_callback(
         logger.info("ML 파이프라인 처리 완료")
 
         # 6. 감정 분석
-        await send_callback(job_id, "processing", milestones[4][0], milestones[4][1], callback_base_url=callback_base_url)
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[4][0],
+            milestones[4][1],
+            callback_base_url=callback_base_url,
+        )
 
         # 7. 결과 정리
-        await send_callback(job_id, "processing", milestones[5][0], milestones[5][1], callback_base_url=callback_base_url)
+        await send_callback(
+            job_id,
+            "processing",
+            milestones[5][0],
+            milestones[5][1],
+            callback_base_url=callback_base_url,
+        )
 
         # API 응답 형식으로 변환 (백엔드가 기대하는 형식)
         segments_for_api = []
@@ -543,12 +585,19 @@ async def process_video_with_callback(
                 "model_version": "whisperx-base",
                 "processing_time": processing_time,
                 "unique_speakers": result["metadata"]["unique_speakers"],
-                "total_segments": result["metadata"]["total_segments"]
-            }
+                "total_segments": result["metadata"]["total_segments"],
+            },
         }
 
         # 완료 콜백 전송
-        await send_callback(job_id, "completed", 100, "분석 완료", result=final_result, callback_base_url=callback_base_url)
+        await send_callback(
+            job_id,
+            "completed",
+            100,
+            "분석 완료",
+            result=final_result,
+            callback_base_url=callback_base_url,
+        )
 
         logger.info(
             f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
@@ -568,7 +617,12 @@ async def process_video_with_callback(
             "DOWNLOAD_ERROR" if "download" in str(e).lower() else "PROCESSING_ERROR"
         )
         await send_callback(
-            job_id, "failed", 0, error_message=str(e), error_code=error_code, callback_base_url=callback_base_url
+            job_id,
+            "failed",
+            0,
+            error_message=str(e),
+            error_code=error_code,
+            callback_base_url=callback_base_url,
         )
 
         jobs[job_id] = {
