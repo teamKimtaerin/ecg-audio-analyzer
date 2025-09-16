@@ -830,7 +830,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="ECG Audio Analyzer ML API Server")
     parser.add_argument("--host", default="0.0.0.0", help="바인드 호스트")
-    parser.add_argument("--port", type=int, default=8080, help="바인드 포트")
+    parser.add_argument("--port", type=int, default=8001, help="바인드 포트")
     parser.add_argument("--workers", type=int, default=1, help="워커 수")
     parser.add_argument(
         "--log-level", default="info", choices=["debug", "info", "warning", "error"]
