@@ -44,6 +44,10 @@ ENABLE_CALLBACKS = bool(BACKEND_URL and BACKEND_URL.strip())
 # In-memory job tracking
 jobs = {}
 
+# 중복 콜백 방지를 위한 완료 작업 추적
+completed_jobs = set()
+failed_jobs = set()
+
 # 로거 설정
 logger = get_logger(__name__)
 
@@ -131,6 +135,14 @@ async def send_callback(
     callback_base_url: Optional[str] = None,
 ):
     """Send progress/error callback to backend"""
+    # 중복 콜백 방지 체크
+    if status == "completed" and job_id in completed_jobs:
+        logger.debug(f"이미 완료된 작업 콜백 스킵: {job_id}")
+        return
+    elif status == "failed" and job_id in failed_jobs:
+        logger.debug(f"이미 실패한 작업 콜백 스킵: {job_id}")
+        return
+
     # 동적 콜백 URL 결정
     base_url = callback_base_url or BACKEND_URL
     if not base_url or not base_url.strip():
@@ -159,12 +171,46 @@ async def send_callback(
         )
 
         if response.status_code == 200:
-            logger.info(
-                f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)"
-            )
+            # 백엔드 응답 처리
+            try:
+                result_data = response.json()
+                if result_data.get("status") == "ignored":
+                    logger.info(
+                        f"콜백이 무시됨 - Job ID: {job_id}, "
+                        f"이유: {result_data.get('reason', 'unknown')}"
+                    )
+                    # 이미 완료/실패한 작업일 수 있으므로 상태 추적에 추가
+                    if status == "completed":
+                        completed_jobs.add(job_id)
+                    elif status == "failed":
+                        failed_jobs.add(job_id)
+                else:
+                    logger.info(
+                        f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)"
+                    )
+                    # 성공적으로 처리된 완료/실패 상태 추적
+                    if status == "completed":
+                        completed_jobs.add(job_id)
+                    elif status == "failed":
+                        failed_jobs.add(job_id)
+            except:
+                # JSON 파싱 실패 시 기본 로깅
+                logger.info(
+                    f"Callback sent to {callback_endpoint}: {status} - {message} ({progress}%)"
+                )
+        elif response.status_code == 422:
+            # 백엔드 검증 실패 처리
+            try:
+                error_detail = response.json()
+                if "Frontend API Misuse" in str(error_detail.get("detail", {})):
+                    logger.warning("백엔드가 프론트엔드 오용을 감지함 - ML 서버는 정상")
+                else:
+                    logger.error(f"콜백 데이터 검증 실패 - Job ID: {job_id}, Error: {error_detail}")
+            except:
+                logger.error(f"422 에러 - Job ID: {job_id}, Response: {response.text}")
         else:
             logger.warning(
-                f"Callback failed to {callback_endpoint}: {response.status_code}"
+                f"Callback failed to {callback_endpoint}: {response.status_code} - {response.text}"
             )
 
     except Exception as e:
@@ -328,6 +374,16 @@ def process_whisperx_segments(
 
     segments = whisperx_result["segments"]
 
+    # DEBUG: 첫 번째 세그먼트 구조 로깅
+    if segments:
+        first_segment = segments[0]
+        logger.debug(f"🔍 DEBUG: 첫 번째 세그먼트 키들: {list(first_segment.keys())}")
+        logger.debug(f"🔍 DEBUG: 첫 번째 세그먼트 내용: {first_segment}")
+        if "words" in first_segment and first_segment["words"]:
+            first_word = first_segment["words"][0]
+            logger.debug(f"🔍 DEBUG: 첫 번째 단어 키들: {list(first_word.keys())}")
+            logger.debug(f"🔍 DEBUG: 첫 번째 단어 내용: {first_word}")
+
     # 음향 특성 추출
     acoustic_features_list = []
     if audio_path and audio_path.exists():
@@ -353,11 +409,18 @@ def process_whisperx_segments(
         speakers_stats[speaker_id]["total_duration"] += duration
         speakers_stats[speaker_id]["segment_count"] += 1
 
+        # Extract timing information from segment
+        start_time = seg.get("start", 0.0) if "start" in seg else seg.get("start_time", 0.0)
+        end_time = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
+
+        # 디버그 로깅: 타임스탬프 확인
+        logger.debug(f"🔍 세그먼트 {i}: start={start_time}, end={end_time}, keys={list(seg.keys())}")
+
         # Build segment data
         segment_data = {
-            "start_time": seg.get("start", 0.0),
-            "end_time": seg.get("end", 0.0),
-            "duration": duration,
+            "start_time": start_time,
+            "end_time": end_time,
+            "duration": end_time - start_time if end_time > start_time else 0.0,
             "speaker_id": speaker_id,
             "acoustic_features": (
                 acoustic_features_list[i]
@@ -370,12 +433,19 @@ def process_whisperx_segments(
 
         # Process words if available
         if "words" in seg:
-            for word in seg["words"]:
+            for word_idx, word in enumerate(seg["words"]):
+                # Extract timing information from word
+                word_start = word.get("start", 0.0) if "start" in word else word.get("start_time", 0.0)
+                word_end = word.get("end", 0.0) if "end" in word else word.get("end_time", 0.0)
+
+                # 디버그 로깅: 단어 타임스탬프 확인
+                logger.debug(f"🔍 단어 {word_idx}: start={word_start}, end={word_end}, keys={list(word.keys())}")
+
                 word_data = {
                     "word": word.get("word", ""),
-                    "start_time": word.get("start", 0.0),
-                    "end_time": word.get("end", 0.0),
-                    "duration": word.get("end", 0.0) - word.get("start", 0.0),
+                    "start_time": word_start,
+                    "end_time": word_end,
+                    "duration": word_end - word_start if word_end > word_start else 0.0,
                     "acoustic_features": {
                         "volume_db": -20.0,
                         "pitch_hz": 150.0,
@@ -386,7 +456,37 @@ def process_whisperx_segments(
 
         processed_segments.append(segment_data)
 
+    # 타임스탬프 검증 및 통계
+    validate_timestamps(processed_segments)
+
     return processed_segments, speakers_stats
+
+
+def validate_timestamps(segments: list) -> None:
+    """타임스탬프 검증 및 통계 출력"""
+    total_segments = len(segments)
+    zero_timestamp_segments = 0
+    valid_timestamp_segments = 0
+
+    for i, segment in enumerate(segments):
+        start_time = segment.get("start_time", 0.0)
+        end_time = segment.get("end_time", 0.0)
+
+        if start_time == 0.0 and end_time == 0.0:
+            zero_timestamp_segments += 1
+        elif start_time < end_time:
+            valid_timestamp_segments += 1
+
+        # 첫 3개와 마지막 3개 세그먼트의 타임스탬프 로깅
+        if i < 3 or i >= total_segments - 3:
+            logger.info(f"✅ 세그먼트 {i}: {start_time:.2f}s - {end_time:.2f}s | '{segment.get('text', '')[:50]}...'")
+
+    logger.info(f"📊 타임스탬프 통계: 전체={total_segments}, 유효={valid_timestamp_segments}, 0값={zero_timestamp_segments}")
+
+    if zero_timestamp_segments > 0:
+        logger.warning(f"⚠️ {zero_timestamp_segments}/{total_segments} 세그먼트에서 타임스탬프가 0입니다!")
+    else:
+        logger.info("✅ 모든 세그먼트의 타임스탬프가 유효합니다!")
 
 
 async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
