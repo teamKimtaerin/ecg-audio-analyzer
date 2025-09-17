@@ -432,7 +432,7 @@ def process_whisperx_segments(
         }
 
         # Process words if available
-        if "words" in seg:
+        if "words" in seg and len(seg["words"]) > 0:
             for word_idx, word in enumerate(seg["words"]):
                 # Extract timing information from word
                 word_start = word.get("start", 0.0) if "start" in word else word.get("start_time", 0.0)
@@ -447,12 +447,41 @@ def process_whisperx_segments(
                     "end_time": word_end,
                     "duration": word_end - word_start if word_end > word_start else 0.0,
                     "acoustic_features": {
-                        "volume_db": -20.0,
+                        "volume_db": word.get("volume_db", -20.0),  # Use calculated volume if available
                         "pitch_hz": 150.0,
                         "spectral_centroid": 1500.0,
                     },
                 }
                 segment_data["words"].append(word_data)
+        else:
+            # Fallback: Create words from text if no words available
+            text = seg.get("text", "").strip()
+            if text:
+                words = text.split()
+                if words and duration > 0:
+                    word_duration = duration / len(words)
+                    for word_idx, word in enumerate(words):
+                        word_start = start_time + (word_idx * word_duration)
+                        word_end = word_start + word_duration
+                        
+                        word_data = {
+                            "word": word,
+                            "start_time": round(word_start, 2),
+                            "end_time": round(word_end, 2),
+                            "duration": round(word_duration, 2),
+                            "acoustic_features": {
+                                "volume_db": -25.0,
+                                "pitch_hz": 150.0,
+                                "spectral_centroid": 1500.0,
+                            },
+                        }
+                        segment_data["words"].append(word_data)
+            
+            # Log fallback usage
+            if not segment_data["words"]:
+                logger.warning(f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'")
+            else:
+                logger.info(f"✅ 세그먼트 {i}에서 fallback으로 {len(segment_data['words'])}개 워드 생성")
 
         processed_segments.append(segment_data)
 
@@ -878,6 +907,44 @@ async def transcribe(request: TranscribeRequest):
                     "error_code": None,
                 }
 
+                # 결과를 output/ 폴더에 저장
+                import json
+                output_dir = Path("output")
+                output_dir.mkdir(exist_ok=True)
+                
+                # 파일명에서 확장자 제거하고 _analysis.json 추가
+                input_filename = Path(actual_file_path).stem
+                if input_filename.startswith("tmp") or len(input_filename) > 20:
+                    # 임시 파일이거나 긴 이름인 경우 original filename 사용
+                    original_name = Path(request.video_path).stem
+                    input_filename = original_name
+                
+                output_filename = f"{input_filename}_analysis.json"
+                output_path = output_dir / output_filename
+                
+                # numpy 타입 변환 함수
+                def convert_numpy_types(obj):
+                    import numpy as np
+                    if isinstance(obj, np.integer):
+                        return int(obj)
+                    elif isinstance(obj, np.floating):
+                        return float(obj)
+                    elif isinstance(obj, np.ndarray):
+                        return obj.tolist()
+                    elif isinstance(obj, dict):
+                        return {key: convert_numpy_types(value) for key, value in obj.items()}
+                    elif isinstance(obj, list):
+                        return [convert_numpy_types(item) for item in obj]
+                    return obj
+                
+                # JSON 저장
+                detailed_result_clean = convert_numpy_types(detailed_result)
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(detailed_result_clean, f, indent=2, ensure_ascii=False)
+                
+                logger.info(f"분석 결과 저장: {output_path}")
+                logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
+                
                 # 완료 진행상황
                 await send_callback(
                     job_id, "processing", progress_steps[5][0], progress_steps[5][1]
@@ -885,6 +952,9 @@ async def transcribe(request: TranscribeRequest):
 
                 logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
                 logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
+                
+                # 결과에 저장 경로 정보 추가
+                detailed_result["output_file"] = str(output_path)
 
                 return detailed_result
 

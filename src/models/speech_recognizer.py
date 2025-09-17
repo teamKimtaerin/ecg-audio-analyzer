@@ -130,8 +130,22 @@ class WhisperXPipeline:
                         return_char_alignments=False,
                     )
                     aligned_result["language"] = detected_language
-                except Exception:
-                    aligned_result = asr_result
+                    
+                    # Check if word alignment was successful
+                    words_found = any(
+                        "words" in seg and len(seg["words"]) > 0 
+                        for seg in aligned_result.get("segments", [])
+                    )
+                    
+                    if not words_found:
+                        print("⚠️ Word alignment failed, adding fallback word timing")
+                        aligned_result = self._add_fallback_word_timing(aligned_result, y)
+                    else:
+                        print(f"✅ Word alignment successful for {len(aligned_result.get('segments', []))} segments")
+                        
+                except Exception as e:
+                    print(f"❌ Alignment failed: {e}, using fallback")
+                    aligned_result = self._add_fallback_word_timing(asr_result, y)
                     aligned_result["language"] = detected_language
             else:
                 aligned_result = asr_result
@@ -358,6 +372,72 @@ class WhisperXPipeline:
                 continue
 
             i += 1
+
+    def _add_fallback_word_timing(self, result: Dict[str, Any], audio: np.ndarray) -> Dict[str, Any]:
+        """Add word-level timing when WhisperX alignment fails"""
+        import librosa
+        
+        sr = 16000
+        segments = result.get("segments", [])
+        
+        for seg in segments:
+            text = seg.get("text", "").strip()
+            if not text:
+                seg["words"] = []
+                continue
+                
+            words = text.split()
+            if not words:
+                seg["words"] = []
+                continue
+                
+            start_time = seg.get("start", 0.0)
+            end_time = seg.get("end", 0.0)
+            duration = end_time - start_time
+            
+            if duration <= 0:
+                seg["words"] = []
+                continue
+            
+            word_duration = duration / len(words)
+            word_list = []
+            
+            for i, word in enumerate(words):
+                word_start = start_time + (i * word_duration)
+                word_end = word_start + word_duration
+                
+                # Extract word-level audio for feature analysis
+                try:
+                    start_sample = max(0, int(word_start * sr))
+                    end_sample = min(len(audio), int(word_end * sr))
+                    
+                    if end_sample > start_sample:
+                        word_audio = audio[start_sample:end_sample]
+                        
+                        # Calculate basic acoustic features
+                        if len(word_audio) > 0:
+                            rms_energy = np.sqrt(np.mean(word_audio**2))
+                            volume_db = float(20 * np.log10(rms_energy + 1e-8))
+                        else:
+                            volume_db = -30.0
+                    else:
+                        volume_db = -30.0
+                        
+                except Exception:
+                    volume_db = -30.0
+                
+                word_data = {
+                    "word": word,
+                    "start": round(word_start, 2),
+                    "end": round(word_end, 2),
+                    "score": 0.8,  # Default confidence
+                    "volume_db": round(volume_db, 1)
+                }
+                word_list.append(word_data)
+            
+            seg["words"] = word_list
+        
+        return result
 
 
 # Keep SpeechRecognizer as alias for backward compatibility
