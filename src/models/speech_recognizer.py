@@ -241,8 +241,19 @@ class WhisperXPipeline:
                 final_result["segments"]
             )
 
-            # Fill gaps between segments with silence markers
-            final_result["segments"] = self._fill_gaps_with_silence(
+            # Ensure all segments have word-level timing before gap filling
+            for seg in final_result["segments"]:
+                words = seg.get("words", [])
+                speech_words = [w for w in words if w.get("word", "").strip() and w.get("word") != " "]
+                
+                # If segment has no speech words but has text, create fallback word timing
+                if not speech_words and seg.get("text", "").strip():
+                    print(f"⚠️ Creating fallback words for segment: {seg.get('text', '')[:50]}...")
+                    seg_with_words = self._add_fallback_word_timing({"segments": [seg]}, y)
+                    seg["words"] = seg_with_words["segments"][0].get("words", [])
+
+            # Fill gaps by extending nearest speaker segments with silence words
+            final_result["segments"] = self._fill_gaps_into_speaker_segments(
                 final_result["segments"], audio_duration, y
             )
 
@@ -505,9 +516,9 @@ class WhisperXPipeline:
         
         return result
 
-    def _fill_gaps_with_silence(self, segments: List[Dict], total_duration: float, audio: np.ndarray) -> List[Dict]:
+    def _fill_gaps_into_speaker_segments(self, segments: List[Dict], total_duration: float, audio: np.ndarray) -> List[Dict]:
         """
-        Fill gaps between segments with silence markers containing word-level timing
+        Fill gaps by extending nearest speaker segments with silence words instead of creating separate segments
         
         Args:
             segments: List of existing speech segments
@@ -515,48 +526,172 @@ class WhisperXPipeline:
             audio: Audio data for acoustic feature extraction
             
         Returns:
-            Updated segments list including silence gaps
+            Updated segments list with gaps integrated as silence words
         """
         if not segments:
             return segments
             
         sr = 16000
-        filled_segments = []
-        
         # Sort segments by start time
         segments.sort(key=lambda x: x.get("start", 0))
         
+        # Identify gaps that need to be filled
+        gaps = []
         current_time = 0.0
         
-        for segment in segments:
-            seg_start = segment.get("start", 0.0)
-            seg_end = segment.get("end", 0.0)
+        # Gap at the beginning
+        if segments[0].get("start", 0) > 0.5:
+            gaps.append({
+                "start": 0.0,
+                "end": segments[0].get("start", 0),
+                "type": "beginning"
+            })
+        
+        # Gaps between segments
+        for i in range(len(segments) - 1):
+            current_end = segments[i].get("end", 0)
+            next_start = segments[i + 1].get("start", 0)
             
-            # Fill gap before this segment
-            if current_time < seg_start:
-                gap_duration = seg_start - current_time
+            if next_start - current_end > 0.5:
+                gaps.append({
+                    "start": current_end,
+                    "end": next_start,
+                    "type": "between",
+                    "prev_segment_idx": i,
+                    "next_segment_idx": i + 1
+                })
+        
+        # Gap at the end
+        last_end = segments[-1].get("end", 0)
+        if total_duration - last_end > 0.5:
+            gaps.append({
+                "start": last_end,
+                "end": total_duration,
+                "type": "ending"
+            })
+        
+        # Extend segments to include gaps as silence words
+        for gap in gaps:
+            gap_duration = gap["end"] - gap["start"]
+            silence_words = self._create_silence_words(gap["start"], gap["end"], gap_duration, audio, sr)
+            
+            if gap["type"] == "beginning":
+                # Extend first segment backwards
+                target_segment = segments[0]
+                original_start = target_segment.get("start", 0)
+                target_segment["start"] = gap["start"]
+                target_segment["text"] = "[SILENCE] " + target_segment.get("text", "")
+                # Merge silence words with existing words, maintaining chronological order
+                existing_words = target_segment.get("words", [])
+                all_words = silence_words + existing_words
+                target_segment["words"] = self._sort_words_by_time(all_words)
                 
-                # Only create gap segments for gaps longer than 0.5 seconds
-                if gap_duration > 0.5:
-                    silence_segment = self._create_silence_segment(
-                        current_time, seg_start, gap_duration, audio, sr
-                    )
-                    filled_segments.append(silence_segment)
+            elif gap["type"] == "ending":
+                # Extend last segment forwards
+                target_segment = segments[-1]
+                original_end = target_segment.get("end", 0)
+                target_segment["end"] = gap["end"]
+                target_segment["text"] = target_segment.get("text", "") + " [SILENCE]"
+                # Merge silence words with existing words, maintaining chronological order
+                existing_words = target_segment.get("words", [])
+                all_words = existing_words + silence_words
+                target_segment["words"] = self._sort_words_by_time(all_words)
+                
+            elif gap["type"] == "between":
+                # Assign gap to closer segment
+                prev_segment = segments[gap["prev_segment_idx"]]
+                next_segment = segments[gap["next_segment_idx"]]
+                
+                gap_mid = (gap["start"] + gap["end"]) / 2
+                prev_end = prev_segment.get("end", 0)
+                next_start = next_segment.get("start", 0)
+                
+                # Determine which segment is closer to gap midpoint
+                dist_to_prev = gap_mid - prev_end
+                dist_to_next = next_start - gap_mid
+                
+                if dist_to_prev <= dist_to_next:
+                    # Extend previous segment forward
+                    original_end = prev_segment.get("end", 0)
+                    prev_segment["end"] = gap["end"]
+                    prev_segment["text"] = prev_segment.get("text", "") + " [SILENCE]"
+                    # Merge silence words with existing words, maintaining chronological order
+                    existing_words = prev_segment.get("words", [])
+                    all_words = existing_words + silence_words
+                    prev_segment["words"] = self._sort_words_by_time(all_words)
+                else:
+                    # Extend next segment backward
+                    original_start = next_segment.get("start", 0)
+                    next_segment["start"] = gap["start"]
+                    next_segment["text"] = "[SILENCE] " + next_segment.get("text", "")
+                    # Merge silence words with existing words, maintaining chronological order
+                    existing_words = next_segment.get("words", [])
+                    all_words = silence_words + existing_words
+                    next_segment["words"] = self._sort_words_by_time(all_words)
+        
+        return segments
+    
+    def _create_silence_words(self, start_time: float, end_time: float, duration: float, 
+                             audio: np.ndarray, sr: int) -> List[Dict]:
+        """
+        Create silence words for gap periods to be included in speaker segments
+        
+        Args:
+            start_time: Gap start time
+            end_time: Gap end time  
+            duration: Gap duration
+            audio: Audio data for feature extraction
+            sr: Sample rate
             
-            # Add the actual speech segment
-            filled_segments.append(segment)
-            current_time = max(current_time, seg_end)
+        Returns:
+            List of silence word dictionaries
+        """
+        # Extract audio features for the silence period
+        start_sample = max(0, int(start_time * sr))
+        end_sample = min(len(audio), int(end_time * sr))
         
-        # Fill gap at the end if there's remaining audio
-        if current_time < total_duration:
-            gap_duration = total_duration - current_time
-            if gap_duration > 0.5:
-                silence_segment = self._create_silence_segment(
-                    current_time, total_duration, gap_duration, audio, sr
-                )
-                filled_segments.append(silence_segment)
+        if end_sample > start_sample:
+            silence_audio = audio[start_sample:end_sample]
+            
+            # Calculate basic acoustic features for silence
+            if len(silence_audio) > 0:
+                rms_energy = np.sqrt(np.mean(silence_audio**2))
+                volume_db = float(20 * np.log10(rms_energy + 1e-8))
+            else:
+                volume_db = -60.0  # Very quiet
+        else:
+            volume_db = -60.0
         
-        return filled_segments
+        # Create single silence word for entire gap duration (using consistent field names)
+        words = [{
+            "word": " ",  # Single space character for entire silence period
+            "start_time": round(start_time, 2),
+            "end_time": round(end_time, 2),
+            "duration": round(end_time - start_time, 2),
+            "acoustic_features": {
+                "volume_db": round(volume_db, 1),
+                "pitch_hz": 0.0,  # No pitch in silence
+                "spectral_centroid": 0.0
+            }
+        }]
+        
+        return words
+    
+    def _sort_words_by_time(self, words: List[Dict]) -> List[Dict]:
+        """
+        Sort words by their start time and ensure proper field names
+        
+        Args:
+            words: List of word dictionaries
+            
+        Returns:
+            Sorted list of words
+        """
+        def get_start_time(word):
+            # Handle both 'start' and 'start_time' field names
+            return word.get('start_time', word.get('start', 0))
+        
+        return sorted(words, key=get_start_time)
     
     def _create_silence_segment(self, start_time: float, end_time: float, duration: float, 
                                audio: np.ndarray, sr: int) -> Dict:
