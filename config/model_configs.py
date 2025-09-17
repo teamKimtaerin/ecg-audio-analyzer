@@ -29,7 +29,7 @@ class WhisperXConfig:
     """Configuration for WhisperX speech recognition and alignment"""
 
     # Model settings (matches actual implementation)
-    model_size: str = "base"
+    model_size: str = "large-v3"  # Upgraded for better word alignment
     language: Optional[str] = "en"
     compute_type: str = "float16"
 
