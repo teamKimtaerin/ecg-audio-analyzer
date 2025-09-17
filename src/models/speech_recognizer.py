@@ -514,10 +514,14 @@ class WhisperXPipeline:
 
                 word_data = {
                     "word": word,
-                    "start": round(word_start, 2),
-                    "end": round(word_end, 2),
-                    "score": 0.8,  # Default confidence
-                    "volume_db": round(volume_db, 1),
+                    "start_time": round(word_start, 2),
+                    "end_time": round(word_end, 2),
+                    "duration": round(word_end - word_start, 2),
+                    "acoustic_features": {
+                        "volume_db": round(volume_db, 1),
+                        "pitch_hz": 150.0,
+                        "spectral_centroid": 1500.0,
+                    },
                 }
                 word_list.append(word_data)
 
