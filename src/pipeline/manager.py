@@ -191,7 +191,7 @@ class PipelineManager:
             "executing_whisperx_pipeline",
             audio_path=str(audio_path),
             language=self.language,
-            processing_mode=processing_mode
+            processing_mode=processing_mode,
         )
 
         try:

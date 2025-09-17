@@ -10,6 +10,7 @@ import uuid
 import re
 
 from dotenv import load_dotenv
+
 load_dotenv()
 # 프로젝트 루트를 Python 경로에 추가
 project_root = Path(__file__).parent
@@ -222,7 +223,9 @@ async def send_callback(
                 if "Frontend API Misuse" in str(error_detail.get("detail", {})):
                     logger.warning("백엔드가 프론트엔드 오용을 감지함 - ML 서버는 정상")
                 else:
-                    logger.error(f"콜백 데이터 검증 실패 - Job ID: {job_id}, Error: {error_detail}")
+                    logger.error(
+                        f"콜백 데이터 검증 실패 - Job ID: {job_id}, Error: {error_detail}"
+                    )
             except:
                 logger.error(f"422 에러 - Job ID: {job_id}, Response: {response.text}")
         else:
@@ -266,20 +269,20 @@ async def download_from_url(
             # S3 URL 파싱: https://bucket.s3.region.amazonaws.com/key
             s3_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
             match = re.match(s3_pattern, url)
-            
+
             if match:
                 bucket_name = match.group(1)
                 key = match.group(3)
-                
+
                 logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
-                
+
                 # 임시 파일 생성 (with 블록 밖에서)
                 temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
                 temp_file.close()  # 파일 핸들 닫기
-                
+
                 # boto3로 S3에서 다운로드
                 s3_client.download_file(bucket_name, key, temp_file.name)
-                
+
                 await send_callback(
                     job_id,
                     "processing",
@@ -287,7 +290,7 @@ async def download_from_url(
                     "S3에서 다운로드 완료",
                     callback_base_url=callback_base_url,
                 )
-                
+
                 logger.info(f"S3 다운로드 완료: {temp_file.name}")
                 return temp_file.name
 
@@ -427,11 +430,15 @@ def process_whisperx_segments(
         speakers_stats[speaker_id]["segment_count"] += 1
 
         # Extract timing information from segment
-        start_time = seg.get("start", 0.0) if "start" in seg else seg.get("start_time", 0.0)
+        start_time = (
+            seg.get("start", 0.0) if "start" in seg else seg.get("start_time", 0.0)
+        )
         end_time = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
 
         # 디버그 로깅: 타임스탬프 확인
-        logger.debug(f"🔍 세그먼트 {i}: start={start_time}, end={end_time}, keys={list(seg.keys())}")
+        logger.debug(
+            f"🔍 세그먼트 {i}: start={start_time}, end={end_time}, keys={list(seg.keys())}"
+        )
 
         # Build segment data
         segment_data = {
@@ -452,11 +459,19 @@ def process_whisperx_segments(
         if "words" in seg and len(seg["words"]) > 0:
             for word_idx, word in enumerate(seg["words"]):
                 # Extract timing information from word
-                word_start = word.get("start", 0.0) if "start" in word else word.get("start_time", 0.0)
-                word_end = word.get("end", 0.0) if "end" in word else word.get("end_time", 0.0)
+                word_start = (
+                    word.get("start", 0.0)
+                    if "start" in word
+                    else word.get("start_time", 0.0)
+                )
+                word_end = (
+                    word.get("end", 0.0) if "end" in word else word.get("end_time", 0.0)
+                )
 
                 # 디버그 로깅: 단어 타임스탬프 확인
-                logger.debug(f"🔍 단어 {word_idx}: start={word_start}, end={word_end}, keys={list(word.keys())}")
+                logger.debug(
+                    f"🔍 단어 {word_idx}: start={word_start}, end={word_end}, keys={list(word.keys())}"
+                )
 
                 word_data = {
                     "word": word.get("word", ""),
@@ -464,7 +479,9 @@ def process_whisperx_segments(
                     "end_time": word_end,
                     "duration": word_end - word_start if word_end > word_start else 0.0,
                     "acoustic_features": {
-                        "volume_db": word.get("volume_db", -20.0),  # Use calculated volume if available
+                        "volume_db": word.get(
+                            "volume_db", -20.0
+                        ),  # Use calculated volume if available
                         "pitch_hz": 150.0,
                         "spectral_centroid": 1500.0,
                     },
@@ -480,7 +497,7 @@ def process_whisperx_segments(
                     for word_idx, word in enumerate(words):
                         word_start = start_time + (word_idx * word_duration)
                         word_end = word_start + word_duration
-                        
+
                         word_data = {
                             "word": word,
                             "start_time": round(word_start, 2),
@@ -493,12 +510,16 @@ def process_whisperx_segments(
                             },
                         }
                         segment_data["words"].append(word_data)
-            
+
             # Log fallback usage
             if not segment_data["words"]:
-                logger.warning(f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'")
+                logger.warning(
+                    f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'"
+                )
             else:
-                logger.info(f"✅ 세그먼트 {i}에서 fallback으로 {len(segment_data['words'])}개 워드 생성")
+                logger.info(
+                    f"✅ 세그먼트 {i}에서 fallback으로 {len(segment_data['words'])}개 워드 생성"
+                )
 
         processed_segments.append(segment_data)
 
@@ -525,18 +546,25 @@ def validate_timestamps(segments: list) -> None:
 
         # 첫 3개와 마지막 3개 세그먼트의 타임스탬프 로깅
         if i < 3 or i >= total_segments - 3:
-            logger.info(f"✅ 세그먼트 {i}: {start_time:.2f}s - {end_time:.2f}s | '{segment.get('text', '')[:50]}...'")
+            logger.info(
+                f"✅ 세그먼트 {i}: {start_time:.2f}s - {end_time:.2f}s | '{segment.get('text', '')[:50]}...'"
+            )
 
-    logger.info(f"📊 타임스탬프 통계: 전체={total_segments}, 유효={valid_timestamp_segments}, 0값={zero_timestamp_segments}")
+    logger.info(
+        f"📊 타임스탬프 통계: 전체={total_segments}, 유효={valid_timestamp_segments}, 0값={zero_timestamp_segments}"
+    )
 
     if zero_timestamp_segments > 0:
-        logger.warning(f"⚠️ {zero_timestamp_segments}/{total_segments} 세그먼트에서 타임스탬프가 0입니다!")
+        logger.warning(
+            f"⚠️ {zero_timestamp_segments}/{total_segments} 세그먼트에서 타임스탬프가 0입니다!"
+        )
     else:
         logger.info("✅ 모든 세그먼트의 타임스탬프가 유효합니다!")
 
 
 async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
     import time
+
     start_time = time.time()
 
     # 언어 최적화 모드 결정
@@ -753,8 +781,10 @@ async def process_video_with_callback(
                         "acoustic_features": {  # 중첩 객체로 변경
                             "volume_db": w["acoustic_features"]["volume_db"],
                             "pitch_hz": w["acoustic_features"]["pitch_hz"],
-                            "spectral_centroid": w["acoustic_features"].get("spectral_centroid", 1500.0)
-                        }
+                            "spectral_centroid": w["acoustic_features"].get(
+                                "spectral_centroid", 1500.0
+                            ),
+                        },
                     }
                     for w in seg.get("words", [])
                 ],
@@ -763,13 +793,15 @@ async def process_video_with_callback(
 
             # word_segments 생성
             for word in seg.get("words", []):
-                word_segments.append({
-                    "word": word["word"],
-                    "start_time": word["start_time"],
-                    "end_time": word["end_time"],
-                    "speaker_id": seg["speaker_id"],
-                    "confidence": 0.95
-                })
+                word_segments.append(
+                    {
+                        "word": word["word"],
+                        "start_time": word["start_time"],
+                        "end_time": word["end_time"],
+                        "speaker_id": seg["speaker_id"],
+                        "confidence": 0.95,
+                    }
+                )
 
         processing_time = (datetime.now() - start_time).total_seconds()
 
@@ -786,11 +818,15 @@ async def process_video_with_callback(
                 "processing_time": processing_time,
                 "unique_speakers": result["metadata"]["unique_speakers"],
                 "total_segments": result["metadata"]["total_segments"],
-                "language_requested": result["metadata"].get("language_requested", language),
-                "language_detected": result["metadata"].get("language_detected", language),
+                "language_requested": result["metadata"].get(
+                    "language_requested", language
+                ),
+                "language_detected": result["metadata"].get(
+                    "language_detected", language
+                ),
                 "processing_mode": "targeted" if language != "auto" else "auto-detect",
-                "processed_at": datetime.now().isoformat()
-            }
+                "processed_at": datetime.now().isoformat(),
+            },
         }
 
         # 완료 콜백 전송 (모든 데이터는 result 안에)
@@ -941,22 +977,24 @@ async def transcribe(request: TranscribeRequest):
 
                 # 결과를 output/ 폴더에 저장
                 import json
+
                 output_dir = Path("output")
                 output_dir.mkdir(exist_ok=True)
-                
+
                 # 파일명에서 확장자 제거하고 _analysis.json 추가
                 input_filename = Path(actual_file_path).stem
                 if input_filename.startswith("tmp") or len(input_filename) > 20:
                     # 임시 파일이거나 긴 이름인 경우 original filename 사용
                     original_name = Path(request.video_path).stem
                     input_filename = original_name
-                
+
                 output_filename = f"{input_filename}_analysis.json"
                 output_path = output_dir / output_filename
-                
+
                 # numpy 타입 변환 함수
                 def convert_numpy_types(obj):
                     import numpy as np
+
                     if isinstance(obj, np.integer):
                         return int(obj)
                     elif isinstance(obj, np.floating):
@@ -964,19 +1002,22 @@ async def transcribe(request: TranscribeRequest):
                     elif isinstance(obj, np.ndarray):
                         return obj.tolist()
                     elif isinstance(obj, dict):
-                        return {key: convert_numpy_types(value) for key, value in obj.items()}
+                        return {
+                            key: convert_numpy_types(value)
+                            for key, value in obj.items()
+                        }
                     elif isinstance(obj, list):
                         return [convert_numpy_types(item) for item in obj]
                     return obj
-                
+
                 # JSON 저장
                 detailed_result_clean = convert_numpy_types(detailed_result)
-                with open(output_path, 'w', encoding='utf-8') as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(detailed_result_clean, f, indent=2, ensure_ascii=False)
-                
+
                 logger.info(f"분석 결과 저장: {output_path}")
                 logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
-                
+
                 # 완료 진행상황
                 await send_callback(
                     job_id, "processing", progress_steps[5][0], progress_steps[5][1]
@@ -984,7 +1025,7 @@ async def transcribe(request: TranscribeRequest):
 
                 logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
                 logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
-                
+
                 # 결과에 저장 경로 정보 추가
                 detailed_result["output_file"] = str(output_path)
 

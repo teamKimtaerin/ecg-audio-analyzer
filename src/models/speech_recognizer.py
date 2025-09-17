@@ -47,7 +47,6 @@ class WhisperXPipeline:
             # 언어별 최적화된 모델 설정
             optimized_config = self._get_optimized_model_config(self.language)
 
-
             # Load WhisperX model (GPU-first approach with optimization)
             self.whisper_model = whisperx.load_model(
                 optimized_config["model_size"],
@@ -63,22 +62,22 @@ class WhisperXPipeline:
             "ko": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "Korean-optimized"
+                "optimization_type": "Korean-optimized",
             },
             "en": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "English-optimized"
+                "optimization_type": "English-optimized",
             },
             "ja": {
                 "model_size": "medium",
                 "compute_type": "float16",
-                "optimization_type": "Japanese-optimized"
+                "optimization_type": "Japanese-optimized",
             },
             "zh": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "Chinese-optimized"
+                "optimization_type": "Chinese-optimized",
             },
         }
 
@@ -86,7 +85,7 @@ class WhisperXPipeline:
         base_config = {
             "model_size": self.model_size,
             "compute_type": self.compute_type,
-            "optimization_type": "default"
+            "optimization_type": "default",
         }
 
         if language and language != "auto" and language in language_configs:
@@ -166,9 +165,7 @@ class WhisperXPipeline:
             if self.language and self.language != "auto":
                 # 언어 지정 시 최적화
                 asr_result = self.whisper_model.transcribe(
-                    y,
-                    batch_size=batch_size,
-                    language=self.language
+                    y, batch_size=batch_size, language=self.language
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
@@ -191,19 +188,23 @@ class WhisperXPipeline:
                         return_char_alignments=False,
                     )
                     aligned_result["language"] = detected_language
-                    
+
                     # Check if word alignment was successful
                     words_found = any(
-                        "words" in seg and len(seg["words"]) > 0 
+                        "words" in seg and len(seg["words"]) > 0
                         for seg in aligned_result.get("segments", [])
                     )
-                    
+
                     if not words_found:
                         print("⚠️ Word alignment failed, adding fallback word timing")
-                        aligned_result = self._add_fallback_word_timing(aligned_result, y)
+                        aligned_result = self._add_fallback_word_timing(
+                            aligned_result, y
+                        )
                     else:
-                        print(f"✅ Word alignment successful for {len(aligned_result.get('segments', []))} segments")
-                        
+                        print(
+                            f"✅ Word alignment successful for {len(aligned_result.get('segments', []))} segments"
+                        )
+
                 except Exception as e:
                     print(f"❌ Alignment failed: {e}, using fallback")
                     aligned_result = self._add_fallback_word_timing(asr_result, y)
@@ -244,12 +245,20 @@ class WhisperXPipeline:
             # Ensure all segments have word-level timing before gap filling
             for seg in final_result["segments"]:
                 words = seg.get("words", [])
-                speech_words = [w for w in words if w.get("word", "").strip() and w.get("word") != " "]
-                
+                speech_words = [
+                    w
+                    for w in words
+                    if w.get("word", "").strip() and w.get("word") != " "
+                ]
+
                 # If segment has no speech words but has text, create fallback word timing
                 if not speech_words and seg.get("text", "").strip():
-                    print(f"⚠️ Creating fallback words for segment: {seg.get('text', '')[:50]}...")
-                    seg_with_words = self._add_fallback_word_timing({"segments": [seg]}, y)
+                    print(
+                        f"⚠️ Creating fallback words for segment: {seg.get('text', '')[:50]}..."
+                    )
+                    seg_with_words = self._add_fallback_word_timing(
+                        {"segments": [seg]}, y
+                    )
                     seg["words"] = seg_with_words["segments"][0].get("words", [])
 
             # Fill gaps by extending nearest speaker segments with silence words
@@ -450,47 +459,49 @@ class WhisperXPipeline:
 
             i += 1
 
-    def _add_fallback_word_timing(self, result: Dict[str, Any], audio: np.ndarray) -> Dict[str, Any]:
+    def _add_fallback_word_timing(
+        self, result: Dict[str, Any], audio: np.ndarray
+    ) -> Dict[str, Any]:
         """Add word-level timing when WhisperX alignment fails"""
         import librosa
-        
+
         sr = 16000
         segments = result.get("segments", [])
-        
+
         for seg in segments:
             text = seg.get("text", "").strip()
             if not text:
                 seg["words"] = []
                 continue
-                
+
             words = text.split()
             if not words:
                 seg["words"] = []
                 continue
-                
+
             start_time = seg.get("start", 0.0)
             end_time = seg.get("end", 0.0)
             duration = end_time - start_time
-            
+
             if duration <= 0:
                 seg["words"] = []
                 continue
-            
+
             word_duration = duration / len(words)
             word_list = []
-            
+
             for i, word in enumerate(words):
                 word_start = start_time + (i * word_duration)
                 word_end = word_start + word_duration
-                
+
                 # Extract word-level audio for feature analysis
                 try:
                     start_sample = max(0, int(word_start * sr))
                     end_sample = min(len(audio), int(word_end * sr))
-                    
+
                     if end_sample > start_sample:
                         word_audio = audio[start_sample:end_sample]
-                        
+
                         # Calculate basic acoustic features
                         if len(word_audio) > 0:
                             rms_energy = np.sqrt(np.mean(word_audio**2))
@@ -499,82 +510,82 @@ class WhisperXPipeline:
                             volume_db = -30.0
                     else:
                         volume_db = -30.0
-                        
+
                 except Exception:
                     volume_db = -30.0
-                
+
                 word_data = {
                     "word": word,
                     "start": round(word_start, 2),
                     "end": round(word_end, 2),
                     "score": 0.8,  # Default confidence
-                    "volume_db": round(volume_db, 1)
+                    "volume_db": round(volume_db, 1),
                 }
                 word_list.append(word_data)
-            
+
             seg["words"] = word_list
-        
+
         return result
 
-    def _fill_gaps_into_speaker_segments(self, segments: List[Dict], total_duration: float, audio: np.ndarray) -> List[Dict]:
+    def _fill_gaps_into_speaker_segments(
+        self, segments: List[Dict], total_duration: float, audio: np.ndarray
+    ) -> List[Dict]:
         """
         Fill gaps by extending nearest speaker segments with silence words instead of creating separate segments
-        
+
         Args:
             segments: List of existing speech segments
             total_duration: Total audio duration in seconds
             audio: Audio data for acoustic feature extraction
-            
+
         Returns:
             Updated segments list with gaps integrated as silence words
         """
         if not segments:
             return segments
-            
+
         sr = 16000
         # Sort segments by start time
         segments.sort(key=lambda x: x.get("start", 0))
-        
+
         # Identify gaps that need to be filled
         gaps = []
         current_time = 0.0
-        
+
         # Gap at the beginning
         if segments[0].get("start", 0) > 0.5:
-            gaps.append({
-                "start": 0.0,
-                "end": segments[0].get("start", 0),
-                "type": "beginning"
-            })
-        
+            gaps.append(
+                {"start": 0.0, "end": segments[0].get("start", 0), "type": "beginning"}
+            )
+
         # Gaps between segments
         for i in range(len(segments) - 1):
             current_end = segments[i].get("end", 0)
             next_start = segments[i + 1].get("start", 0)
-            
+
             if next_start - current_end > 0.5:
-                gaps.append({
-                    "start": current_end,
-                    "end": next_start,
-                    "type": "between",
-                    "prev_segment_idx": i,
-                    "next_segment_idx": i + 1
-                })
-        
+                gaps.append(
+                    {
+                        "start": current_end,
+                        "end": next_start,
+                        "type": "between",
+                        "prev_segment_idx": i,
+                        "next_segment_idx": i + 1,
+                    }
+                )
+
         # Gap at the end
         last_end = segments[-1].get("end", 0)
         if total_duration - last_end > 0.5:
-            gaps.append({
-                "start": last_end,
-                "end": total_duration,
-                "type": "ending"
-            })
-        
+            gaps.append({"start": last_end, "end": total_duration, "type": "ending"})
+
         # Extend segments to include gaps as silence words
         for gap in gaps:
             gap_duration = gap["end"] - gap["start"]
-            silence_words = self._create_silence_words(gap["start"], gap["end"], gap_duration, audio, sr)
-            
+            silence_words = self._create_silence_words(
+                gap["start"], gap["end"], gap_duration, audio, sr
+            )
+
             if gap["type"] == "beginning":
                 # Extend first segment backwards
                 target_segment = segments[0]
@@ -585,7 +596,7 @@ class WhisperXPipeline:
                 existing_words = target_segment.get("words", [])
                 all_words = silence_words + existing_words
                 target_segment["words"] = self._sort_words_by_time(all_words)
-                
+
             elif gap["type"] == "ending":
                 # Extend last segment forwards
                 target_segment = segments[-1]
@@ -596,20 +607,20 @@ class WhisperXPipeline:
                 existing_words = target_segment.get("words", [])
                 all_words = existing_words + silence_words
                 target_segment["words"] = self._sort_words_by_time(all_words)
-                
+
             elif gap["type"] == "between":
                 # Assign gap to closer segment
                 prev_segment = segments[gap["prev_segment_idx"]]
                 next_segment = segments[gap["next_segment_idx"]]
-                
+
                 gap_mid = (gap["start"] + gap["end"]) / 2
                 prev_end = prev_segment.get("end", 0)
                 next_start = next_segment.get("start", 0)
-                
+
                 # Determine which segment is closer to gap midpoint
                 dist_to_prev = gap_mid - prev_end
                 dist_to_next = next_start - gap_mid
-                
+
                 if dist_to_prev <= dist_to_next:
                     # Extend previous segment forward
                     original_end = prev_segment.get("end", 0)
@@ -628,31 +639,37 @@ class WhisperXPipeline:
                     existing_words = next_segment.get("words", [])
                     all_words = silence_words + existing_words
                     next_segment["words"] = self._sort_words_by_time(all_words)
-        
+
         return segments
-    
-    def _create_silence_words(self, start_time: float, end_time: float, duration: float, 
-                             audio: np.ndarray, sr: int) -> List[Dict]:
+
+    def _create_silence_words(
+        self,
+        start_time: float,
+        end_time: float,
+        duration: float,
+        audio: np.ndarray,
+        sr: int,
+    ) -> List[Dict]:
         """
         Create silence words for gap periods to be included in speaker segments
-        
+
         Args:
             start_time: Gap start time
-            end_time: Gap end time  
+            end_time: Gap end time
             duration: Gap duration
             audio: Audio data for feature extraction
             sr: Sample rate
-            
+
         Returns:
             List of silence word dictionaries
         """
         # Extract audio features for the silence period
         start_sample = max(0, int(start_time * sr))
         end_sample = min(len(audio), int(end_time * sr))
-        
+
         if end_sample > start_sample:
             silence_audio = audio[start_sample:end_sample]
-            
+
             # Calculate basic acoustic features for silence
             if len(silence_audio) > 0:
                 rms_energy = np.sqrt(np.mean(silence_audio**2))
@@ -661,72 +678,81 @@ class WhisperXPipeline:
                 volume_db = -60.0  # Very quiet
         else:
             volume_db = -60.0
-        
+
         # Create single silence word for entire gap duration (using consistent field names)
-        words = [{
-            "word": " ",  # Single space character for entire silence period
-            "start_time": round(start_time, 2),
-            "end_time": round(end_time, 2),
-            "duration": round(end_time - start_time, 2),
-            "acoustic_features": {
-                "volume_db": round(volume_db, 1),
-                "pitch_hz": 0.0,  # No pitch in silence
-                "spectral_centroid": 0.0
+        words = [
+            {
+                "word": " ",  # Single space character for entire silence period
+                "start_time": round(start_time, 2),
+                "end_time": round(end_time, 2),
+                "duration": round(end_time - start_time, 2),
+                "acoustic_features": {
+                    "volume_db": round(volume_db, 1),
+                    "pitch_hz": 0.0,  # No pitch in silence
+                    "spectral_centroid": 0.0,
+                },
             }
-        }]
-        
+        ]
+
         return words
-    
+
     def _sort_words_by_time(self, words: List[Dict]) -> List[Dict]:
         """
         Sort words by their start time and ensure proper field names
-        
+
         Args:
             words: List of word dictionaries
-            
+
         Returns:
             Sorted list of words
         """
+
         def get_start_time(word):
             # Handle both 'start' and 'start_time' field names
-            return word.get('start_time', word.get('start', 0))
-        
+            return word.get("start_time", word.get("start", 0))
+
         return sorted(words, key=get_start_time)
-    
-    def _create_silence_segment(self, start_time: float, end_time: float, duration: float, 
-                               audio: np.ndarray, sr: int) -> Dict:
+
+    def _create_silence_segment(
+        self,
+        start_time: float,
+        end_time: float,
+        duration: float,
+        audio: np.ndarray,
+        sr: int,
+    ) -> Dict:
         """
         Create a silence segment with word-level timing for gap periods
-        
+
         Args:
             start_time: Gap start time
-            end_time: Gap end time  
+            end_time: Gap end time
             duration: Gap duration
             audio: Audio data for feature extraction
             sr: Sample rate
-            
+
         Returns:
             Silence segment dictionary
         """
         # Extract audio features for the silence period
         start_sample = max(0, int(start_time * sr))
         end_sample = min(len(audio), int(end_time * sr))
-        
+
         if end_sample > start_sample:
             silence_audio = audio[start_sample:end_sample]
-            
+
             # Calculate basic acoustic features for silence
             if len(silence_audio) > 0:
                 rms_energy = np.sqrt(np.mean(silence_audio**2))
                 volume_db = float(20 * np.log10(rms_energy + 1e-8))
-                
+
                 # Calculate spectral features (librosa already imported at top)
-                spectral_centroid = float(np.mean(librosa.feature.spectral_centroid(
-                    y=silence_audio, sr=sr
-                )))
-                zero_crossing_rate = float(np.mean(librosa.feature.zero_crossing_rate(
-                    silence_audio
-                )))
+                spectral_centroid = float(
+                    np.mean(librosa.feature.spectral_centroid(y=silence_audio, sr=sr))
+                )
+                zero_crossing_rate = float(
+                    np.mean(librosa.feature.zero_crossing_rate(silence_audio))
+                )
             else:
                 volume_db = -60.0  # Very quiet
                 spectral_centroid = 0.0
@@ -735,7 +761,7 @@ class WhisperXPipeline:
             volume_db = -60.0
             spectral_centroid = 0.0
             zero_crossing_rate = 0.0
-        
+
         # Create word-level timing for silence periods
         # Split longer silences into chunks for better granularity
         words = []
@@ -743,28 +769,32 @@ class WhisperXPipeline:
             # Split into 1-second chunks for longer silences
             num_chunks = max(1, int(duration))
             chunk_duration = duration / num_chunks
-            
+
             for i in range(num_chunks):
                 word_start = start_time + (i * chunk_duration)
                 word_end = word_start + chunk_duration
-                
-                words.append({
-                    "word": "[SILENCE]",
-                    "start": round(word_start, 2),
-                    "end": round(word_end, 2),
-                    "score": 0.0,  # No confidence for silence
-                    "volume_db": round(volume_db, 1)
-                })
+
+                words.append(
+                    {
+                        "word": "[SILENCE]",
+                        "start": round(word_start, 2),
+                        "end": round(word_end, 2),
+                        "score": 0.0,  # No confidence for silence
+                        "volume_db": round(volume_db, 1),
+                    }
+                )
         else:
             # Single silence marker for short gaps
-            words.append({
-                "word": "[SILENCE]",
-                "start": round(start_time, 2),
-                "end": round(end_time, 2),
-                "score": 0.0,
-                "volume_db": round(volume_db, 1)
-            })
-        
+            words.append(
+                {
+                    "word": "[SILENCE]",
+                    "start": round(start_time, 2),
+                    "end": round(end_time, 2),
+                    "score": 0.0,
+                    "volume_db": round(volume_db, 1),
+                }
+            )
+
         return {
             "start": round(start_time, 2),
             "end": round(end_time, 2),
@@ -778,8 +808,8 @@ class WhisperXPipeline:
                 "zero_crossing_rate": round(zero_crossing_rate, 3),
                 "pitch_mean": 0.0,
                 "pitch_std": 0.0,
-                "mfcc_mean": [0.0, 0.0, 0.0]  # Minimal MFCC for silence
-            }
+                "mfcc_mean": [0.0, 0.0, 0.0],  # Minimal MFCC for silence
+            },
         }
 
 
