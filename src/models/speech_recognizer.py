@@ -164,12 +164,11 @@ class WhisperXPipeline:
 
             # 언어별 최적화된 transcribe 실행
             if self.language and self.language != "auto":
-                # 언어 지정 시 최적화 - condition_on_previous_text=False로 성능 향상
+                # 언어 지정 시 최적화
                 asr_result = self.whisper_model.transcribe(
                     y,
                     batch_size=batch_size,
-                    language=self.language,
-                    condition_on_previous_text=False  # 성능 최적화
+                    language=self.language
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
@@ -240,6 +239,11 @@ class WhisperXPipeline:
             # Remove duplicate segments (same as reference code)
             final_result["segments"] = self._remove_duplicate_speaker_segments(
                 final_result["segments"]
+            )
+
+            # Fill gaps between segments with silence markers
+            final_result["segments"] = self._fill_gaps_with_silence(
+                final_result["segments"], audio_duration, y
             )
 
             final_result["duration_metadata"] = {
@@ -500,6 +504,148 @@ class WhisperXPipeline:
             seg["words"] = word_list
         
         return result
+
+    def _fill_gaps_with_silence(self, segments: List[Dict], total_duration: float, audio: np.ndarray) -> List[Dict]:
+        """
+        Fill gaps between segments with silence markers containing word-level timing
+        
+        Args:
+            segments: List of existing speech segments
+            total_duration: Total audio duration in seconds
+            audio: Audio data for acoustic feature extraction
+            
+        Returns:
+            Updated segments list including silence gaps
+        """
+        if not segments:
+            return segments
+            
+        sr = 16000
+        filled_segments = []
+        
+        # Sort segments by start time
+        segments.sort(key=lambda x: x.get("start", 0))
+        
+        current_time = 0.0
+        
+        for segment in segments:
+            seg_start = segment.get("start", 0.0)
+            seg_end = segment.get("end", 0.0)
+            
+            # Fill gap before this segment
+            if current_time < seg_start:
+                gap_duration = seg_start - current_time
+                
+                # Only create gap segments for gaps longer than 0.5 seconds
+                if gap_duration > 0.5:
+                    silence_segment = self._create_silence_segment(
+                        current_time, seg_start, gap_duration, audio, sr
+                    )
+                    filled_segments.append(silence_segment)
+            
+            # Add the actual speech segment
+            filled_segments.append(segment)
+            current_time = max(current_time, seg_end)
+        
+        # Fill gap at the end if there's remaining audio
+        if current_time < total_duration:
+            gap_duration = total_duration - current_time
+            if gap_duration > 0.5:
+                silence_segment = self._create_silence_segment(
+                    current_time, total_duration, gap_duration, audio, sr
+                )
+                filled_segments.append(silence_segment)
+        
+        return filled_segments
+    
+    def _create_silence_segment(self, start_time: float, end_time: float, duration: float, 
+                               audio: np.ndarray, sr: int) -> Dict:
+        """
+        Create a silence segment with word-level timing for gap periods
+        
+        Args:
+            start_time: Gap start time
+            end_time: Gap end time  
+            duration: Gap duration
+            audio: Audio data for feature extraction
+            sr: Sample rate
+            
+        Returns:
+            Silence segment dictionary
+        """
+        # Extract audio features for the silence period
+        start_sample = max(0, int(start_time * sr))
+        end_sample = min(len(audio), int(end_time * sr))
+        
+        if end_sample > start_sample:
+            silence_audio = audio[start_sample:end_sample]
+            
+            # Calculate basic acoustic features for silence
+            if len(silence_audio) > 0:
+                rms_energy = np.sqrt(np.mean(silence_audio**2))
+                volume_db = float(20 * np.log10(rms_energy + 1e-8))
+                
+                # Calculate spectral features (librosa already imported at top)
+                spectral_centroid = float(np.mean(librosa.feature.spectral_centroid(
+                    y=silence_audio, sr=sr
+                )))
+                zero_crossing_rate = float(np.mean(librosa.feature.zero_crossing_rate(
+                    silence_audio
+                )))
+            else:
+                volume_db = -60.0  # Very quiet
+                spectral_centroid = 0.0
+                zero_crossing_rate = 0.0
+        else:
+            volume_db = -60.0
+            spectral_centroid = 0.0
+            zero_crossing_rate = 0.0
+        
+        # Create word-level timing for silence periods
+        # Split longer silences into chunks for better granularity
+        words = []
+        if duration > 2.0:
+            # Split into 1-second chunks for longer silences
+            num_chunks = max(1, int(duration))
+            chunk_duration = duration / num_chunks
+            
+            for i in range(num_chunks):
+                word_start = start_time + (i * chunk_duration)
+                word_end = word_start + chunk_duration
+                
+                words.append({
+                    "word": "[SILENCE]",
+                    "start": round(word_start, 2),
+                    "end": round(word_end, 2),
+                    "score": 0.0,  # No confidence for silence
+                    "volume_db": round(volume_db, 1)
+                })
+        else:
+            # Single silence marker for short gaps
+            words.append({
+                "word": "[SILENCE]",
+                "start": round(start_time, 2),
+                "end": round(end_time, 2),
+                "score": 0.0,
+                "volume_db": round(volume_db, 1)
+            })
+        
+        return {
+            "start": round(start_time, 2),
+            "end": round(end_time, 2),
+            "text": "[SILENCE]",
+            "speaker": "SILENCE",
+            "words": words,
+            "acoustic_features": {
+                "volume_db": round(volume_db, 1),
+                "pitch_hz": 0.0,  # No pitch in silence
+                "spectral_centroid": round(spectral_centroid, 1),
+                "zero_crossing_rate": round(zero_crossing_rate, 3),
+                "pitch_mean": 0.0,
+                "pitch_std": 0.0,
+                "mfcc_mean": [0.0, 0.0, 0.0]  # Minimal MFCC for silence
+            }
+        }
 
 
 # Keep SpeechRecognizer as alias for backward compatibility
