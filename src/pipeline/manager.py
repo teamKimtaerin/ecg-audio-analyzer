@@ -184,13 +184,20 @@ class PipelineManager:
             )
 
     async def _execute_whisperx_pipeline(self, audio_path: Path) -> Dict[str, Any]:
-        """Execute WhisperX integrated pipeline"""
-        self.logger.info("executing_whisperx_pipeline", audio_path=str(audio_path))
+        """Execute WhisperX integrated pipeline with language optimization"""
+        # 언어 최적화 정보 로깅
+        processing_mode = "auto-detect" if self.language == "auto" else "targeted"
+        self.logger.info(
+            "executing_whisperx_pipeline",
+            audio_path=str(audio_path),
+            language=self.language,
+            processing_mode=processing_mode
+        )
 
         try:
             pipeline = self._get_whisperx_pipeline()
 
-            # Create wrapper function
+            # Create wrapper function with enhanced logging
             def whisperx_wrapper():
                 return pipeline.process_audio_with_diarization(
                     audio_path=audio_path,
@@ -215,7 +222,7 @@ class PipelineManager:
                     "whisperx_pipeline_completed",
                     speakers=len(speakers),
                     segments=segments_count,
-                    language=result.get("language", "unknown"),
+                    language_requested=self.language,
                 )
             else:
                 self.logger.error("whisperx_pipeline_no_result")

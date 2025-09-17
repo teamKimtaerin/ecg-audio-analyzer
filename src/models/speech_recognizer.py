@@ -42,15 +42,65 @@ class WhisperXPipeline:
         self.diarization_pipeline = None
 
     def _load_models(self):
-        """Load WhisperX models"""
+        """Load WhisperX models with language optimization"""
         if self.whisper_model is None:
-            # Load WhisperX model (GPU-first approach)
+            # 언어별 최적화된 모델 설정
+            optimized_config = self._get_optimized_model_config(self.language)
+
+
+            # Load WhisperX model (GPU-first approach with optimization)
             self.whisper_model = whisperx.load_model(
-                self.model_size,
+                optimized_config["model_size"],
                 device=self.device,
-                compute_type=self.compute_type,
-                language=self.language,
+                compute_type=optimized_config["compute_type"],
+                language=self.language if self.language != "auto" else None,
             )
+
+    def _get_optimized_model_config(self, language: Optional[str]) -> Dict[str, Any]:
+        """언어별 최적화된 모델 설정 반환"""
+        # 언어별 최적화 설정
+        language_configs = {
+            "ko": {
+                "model_size": "large-v2",
+                "compute_type": "float16",
+                "optimization_type": "Korean-optimized"
+            },
+            "en": {
+                "model_size": "large-v2",
+                "compute_type": "float16",
+                "optimization_type": "English-optimized"
+            },
+            "ja": {
+                "model_size": "medium",
+                "compute_type": "float16",
+                "optimization_type": "Japanese-optimized"
+            },
+            "zh": {
+                "model_size": "large-v2",
+                "compute_type": "float16",
+                "optimization_type": "Chinese-optimized"
+            },
+        }
+
+        # CPU 환경에서는 compute_type 조정
+        base_config = {
+            "model_size": self.model_size,
+            "compute_type": self.compute_type,
+            "optimization_type": "default"
+        }
+
+        if language and language != "auto" and language in language_configs:
+            config = language_configs[language].copy()
+            if self.device == "cpu":
+                config["compute_type"] = "float32"
+            config["optimization_type"] += " (targeted)"
+            return config
+        else:
+            # auto 모드 또는 지원하지 않는 언어의 경우 기본 설정
+            base_config["optimization_type"] = "universal (auto-detect)"
+            if self.device == "cpu":
+                base_config["compute_type"] = "float32"
+            return base_config
 
     def _load_alignment_model(self, language_code: str):
         """Load alignment model for better word-level timestamps"""
@@ -112,8 +162,20 @@ class WhisperXPipeline:
 
             assert self.whisper_model is not None, "Failed to load WhisperX model"
 
-            asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
-            detected_language = asr_result.get("language", self.language or "en")
+            # 언어별 최적화된 transcribe 실행
+            if self.language and self.language != "auto":
+                # 언어 지정 시 최적화 - condition_on_previous_text=False로 성능 향상
+                asr_result = self.whisper_model.transcribe(
+                    y,
+                    batch_size=batch_size,
+                    language=self.language,
+                    condition_on_previous_text=False  # 성능 최적화
+                )
+                detected_language = self.language  # 지정된 언어 사용
+            else:
+                # 자동 감지 모드 - 기존 방식
+                asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
+                detected_language = asr_result.get("language", "en")
 
             # Step 2: Alignment
             if self.alignment_model is None:
