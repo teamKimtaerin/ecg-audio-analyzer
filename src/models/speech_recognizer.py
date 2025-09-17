@@ -463,8 +463,6 @@ class WhisperXPipeline:
         self, result: Dict[str, Any], audio: np.ndarray
     ) -> Dict[str, Any]:
         """Add word-level timing when WhisperX alignment fails"""
-        import librosa
-
         sr = 16000
         segments = result.get("segments", [])
 
@@ -550,7 +548,6 @@ class WhisperXPipeline:
 
         # Identify gaps that need to be filled
         gaps = []
-        current_time = 0.0
 
         # Gap at the beginning
         if segments[0].get("start", 0) > 0.5:
@@ -589,7 +586,6 @@ class WhisperXPipeline:
             if gap["type"] == "beginning":
                 # Extend first segment backwards
                 target_segment = segments[0]
-                original_start = target_segment.get("start", 0)
                 target_segment["start"] = gap["start"]
                 target_segment["text"] = "[SILENCE] " + target_segment.get("text", "")
                 # Merge silence words with existing words, maintaining chronological order
@@ -600,7 +596,6 @@ class WhisperXPipeline:
             elif gap["type"] == "ending":
                 # Extend last segment forwards
                 target_segment = segments[-1]
-                original_end = target_segment.get("end", 0)
                 target_segment["end"] = gap["end"]
                 target_segment["text"] = target_segment.get("text", "") + " [SILENCE]"
                 # Merge silence words with existing words, maintaining chronological order
@@ -623,7 +618,6 @@ class WhisperXPipeline:
 
                 if dist_to_prev <= dist_to_next:
                     # Extend previous segment forward
-                    original_end = prev_segment.get("end", 0)
                     prev_segment["end"] = gap["end"]
                     prev_segment["text"] = prev_segment.get("text", "") + " [SILENCE]"
                     # Merge silence words with existing words, maintaining chronological order
@@ -632,7 +626,6 @@ class WhisperXPipeline:
                     prev_segment["words"] = self._sort_words_by_time(all_words)
                 else:
                     # Extend next segment backward
-                    original_start = next_segment.get("start", 0)
                     next_segment["start"] = gap["start"]
                     next_segment["text"] = "[SILENCE] " + next_segment.get("text", "")
                     # Merge silence words with existing words, maintaining chronological order
