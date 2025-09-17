@@ -19,6 +19,7 @@ sys.path.insert(0, str(project_root))
 warnings.filterwarnings("ignore", category=UserWarning)
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import requests
@@ -35,11 +36,27 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# CORS 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # 프론트엔드
+        "http://localhost:8000",  # 백엔드
+        "http://ecg-project-pipeline-dev-alb-1703405864.us-east-1.elb.amazonaws.com",  # Fargate 백엔드
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # AWS S3 및 Backend 설정
 s3_client = boto3.client("s3")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME", os.getenv("S3_BUCKET", ""))
-BACKEND_URL = os.getenv("BACKEND_URL", "")
-ENABLE_CALLBACKS = bool(BACKEND_URL and BACKEND_URL.strip())
+# 프로덕션 URL 우선, 없으면 개발 URL 사용
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "")  # https://ho-it.site
+BACKEND_URL = os.getenv("BACKEND_URL", "")  # Fargate 개발 URL
+DEFAULT_CALLBACK_URL = FASTAPI_BASE_URL or BACKEND_URL
+ENABLE_CALLBACKS = bool(DEFAULT_CALLBACK_URL and DEFAULT_CALLBACK_URL.strip())
 
 # In-memory job tracking
 jobs = {}
@@ -143,8 +160,8 @@ async def send_callback(
         logger.debug(f"이미 실패한 작업 콜백 스킵: {job_id}")
         return
 
-    # 동적 콜백 URL 결정
-    base_url = callback_base_url or BACKEND_URL
+    # 동적 콜백 URL 결정 (우선순위: 요청 제공 URL > FASTAPI_BASE_URL > BACKEND_URL)
+    base_url = callback_base_url or DEFAULT_CALLBACK_URL
     if not base_url or not base_url.strip():
         logger.debug(f"No callback URL configured - {status}: {message} ({progress}%)")
         return
@@ -519,10 +536,15 @@ def validate_timestamps(segments: list) -> None:
 
 
 async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
-    """오디오/비디오 처리 핵심 로직 (오디오 우선)"""
+    import time
+    start_time = time.time()
+
+    # 언어 최적화 모드 결정
+    processing_mode = "targeted" if language != "auto" else "auto-detect"
+    logger.info(f"🎯 처리 모드: {processing_mode} (언어: {language})")
+
     # Pipeline 실행
     file_path_obj = Path(file_path)
-    logger.info(f"Pipeline 처리 시작: {file_path_obj.name}")
 
     # 파일 타입에 따른 처리 방식 결정
     is_audio_file = file_path_obj.suffix.lower() in [
@@ -533,9 +555,9 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
         ".m4a",
     ]
     if is_audio_file:
-        logger.info("오디오 파일 직접 처리")
+        logger.info("📄 오디오 파일 직접 처리")
     else:
-        logger.info("비디오 파일에서 오디오 추출 후 처리")
+        logger.info("🎬 비디오 파일에서 오디오 추출 후 처리")
 
     pipeline = create_pipeline(language=language)
 
@@ -543,43 +565,41 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
         source=file_path_obj,
         output_path=None,
     )
-    logger.info("Pipeline 처리 완료")
+    # 처리 시간 측정
+    processing_time = time.time() - start_time
 
     # WhisperX 결과 추출
     whisperx_result = None
+    detected_language = language  # 기본값
     if hasattr(pipeline, "_last_whisperx_result"):
         whisperx_result = pipeline._last_whisperx_result
 
+        # 실제 감지된 언어 정보 추출
+        if whisperx_result and "language" in whisperx_result:
+            detected_language = whisperx_result["language"]
     # 오디오 경로 가져오기
     audio_path = None
     if hasattr(pipeline, "_last_audio_path") and pipeline._last_audio_path:
         audio_path = Path(pipeline._last_audio_path)
-    # NOTE: 오디오 파일 직접 처리 시 AudioCleaner 사용 안 함 (Backend에서 이미 오디오 추출)
-    # elif file_path.endswith(".mp4"):
-    #     try:
-    #         cleaner = AudioCleaner(target_sr=16000)
-    #         audio_result = cleaner.process(file_path, output_path="temp")
-    #         if isinstance(audio_result, str):
-    #             audio_path = Path(audio_result)
-    #             logger.info(f"AudioCleaner로 오디오 추출 완료: {audio_path}")
-    #     except Exception as e:
-    #         logger.error(f"AudioCleaner 오디오 추출 실패: {e}")
 
     # 세그먼트 처리
-    logger.info("WhisperX 결과 처리 시작")
     processed_segments, speakers_stats = process_whisperx_segments(
         whisperx_result, audio_path
     )
     logger.info(
-        f"세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자"
+        f"✅ 세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자"
     )
 
-    # 메타데이터 생성
+    # 메타데이터 생성 (언어 최적화 정보 포함)
     metadata = {
         "filename": Path(file_path).name,
         "duration": result.metadata.duration if result.metadata else 0,
         "total_segments": len(processed_segments),
         "unique_speakers": len(speakers_stats),
+        "processing_time": processing_time,
+        "language_requested": language,
+        "language_detected": detected_language,
+        "processing_mode": processing_mode,
     }
 
     return {
@@ -717,6 +737,8 @@ async def process_video_with_callback(
 
         # API 응답 형식으로 변환 (백엔드가 기대하는 형식)
         segments_for_api = []
+        word_segments = []  # 단어 단위 세그먼트 추가
+
         for seg in result["segments"]:
             segment_data = {
                 "start_time": seg["start_time"],
@@ -728,31 +750,50 @@ async def process_video_with_callback(
                         "word": w["word"],
                         "start": w["start_time"],
                         "end": w["end_time"],
-                        "volume_db": w["acoustic_features"]["volume_db"],
-                        "pitch_hz": w["acoustic_features"]["pitch_hz"],
+                        "acoustic_features": {  # 중첩 객체로 변경
+                            "volume_db": w["acoustic_features"]["volume_db"],
+                            "pitch_hz": w["acoustic_features"]["pitch_hz"],
+                            "spectral_centroid": w["acoustic_features"].get("spectral_centroid", 1500.0)
+                        }
                     }
                     for w in seg.get("words", [])
                 ],
             }
             segments_for_api.append(segment_data)
 
+            # word_segments 생성
+            for word in seg.get("words", []):
+                word_segments.append({
+                    "word": word["word"],
+                    "start_time": word["start_time"],
+                    "end_time": word["end_time"],
+                    "speaker_id": seg["speaker_id"],
+                    "confidence": 0.95
+                })
+
         processing_time = (datetime.now() - start_time).total_seconds()
 
-        # 백엔드가 기대하는 결과 구조로 변환
+        # 백엔드가 기대하는 올바른 결과 구조
         final_result = {
-            "text": " ".join([seg["text"] for seg in segments_for_api]),  # 전체 텍스트
             "segments": segments_for_api,
-            "language": language,
+            "word_segments": word_segments,  # 추가
+            "speakers": result["speakers"],  # result 내부로 이동
+            "text": " ".join([seg["text"] for seg in segments_for_api]),
+            "language": result["metadata"].get("language_detected", language),
             "duration": result["metadata"]["duration"],
             "metadata": {
                 "model_version": "whisperx-base",
                 "processing_time": processing_time,
                 "unique_speakers": result["metadata"]["unique_speakers"],
                 "total_segments": result["metadata"]["total_segments"],
-            },
+                "language_requested": result["metadata"].get("language_requested", language),
+                "language_detected": result["metadata"].get("language_detected", language),
+                "processing_mode": "targeted" if language != "auto" else "auto-detect",
+                "processed_at": datetime.now().isoformat()
+            }
         }
 
-        # 완료 콜백 전송
+        # 완료 콜백 전송 (모든 데이터는 result 안에)
         await send_callback(
             job_id,
             "completed",
@@ -883,25 +924,16 @@ async def transcribe(request: TranscribeRequest):
 
                 processing_time = (datetime.now() - start_time).total_seconds()
 
-                # Option C 형식으로 결과 생성 (객체 기반 상세 구조)
+                # 간소화된 결과 생성
                 detailed_result = {
                     "success": True,
+                    "segments": result["segments"],
+                    "speakers": result["speakers"],
                     "metadata": {
                         **result["metadata"],
-                        "sample_rate": 16000,
-                        "processed_at": datetime.now().isoformat(),
                         "processing_time": processing_time,
-                        "processing_mode": "real_ml_models",
-                        "config": {
-                            "enable_gpu": request.enable_gpu,
-                            "segment_length": 5.0,
-                            "language": request.language,
-                            "unified_model": "whisperx-base-with-diarization",
-                        },
-                        "subtitle_optimization": True,
+                        "processed_at": datetime.now().isoformat(),
                     },
-                    "speakers": result["speakers"],
-                    "segments": result["segments"],
                     "processing_time": processing_time,
                     "error": None,
                     "error_code": None,
