@@ -123,7 +123,6 @@ class GPUOptimizer:
                 and self.config.enable_amp
                 and torch.cuda.get_device_capability(0)[0] >= 7
             ):  # Volta+
-
                 optimized_model = optimized_model.half()
                 self.logger.info("model_converted_to_half", model_name=model_name)
 
