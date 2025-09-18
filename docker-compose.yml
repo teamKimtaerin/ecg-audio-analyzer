@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ml-server:
+    image: ecg-whisperx:v35
+    container_name: ecg-ml-server
+    ports:
+      - "8080:8080"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - HF_TOKEN=${HF_TOKEN:-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}
+      - FASTAPI_BASE_URL=${FASTAPI_BASE_URL:-https://ho-it.site}
+    volumes:
+      - ./output:/app/output
+      - ./friends.mp4:/app/friends.mp4:ro
+      - /tmp:/tmp
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

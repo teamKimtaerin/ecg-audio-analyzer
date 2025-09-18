@@ -168,14 +168,20 @@ class WhisperXPipeline:
                 asr_result = self.whisper_model.transcribe(
                     y,
                     batch_size=batch_size,
-                    language=self.language
+                    language=self.language,
+                    repetition_penalty=1.0,
+                    no_repeat_ngram_size=0,
+                    prompt_reset_on_temperature=0.5
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
                 # 자동 감지 모드 - 기존 방식
                 asr_result = self.whisper_model.transcribe(
                     y,
-                    batch_size=batch_size
+                    batch_size=batch_size,
+                    repetition_penalty=1.0,
+                    no_repeat_ngram_size=0,
+                    prompt_reset_on_temperature=0.5
                 )
                 detected_language = asr_result.get("language", "en")
 
