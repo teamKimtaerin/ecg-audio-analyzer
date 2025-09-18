@@ -48,24 +48,11 @@ class WhisperXPipeline:
             optimized_config = self._get_optimized_model_config(self.language)
 
             # Load WhisperX model (GPU-first approach with optimization)
-            # Add ASR options for compatibility with newer WhisperX versions
-            asr_options = {
-                "repetition_penalty": 1.0,
-                "no_repeat_ngram_size": 0,
-                "prompt_reset_on_temperature": 0.5,
-                "multilingual": self.language == "auto",
-                "max_new_tokens": None,
-                "clip_timestamps": "0",
-                "hallucination_silence_threshold": None,
-                "hotwords": None
-            }
-
             self.whisper_model = whisperx.load_model(
                 optimized_config["model_size"],
                 device=self.device,
                 compute_type=optimized_config["compute_type"],
-                language=self.language if self.language != "auto" else None,
-                asr_options=asr_options
+                language=self.language if self.language != "auto" else None
             )
 
     def _get_optimized_model_config(self, language: Optional[str]) -> Dict[str, Any]:
