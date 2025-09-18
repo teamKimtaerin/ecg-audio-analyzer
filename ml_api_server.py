@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import os
 import warnings
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import tempfile
 import uuid
@@ -338,7 +338,7 @@ def get_default_acoustic_features() -> Dict[str, Any]:
     }
 
 
-def extract_acoustic_features(audio_path: Path, segments: list) -> list[Dict[str, Any]]:
+def extract_acoustic_features(audio_path: Path, segments: list) -> List[Dict[str, Any]]:
     """Extract acoustic features for segments"""
     acoustic_features_list = []
 
@@ -386,7 +386,7 @@ def extract_acoustic_features(audio_path: Path, segments: list) -> list[Dict[str
 
 def process_whisperx_segments(
     whisperx_result: Optional[Dict], audio_path: Optional[Path] = None
-) -> tuple[list, dict]:
+) -> Tuple[list, dict]:
     """WhisperX 결과를 통합 처리"""
     if not whisperx_result or "segments" not in whisperx_result:
         logger.warning("WhisperX 결과가 없거나 세그먼트를 찾을 수 없음")
