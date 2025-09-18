@@ -166,12 +166,33 @@ class WhisperXPipeline:
             if self.language and self.language != "auto":
                 # 언어 지정 시 최적화
                 asr_result = self.whisper_model.transcribe(
-                    y, batch_size=batch_size, language=self.language
+                    y,
+                    batch_size=batch_size,
+                    language=self.language,
+                    repetition_penalty=1.0,
+                    no_repeat_ngram_size=0,
+                    prompt_reset_on_temperature=0.5,
+                    multilingual=False,
+                    max_new_tokens=None,
+                    clip_timestamps="0",
+                    hallucination_silence_threshold=None,
+                    hotwords=None
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
                 # 자동 감지 모드 - 기존 방식
-                asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
+                asr_result = self.whisper_model.transcribe(
+                    y,
+                    batch_size=batch_size,
+                    repetition_penalty=1.0,
+                    no_repeat_ngram_size=0,
+                    prompt_reset_on_temperature=0.5,
+                    multilingual=True,  # 자동 감지 모드에서는 True
+                    max_new_tokens=None,
+                    clip_timestamps="0",
+                    hallucination_silence_threshold=None,
+                    hotwords=None
+                )
                 detected_language = asr_result.get("language", "en")
 
             # Step 2: Alignment
