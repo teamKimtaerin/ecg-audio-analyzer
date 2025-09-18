@@ -48,11 +48,24 @@ class WhisperXPipeline:
             optimized_config = self._get_optimized_model_config(self.language)
 
             # Load WhisperX model (GPU-first approach with optimization)
+            # Add ASR options for compatibility with newer WhisperX versions
+            asr_options = {
+                "repetition_penalty": 1.0,
+                "no_repeat_ngram_size": 0,
+                "prompt_reset_on_temperature": 0.5,
+                "multilingual": self.language == "auto",
+                "max_new_tokens": None,
+                "clip_timestamps": "0",
+                "hallucination_silence_threshold": None,
+                "hotwords": None
+            }
+
             self.whisper_model = whisperx.load_model(
                 optimized_config["model_size"],
                 device=self.device,
                 compute_type=optimized_config["compute_type"],
                 language=self.language if self.language != "auto" else None,
+                asr_options=asr_options
             )
 
     def _get_optimized_model_config(self, language: Optional[str]) -> Dict[str, Any]:
@@ -168,30 +181,14 @@ class WhisperXPipeline:
                 asr_result = self.whisper_model.transcribe(
                     y,
                     batch_size=batch_size,
-                    language=self.language,
-                    repetition_penalty=1.0,
-                    no_repeat_ngram_size=0,
-                    prompt_reset_on_temperature=0.5,
-                    multilingual=False,
-                    max_new_tokens=None,
-                    clip_timestamps="0",
-                    hallucination_silence_threshold=None,
-                    hotwords=None
+                    language=self.language
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
                 # 자동 감지 모드 - 기존 방식
                 asr_result = self.whisper_model.transcribe(
                     y,
-                    batch_size=batch_size,
-                    repetition_penalty=1.0,
-                    no_repeat_ngram_size=0,
-                    prompt_reset_on_temperature=0.5,
-                    multilingual=True,  # 자동 감지 모드에서는 True
-                    max_new_tokens=None,
-                    clip_timestamps="0",
-                    hallucination_silence_threshold=None,
-                    hotwords=None
+                    batch_size=batch_size
                 )
                 detected_language = asr_result.get("language", "en")
 
