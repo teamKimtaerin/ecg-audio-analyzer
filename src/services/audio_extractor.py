@@ -3,6 +3,8 @@ Audio Extraction Service - Simplified version
 Convert MP4/URLs to analysis-ready audio format
 """
 
+# cSpell:ignore ytdl outtmpl noplaylist ffprobe acodec samplerate Pylance
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -160,13 +162,14 @@ class AudioExtractor:
     def _download_url(self, url: str) -> Optional[Path]:
         """Download video from URL"""
         try:
-            with yt_dlp.YoutubeDL(self.ytdl_opts) as ydl:
+            # Type ignore for Pylance false positive - yt_dlp.YoutubeDL accepts dict as first arg
+            with yt_dlp.YoutubeDL(self.ytdl_opts) as ydl:  # type: ignore[reportArgumentType]
                 info = ydl.extract_info(url, download=True)
                 if not info:
                     return None
 
                 # Find downloaded file
-                title = info.get("title", "download").replace("/", "_")
+                title = (info.get("title") or "download").replace("/", "_")
                 for ext in [".mp4", ".webm", ".mkv", ".m4a", ".mp3"]:
                     file_path = self.temp_dir / f"{title}{ext}"
                     if file_path.exists():
