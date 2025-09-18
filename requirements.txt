@@ -1,34 +1,51 @@
 # ECG Audio Analyzer ML API Server Dependencies
+# Optimized for Python 3.7.16 on Amazon Linux 2 with NVIDIA Tesla T4
+
+# Core System Requirements (Python 3.7 compatible)
+numpy==1.21.6            # Python 3.7 compatible version
+scipy==1.7.3             # Compatible with numpy 1.21.6
+
+# PyTorch Stack (GPU optimized for CUDA 11.7)
+torch==1.13.1            # Compatible with CUDA 11.7
+torchaudio==0.13.1       # Matching torch version
+torchvision==0.14.1      # Optional but useful
 
 # FastAPI Server
-fastapi>=0.100.0          # Main web framework
-uvicorn>=0.23.0           # ASGI server
-requests>=2.31.0          # HTTP client for backend callbacks
+fastapi==0.104.1         # Latest stable version
+uvicorn[standard]==0.23.2
+requests==2.31.0
+httpx==0.25.0
+aiofiles==23.2.1
 
-# Audio Processing & Feature Extraction
-librosa>=0.10.0           # Audio analysis
-soundfile>=0.12.0         # Audio I/O
+# Audio Processing
+librosa==0.10.1          # Stable version for Python 3.7
+soundfile==0.12.1
+ffmpeg-python==0.2.0
 
-# Core ML/AI Framework
-torch>=2.0.0             # PyTorch framework
-torchaudio>=2.0.0        # Audio processing
+# Speech Recognition & Diarization
+# Note: WhisperX must be installed from GitHub:
+# pip install git+https://github.com/m-bain/whisperx.git@v3.1.1
+faster-whisper==1.0.0    # WhisperX dependency
+pyannote.audio==2.1.1    # Speaker diarization
+openai-whisper==20231117 # Base Whisper model
 
-# AWS & Cloud Infrastructure
-boto3>=1.26.0            # AWS SDK
+# ML Libraries
+transformers==4.36.0     # Hugging Face transformers
+huggingface-hub>=0.16.4
+speechbrain==0.5.16      # Required by pyannote
 
-# Performance & Utilities  
-yt-dlp>=2023.7.6         # YouTube download
-ffmpeg-python>=0.2.0     # Video processing
-psutil>=5.9.0            # System monitoring
-aiofiles>=23.1.0         # Async file operations
+# Utilities
+psutil==5.9.5
+python-dotenv==1.0.0
+structlog==23.2.0
+pydantic==2.5.0
+boto3==1.34.0
+yt-dlp==2023.12.30
 
-# Data Processing & Validation
-numpy>=1.24.0            # Numerical computing
-pydantic>=2.0.0          # Data validation and settings
-
-# Logging & Configuration
-structlog>=23.1.0        # Structured logging
-python-dotenv>=1.0.0     # Environment variable loading
-
-# WhisperX for Speech Recognition + Diarization (main dependency)
-whisperx                 # Unified speech recognition and speaker diarization
+# Additional dependencies for ML pipeline
+einops>=0.6.0           # Tensor operations
+omegaconf>=2.3.0        # Configuration management
+pytorch-lightning==1.6.5 # Training framework
+pytorch-metric-learning==1.7.3
+torch-audiomentations==0.12.0
+torchmetrics==0.11.4
