@@ -191,7 +191,7 @@ class PipelineManager:
             "executing_whisperx_pipeline",
             audio_path=str(audio_path),
             language=self.language,
-            processing_mode=processing_mode
+            processing_mode=processing_mode,
         )
 
         try:
@@ -199,12 +199,7 @@ class PipelineManager:
 
             # Create wrapper function with enhanced logging
             def whisperx_wrapper():
-                return pipeline.process_audio_with_diarization(
-                    audio_path=audio_path,
-                    min_speakers=self.speaker_config.min_speakers,
-                    max_speakers=self.speaker_config.max_speakers,
-                    sample_rate=self.whisperx_config.sample_rate,
-                )
+                return pipeline.transcribe(audio_path=audio_path)
 
             # Run WhisperX pipeline in thread pool
             loop = asyncio.get_event_loop()

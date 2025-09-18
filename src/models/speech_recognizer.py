@@ -47,7 +47,6 @@ class WhisperXPipeline:
             # 언어별 최적화된 모델 설정
             optimized_config = self._get_optimized_model_config(self.language)
 
-
             # Load WhisperX model (GPU-first approach with optimization)
             self.whisper_model = whisperx.load_model(
                 optimized_config["model_size"],
@@ -63,22 +62,22 @@ class WhisperXPipeline:
             "ko": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "Korean-optimized"
+                "optimization_type": "Korean-optimized",
             },
             "en": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "English-optimized"
+                "optimization_type": "English-optimized",
             },
             "ja": {
                 "model_size": "medium",
                 "compute_type": "float16",
-                "optimization_type": "Japanese-optimized"
+                "optimization_type": "Japanese-optimized",
             },
             "zh": {
                 "model_size": "large-v2",
                 "compute_type": "float16",
-                "optimization_type": "Chinese-optimized"
+                "optimization_type": "Chinese-optimized",
             },
         }
 
@@ -86,7 +85,7 @@ class WhisperXPipeline:
         base_config = {
             "model_size": self.model_size,
             "compute_type": self.compute_type,
-            "optimization_type": "default"
+            "optimization_type": "default",
         }
 
         if language and language != "auto" and language in language_configs:
@@ -109,10 +108,11 @@ class WhisperXPipeline:
                 self.alignment_model is None
                 or getattr(self, "_last_language", None) != language_code
             ):
-                self.alignment_model, self.alignment_metadata = (
-                    whisperx.load_align_model(
-                        language_code=language_code, device=self.device
-                    )
+                (
+                    self.alignment_model,
+                    self.alignment_metadata,
+                ) = whisperx.load_align_model(
+                    language_code=language_code, device=self.device
                 )
                 self._last_language = language_code
 
@@ -169,7 +169,7 @@ class WhisperXPipeline:
                     y,
                     batch_size=batch_size,
                     language=self.language,
-                    condition_on_previous_text=False  # 성능 최적화
+                    condition_on_previous_text=False,  # 성능 최적화
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
@@ -420,6 +420,18 @@ class WhisperXPipeline:
                 continue
 
             i += 1
+
+    def transcribe(self, audio_path: Union[str, Path]) -> Dict[str, Any]:
+        """
+        Wrapper method for backward compatibility and simpler interface.
+
+        Args:
+            audio_path: Path to the audio file to transcribe
+
+        Returns:
+            Dictionary containing transcription results with speaker diarization
+        """
+        return self.process_audio_with_diarization(audio_path)
 
 
 # Keep SpeechRecognizer as alias for backward compatibility
