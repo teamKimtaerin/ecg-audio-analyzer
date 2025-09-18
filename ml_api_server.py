@@ -134,6 +134,25 @@ class BackendTranscribeResponse(BaseModel):
 # ========== Helper Functions ==========
 
 
+def normalize_timestamp_fields(data):
+    """타임스탬프 필드명 정규화 (start_time → start, end_time → end)"""
+    if isinstance(data, dict):
+        # Root level timestamp fields
+        if 'start_time' in data:
+            data['start'] = data.pop('start_time')
+        if 'end_time' in data:
+            data['end'] = data.pop('end_time')
+
+        # Recursively process nested structures
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                normalize_timestamp_fields(value)
+    elif isinstance(data, list):
+        for item in data:
+            normalize_timestamp_fields(item)
+    return data
+
+
 def create_pipeline(language: str = "en") -> PipelineManager:
     return PipelineManager(
         base_config=BaseConfig(),
@@ -814,7 +833,7 @@ async def process_video_with_callback(
             "language": result["metadata"].get("language_detected", language),
             "duration": result["metadata"]["duration"],
             "metadata": {
-                "model_version": "whisperx-base",
+                "model_version": "whisperx-large-v3",
                 "processing_time": processing_time,
                 "unique_speakers": result["metadata"]["unique_speakers"],
                 "total_segments": result["metadata"]["total_segments"],
@@ -828,6 +847,9 @@ async def process_video_with_callback(
                 "processed_at": datetime.now().isoformat(),
             },
         }
+
+        # 타임스탬프 필드명 정규화 (start_time → start, end_time → end)
+        final_result = normalize_timestamp_fields(final_result)
 
         # 완료 콜백 전송 (모든 데이터는 result 안에)
         await send_callback(
