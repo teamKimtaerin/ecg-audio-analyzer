@@ -108,6 +108,7 @@ class WhisperXPipeline:
                 self.alignment_model is None
                 or getattr(self, "_last_language", None) != language_code
             ):
+                print(f"📥 Loading alignment model for language: {language_code}")
                 (
                     self.alignment_model,
                     self.alignment_metadata,
@@ -115,8 +116,11 @@ class WhisperXPipeline:
                     language_code=language_code, device=self.device
                 )
                 self._last_language = language_code
+                print(f"✅ Alignment model loaded successfully for {language_code}")
 
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Alignment model loading failed for {language_code}: {e}")
+            print(f"   This is likely the HTTP 301 issue. Continuing without alignment...")
             self.alignment_model = None
             self.alignment_metadata = None
 
@@ -191,6 +195,7 @@ class WhisperXPipeline:
 
             if self.alignment_model is not None:
                 try:
+                    print("🔄 Performing word-level alignment...")
                     aligned_result = whisperx.align(
                         asr_result["segments"],
                         self.alignment_model,
@@ -222,7 +227,8 @@ class WhisperXPipeline:
                     aligned_result = self._add_fallback_word_timing(asr_result, y)
                     aligned_result["language"] = detected_language
             else:
-                aligned_result = asr_result
+                print("⚠️ No alignment model available, using fallback timing")
+                aligned_result = self._add_fallback_word_timing(asr_result, y)
                 aligned_result["language"] = detected_language
 
             # Step 3: Speaker Diarization

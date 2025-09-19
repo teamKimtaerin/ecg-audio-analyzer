@@ -295,13 +295,15 @@ push_docker_image() {
 
 deploy_application() {
     print_info "Deploying application to instances..."
-    
+
     # This would typically involve:
     # 1. SSH to instances
     # 2. Pull latest Docker image
     # 3. Update configuration
     # 4. Restart services
-    
+
+    local account_id=$(aws sts get-caller-identity --query Account --output text)
+
     # For now, we'll just create a deployment script
     cat << EOF > deployment/update-instances.sh
 #!/bin/bash
@@ -310,25 +312,85 @@ deploy_application() {
 
 set -e
 
+echo "🚀 Updating ECG Audio Analyzer with GPU support..."
+
+# Check if using Deep Learning AMI
+if [[ -f /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl ]]; then
+    echo "✅ Deep Learning AMI detected - GPU support ready"
+    GPU_SUPPORT="--gpus all"
+else
+    echo "⚠️  Standard AMI detected - checking GPU setup..."
+    # Test GPU support
+    if docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi >/dev/null 2>&1; then
+        echo "✅ GPU support confirmed"
+        GPU_SUPPORT="--gpus all"
+    else
+        echo "❌ GPU support not available - running in CPU mode"
+        GPU_SUPPORT=""
+    fi
+fi
+
 echo "Pulling latest Docker image..."
+aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $account_id.dkr.ecr.$REGION.amazonaws.com
 docker pull $account_id.dkr.ecr.$REGION.amazonaws.com/$PROJECT_NAME:$ENVIRONMENT
 
 echo "Stopping current service..."
 sudo systemctl stop ecg-audio-analyzer || true
 
-echo "Starting updated service..."
+# Update systemd service with GPU support
+cat << SYSTEMD_EOF > /tmp/ecg-audio-analyzer.service
+[Unit]
+Description=ECG Audio Analyzer ML Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStartPre=/usr/bin/docker pull $account_id.dkr.ecr.$REGION.amazonaws.com/$PROJECT_NAME:$ENVIRONMENT
+ExecStart=/usr/bin/docker run --rm \$GPU_SUPPORT \\
+    -p 8080:8080 \\
+    -e HF_TOKEN=\${HF_TOKEN} \\
+    -e S3_BUCKET_NAME=\${S3_BUCKET_NAME} \\
+    -e AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID} \\
+    -e AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} \\
+    -e AWS_DEFAULT_REGION=\${AWS_DEFAULT_REGION} \\
+    --name ecg-audio-analyzer \\
+    $account_id.dkr.ecr.$REGION.amazonaws.com/$PROJECT_NAME:$ENVIRONMENT
+ExecStop=/usr/bin/docker stop ecg-audio-analyzer
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+SYSTEMD_EOF
+
+# Replace GPU_SUPPORT placeholder
+sed -i "s/\\\$GPU_SUPPORT/\$GPU_SUPPORT/g" /tmp/ecg-audio-analyzer.service
+
+sudo mv /tmp/ecg-audio-analyzer.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+echo "Starting updated service with GPU support..."
 sudo systemctl start ecg-audio-analyzer
 
 echo "Verifying service status..."
-sudo systemctl status ecg-audio-analyzer
+sudo systemctl status ecg-audio-analyzer --no-pager
 
-echo "Application updated successfully"
+echo "Checking GPU status in container..."
+sleep 10
+docker logs \$(docker ps --filter "name=ecg-audio-analyzer" --format "{{.ID}}") | grep -E "(GPU:|CUDA|Tesla)" || echo "No GPU logs found yet"
+
+echo "✅ Application updated successfully with GPU support"
+echo "🔍 Check logs: docker logs \$(docker ps --filter \"name=ecg-audio-analyzer\" --format \"{{.ID}}\")"
+echo "🌐 Service available at: http://\$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8080"
 EOF
-    
+
     chmod +x deployment/update-instances.sh
-    
+
     print_success "Application deployment script created: deployment/update-instances.sh"
     print_info "SSH to your instances and run this script to update the application"
+    print_info "The script will automatically detect Deep Learning AMI and enable GPU support"
 }
 
 cleanup() {

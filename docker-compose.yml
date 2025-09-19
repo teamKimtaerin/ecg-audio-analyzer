@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ml-server:
-    image: ecg-whisperx:v35
+    image: ecg-whisperx:v44
     container_name: ecg-ml-server
     ports:
       - "8080:8080"
@@ -10,6 +10,11 @@ services:
       - CUDA_VISIBLE_DEVICES=0
       - HF_TOKEN=${HF_TOKEN:-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}
       - FASTAPI_BASE_URL=${FASTAPI_BASE_URL:-https://ho-it.site}
+      # AWS 자격 증명 환경변수
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-ecg-audio-analyzer-production-audio-084828586938}
     volumes:
       - ./output:/app/output
       - ./friends.mp4:/app/friends.mp4:ro

@@ -12,8 +12,10 @@ from typing import Optional, Union, Dict, Any
 from dataclasses import dataclass
 
 import soundfile as sf
-import yt_dlp
 import ffmpeg
+import boto3
+from botocore.exceptions import ClientError
+import os
 
 from ..utils.logger import get_logger
 
@@ -59,14 +61,17 @@ class AudioExtractor:
         if not shutil.which("ffmpeg"):
             raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
 
-        # Simple yt-dlp config
-        self.ytdl_opts = {
-            "format": "best",
-            "outtmpl": str(self.temp_dir / "%(title)s.%(ext)s"),
-            "noplaylist": True,
-            "quiet": True,
-            "no_warnings": True,
-        }
+        # Setup S3 client
+        self.s3_client = None
+        try:
+            self.s3_client = boto3.client(
+                's3',
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+            )
+        except Exception as e:
+            self.logger.warning("s3_client_setup_failed", error=str(e))
 
         self.logger.info("audio_extractor_ready", temp_dir=str(self.temp_dir))
 
@@ -111,15 +116,21 @@ class AudioExtractor:
             AudioExtractionResult
         """
         source_str = str(source)
-        is_url = source_str.startswith(("http://", "https://"))
+        is_url = source_str.startswith(("http://", "https://", "s3://"))
 
         try:
             # Handle URL
             if is_url:
-                video_path = self._download_url(source_str)
+                if source_str.startswith("s3://"):
+                    video_path = self._download_from_s3(source_str)
+                else:
+                    return AudioExtractionResult(
+                        success=False, error="Only S3 URLs are supported"
+                    )
+
                 if not video_path:
                     return AudioExtractionResult(
-                        success=False, error="Failed to download URL"
+                        success=False, error="Failed to download from S3"
                     )
             else:
                 video_path = Path(source)
@@ -159,31 +170,47 @@ class AudioExtractor:
             self.logger.error("extraction_failed", source=source_str, error=str(e))
             return AudioExtractionResult(success=False, error=str(e))
 
-    def _download_url(self, url: str) -> Optional[Path]:
-        """Download video from URL"""
+    def _download_from_s3(self, s3_url: str) -> Optional[Path]:
+        """Download file from S3"""
+        if not self.s3_client:
+            self.logger.error("s3_client_not_available")
+            return None
+
         try:
-            # Type ignore for Pylance false positive - yt_dlp.YoutubeDL accepts dict as first arg
-            with yt_dlp.YoutubeDL(self.ytdl_opts) as ydl:  # type: ignore[reportArgumentType]
-                info = ydl.extract_info(url, download=True)
-                if not info:
-                    return None
-
-                # Find downloaded file
-                title = (info.get("title") or "download").replace("/", "_")
-                for ext in [".mp4", ".webm", ".mkv", ".m4a", ".mp3"]:
-                    file_path = self.temp_dir / f"{title}{ext}"
-                    if file_path.exists():
-                        return file_path
-
-                # Fallback: find most recent file
-                files = list(self.temp_dir.glob("*"))
-                if files:
-                    return max(files, key=lambda p: p.stat().st_mtime)
-
+            # Parse S3 URL: s3://bucket/key
+            if not s3_url.startswith("s3://"):
+                self.logger.error("invalid_s3_url", url=s3_url)
                 return None
 
+            url_parts = s3_url[5:].split("/", 1)  # Remove s3:// prefix
+            if len(url_parts) != 2:
+                self.logger.error("malformed_s3_url", url=s3_url)
+                return None
+
+            bucket, key = url_parts
+
+            # Extract file extension from key
+            file_ext = Path(key).suffix or ".mp4"
+            local_file = self.temp_dir / f"s3_download_{hash(s3_url)}{file_ext}"
+
+            self.logger.info("downloading_from_s3", bucket=bucket, key=key, local_path=str(local_file))
+
+            # Download file
+            self.s3_client.download_file(bucket, key, str(local_file))
+
+            if local_file.exists():
+                self.logger.info("s3_download_success", local_path=str(local_file), size=local_file.stat().st_size)
+                return local_file
+            else:
+                self.logger.error("s3_download_file_not_found", local_path=str(local_file))
+                return None
+
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            self.logger.error("s3_download_client_error", url=s3_url, error_code=error_code, error=str(e))
+            return None
         except Exception as e:
-            self.logger.error("download_failed", url=url, error=str(e))
+            self.logger.error("s3_download_failed", url=s3_url, error=str(e))
             return None
 
     def cleanup(self):

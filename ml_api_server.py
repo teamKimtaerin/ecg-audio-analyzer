@@ -283,22 +283,37 @@ async def download_from_url(
             callback_base_url=callback_base_url,
         )
 
-        # S3 URL인지 확인하고 boto3로 다운로드
-        if url.startswith("https://") and ".s3." in url:
-            # S3 URL 파싱: https://bucket.s3.region.amazonaws.com/key
-            s3_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
-            match = re.match(s3_pattern, url)
+        # S3 URL인지 확인하고 boto3로 다운로드 - s3:// 및 https:// 형식 모두 지원
+        bucket_name = None
+        key = None
 
+        if url.startswith("s3://"):
+            # S3 URI 파싱: s3://bucket/key
+            s3_uri_pattern = r"s3://([^/]+)/(.+)"
+            match = re.match(s3_uri_pattern, url)
+            if match:
+                bucket_name = match.group(1)
+                key = match.group(2)
+        elif url.startswith("https://") and ".s3." in url:
+            # S3 HTTPS URL 파싱: https://bucket.s3.region.amazonaws.com/key
+            s3_https_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
+            match = re.match(s3_https_pattern, url)
             if match:
                 bucket_name = match.group(1)
                 key = match.group(3)
 
-                logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
+        if bucket_name and key:
+            # S3 bucket이 환경변수로 설정된 경우 해당 값 사용, 아니면 URL에서 파싱된 값 사용
+            if S3_BUCKET and S3_BUCKET.strip():
+                bucket_name = S3_BUCKET
 
-                # 임시 파일 생성 (with 블록 밖에서)
-                temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-                temp_file.close()  # 파일 핸들 닫기
+            logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
 
+            # 임시 파일 생성 (with 블록 밖에서)
+            temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+            temp_file.close()  # 파일 핸들 닫기
+
+            try:
                 # boto3로 S3에서 다운로드
                 s3_client.download_file(bucket_name, key, temp_file.name)
 
@@ -312,6 +327,12 @@ async def download_from_url(
 
                 logger.info(f"S3 다운로드 완료: {temp_file.name}")
                 return temp_file.name
+
+            except Exception as e:
+                logger.error(f"S3 다운로드 실패: {e}")
+                # 환경변수 정보 로깅
+                logger.error(f"AWS 환경변수 상태: AWS_ACCESS_KEY_ID={'설정됨' if os.getenv('AWS_ACCESS_KEY_ID') else '없음'}, AWS_SECRET_ACCESS_KEY={'설정됨' if os.getenv('AWS_SECRET_ACCESS_KEY') else '없음'}")
+                raise HTTPException(status_code=500, detail=f"S3 파일 다운로드 실패: {str(e)}")
 
         # 일반 HTTP URL 처리
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
