@@ -43,7 +43,7 @@ boto3==1.34.0
 yt-dlp==2023.12.30
 
 # Additional dependencies for ML pipeline
-einops>=0.6.0           # Tensor operations
+einops==0.3.2           # Tensor operations - compatible with pyannote.audio
 omegaconf>=2.3.0        # Configuration management
 pytorch-lightning==2.0.0 # Training framework - Python 3.11 compatible
 pytorch-metric-learning==2.0.0
