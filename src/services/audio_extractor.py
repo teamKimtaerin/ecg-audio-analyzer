@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import soundfile as sf
 import yt_dlp
 import ffmpeg
-import subprocess
 
 from ..utils.logger import get_logger
 
