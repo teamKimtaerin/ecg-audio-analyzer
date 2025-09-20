@@ -546,21 +546,21 @@ def process_whisperx_segments(
         speakers_stats[speaker_id]["segment_count"] += 1
 
         # Extract timing information from segment
-        start_time = (
+        seg_start = (
             seg.get("start", 0.0) if "start" in seg else seg.get("start_time", 0.0)
         )
-        end_time = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
+        seg_end = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
 
         # 디버그 로깅: 타임스탬프 확인
         logger.debug(
-            f"🔍 세그먼트 {i}: start={start_time}, end={end_time}, keys={list(seg.keys())}"
+            f"🔍 세그먼트 {i}: start={seg_start}, end={seg_end}, keys={list(seg.keys())}"
         )
 
         # Build segment data
         segment_data = {
-            "start_time": start_time,
-            "end_time": end_time,
-            "duration": end_time - start_time if end_time > start_time else 0.0,
+            "start_time": seg_start,
+            "end_time": seg_end,
+            "duration": seg_end - seg_start if seg_end > seg_start else 0.0,
             "speaker_id": speaker_id,
             "acoustic_features": (
                 acoustic_features_list[i]
@@ -611,7 +611,7 @@ def process_whisperx_segments(
                 if words and duration > 0:
                     word_duration = duration / len(words)
                     for word_idx, word in enumerate(words):
-                        word_start = start_time + (word_idx * word_duration)
+                        word_start = seg_start + (word_idx * word_duration)
                         word_end = word_start + word_duration
 
                         word_data = {
@@ -820,7 +820,7 @@ async def process_video_with_callback(
     language: str = "auto",
 ):
     """API 명세에 따른 비디오 처리 및 콜백"""
-    start_time = datetime.now()
+    process_start_time = datetime.now()
     video_path = None
 
     try:
@@ -904,16 +904,16 @@ async def process_video_with_callback(
             # word_segments 생성
             for word in seg.get("words", []):
                 # 방어적 코드: 두 가지 키 형식 모두 지원
-                start_time = word.get("start_time", word.get("start", 0.0))
-                end_time = word.get("end_time", word.get("end", 0.0))
+                word_start = word.get("start_time", word.get("start", 0.0))
+                word_end = word.get("end_time", word.get("end", 0.0))
 
                 # 유효성 검사 추가
-                if start_time is not None and end_time is not None:
+                if word_start is not None and word_end is not None:
                     word_segments.append(
                         {
                             "word": word.get("word", ""),
-                            "start_time": start_time,
-                            "end_time": end_time,
+                            "start_time": word_start,
+                            "end_time": word_end,
                             "speaker_id": seg.get("speaker_id", "SPEAKER_00"),
                             "confidence": word.get("confidence", 0.95),
                         }
@@ -921,7 +921,7 @@ async def process_video_with_callback(
                 else:
                     logger.warning(f"단어 타임스탬프 누락: {word}")
 
-        processing_time = (datetime.now() - start_time).total_seconds()
+        processing_time = (datetime.now() - process_start_time).total_seconds()
 
         # 백엔드가 기대하는 올바른 결과 구조
         final_result = {
@@ -1005,7 +1005,7 @@ async def process_video_with_callback(
 @app.post("/transcribe")
 async def transcribe(request: TranscribeRequest):
     """백엔드 호환 동기 전사 API"""
-    start_time = datetime.now()
+    transcribe_start_time = datetime.now()
 
     try:
         logger.info(f"전사 요청 시작 - video_path: {request.video_path}")
@@ -1073,7 +1073,7 @@ async def transcribe(request: TranscribeRequest):
                 job_id, "processing", progress_steps[3][0], progress_steps[3][1]
             )
 
-            processing_time = (datetime.now() - start_time).total_seconds()
+            processing_time = (datetime.now() - transcribe_start_time).total_seconds()
 
             # 간소화된 결과 생성
             detailed_result = {
@@ -1147,7 +1147,7 @@ async def transcribe(request: TranscribeRequest):
 
         except Exception as analysis_error:
             logger.error(f"분석 실패: {analysis_error}")
-            processing_time = (datetime.now() - start_time).total_seconds()
+            processing_time = (datetime.now() - transcribe_start_time).total_seconds()
 
             return {
                 "success": False,
@@ -1157,7 +1157,7 @@ async def transcribe(request: TranscribeRequest):
             }
 
     except Exception as e:
-        processing_time = (datetime.now() - start_time).total_seconds()
+        processing_time = (datetime.now() - transcribe_start_time).total_seconds()
         logger.error(f"전사 요청 실패 - Error: {str(e)}")
 
         return {
