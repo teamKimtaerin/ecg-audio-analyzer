@@ -52,7 +52,7 @@ class WhisperXPipeline:
                 optimized_config["model_size"],
                 device=self.device,
                 compute_type=optimized_config["compute_type"],
-                language=self.language if self.language != "auto" else None
+                language=self.language if self.language != "auto" else None,
             )
 
     def _get_optimized_model_config(self, language: Optional[str]) -> Dict[str, Any]:
@@ -166,17 +166,12 @@ class WhisperXPipeline:
             if self.language and self.language != "auto":
                 # 언어 지정 시 최적화
                 asr_result = self.whisper_model.transcribe(
-                    y,
-                    batch_size=batch_size,
-                    language=self.language
+                    y, batch_size=batch_size, language=self.language
                 )
                 detected_language = self.language  # 지정된 언어 사용
             else:
                 # 자동 감지 모드 - 기존 방식
-                asr_result = self.whisper_model.transcribe(
-                    y,
-                    batch_size=batch_size
-                )
+                asr_result = self.whisper_model.transcribe(y, batch_size=batch_size)
                 detected_language = asr_result.get("language", "en")
 
             # Step 2: Alignment
@@ -476,6 +471,7 @@ class WhisperXPipeline:
             Dictionary containing transcription results with speaker diarization
         """
         return self.process_audio_with_diarization(audio_path)
+
     def _add_fallback_word_timing(
         self, result: Dict[str, Any], audio: np.ndarray
     ) -> Dict[str, Any]:
