@@ -629,7 +629,9 @@ def process_whisperx_segments(
 
             # Log fallback usage
             if not segment_data["words"]:
-                logger.warning(f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'")
+                logger.warning(
+                    f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'"
+                )
             else:
                 logger.info(
                     f"✅ 세그먼트 {i}에서 fallback으로 {len(segment_data['words'])}개 워드 생성"
@@ -958,7 +960,9 @@ async def process_video_with_callback(
             callback_base_url=callback_base_url,
         )
 
-        logger.info(f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초")
+        logger.info(
+            f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
+        )
 
         # Job 상태 업데이트
         jobs[job_id] = {
@@ -1052,7 +1056,9 @@ async def transcribe(request: TranscribeRequest):
             actual_file_path = file_url
 
         # 진행상황 업데이트 (첫 번째 단계 이후 분석 전까지)
-        analysis_start_index = 2 if request.audio_path else 3  # 오디오는 2단계부터, 비디오는 3단계부터
+        analysis_start_index = (
+            2 if request.audio_path else 3
+        )  # 오디오는 2단계부터, 비디오는 3단계부터
         for progress, message in progress_steps[1:analysis_start_index]:
             await send_callback(job_id, "processing", progress, message)
 
