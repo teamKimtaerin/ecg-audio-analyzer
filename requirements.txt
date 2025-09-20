@@ -2,50 +2,50 @@
 # Optimized for Python 3.8+ on Ubuntu with NVIDIA Tesla T4
 
 # Core System Requirements (Python 3.8+ compatible)
-numpy==1.24.3            # Python 3.8-3.11 compatible version
-scipy==1.10.1            # Compatible with numpy 1.24.3
+numpy>=1.24.3,<2.0       # Python 3.8-3.12 compatible version
+scipy>=1.10.1,<2.0       # Compatible with numpy
 
-# PyTorch Stack (GPU optimized for CUDA 11.7)
-torch==2.0.1             # Compatible with Python 3.11 and CUDA 11.7
-torchaudio==2.0.2        # Matching torch version
-torchvision==0.15.2      # Optional but useful
+# PyTorch Stack (GPU optimized, compatible with Python 3.12)
+torch>=2.2.0,<2.5        # Compatible with Python 3.12
+torchaudio>=2.2.0,<2.5   # Matching torch version
+torchvision>=0.17.0,<0.20 # Optional but useful
 
 # FastAPI Server
-fastapi==0.104.1         # Latest stable version
-uvicorn[standard]==0.23.2
-requests==2.31.0
-httpx==0.25.0
-aiofiles==23.2.1
+fastapi>=0.104.1,<1.0    # Latest stable version
+uvicorn[standard]>=0.23.2,<1.0
+requests>=2.31.0,<3.0
+httpx>=0.25.0,<1.0
+aiofiles>=23.2.1,<24.0
 
 # Audio Processing
-librosa==0.10.1          # Stable version for Python 3.7
-soundfile==0.12.1
-ffmpeg-python==0.2.0
+librosa>=0.10.1,<1.0     # Stable version for Python 3.12
+soundfile>=0.12.1,<1.0
+ffmpeg-python>=0.2.0,<1.0
 
 # Speech Recognition & Diarization
 # Note: WhisperX must be installed from GitHub:
 # pip install git+https://github.com/m-bain/whisperx.git@v3.1.1
-faster-whisper==1.0.0    # WhisperX dependency
-pyannote.audio==2.1.1    # Speaker diarization
-openai-whisper==20231117 # Base Whisper model
+faster-whisper>=1.0.0,<2.0    # WhisperX dependency
+pyannote.audio>=3.3.2,<4.0    # Speaker diarization - compatible with pytorch-lightning>=2.0
+openai-whisper>=20231117       # Base Whisper model
 
 # ML Libraries
-transformers==4.36.0     # Hugging Face transformers
-huggingface-hub>=0.16.4
-speechbrain==0.5.16      # Required by pyannote
+transformers>=4.36.0,<5.0     # Hugging Face transformers
+huggingface-hub>=0.16.4,<1.0
+speechbrain>=0.5.16,<1.0      # Required by pyannote - compatible version
 
 # Utilities
-psutil==5.9.5
-python-dotenv==1.0.0
-structlog==23.2.0
-pydantic==2.5.0
-boto3==1.34.0
-yt-dlp==2023.12.30
+psutil>=5.9.5,<6.0
+python-dotenv>=1.0.0,<2.0
+structlog>=23.2.0,<24.0
+pydantic>=2.5.0,<3.0
+boto3>=1.34.0,<2.0
+yt-dlp>=2023.12.30
 
 # Additional dependencies for ML pipeline
-einops==0.3.2           # Tensor operations - compatible with pyannote.audio
-omegaconf>=2.3.0        # Configuration management
-pytorch-lightning==2.0.0 # Training framework - Python 3.11 compatible
-pytorch-metric-learning==2.0.0
-torch-audiomentations==0.12.0
-torchmetrics==0.11.4
+einops>=0.3.2,<1.0      # Tensor operations - compatible with pyannote.audio
+omegaconf>=2.3.0,<3.0   # Configuration management
+pytorch-lightning>=2.0.0,<3.0 # Training framework - Python 3.12 compatible
+pytorch-metric-learning>=2.0.0,<3.0
+torch-audiomentations>=0.12.0,<1.0
+torchmetrics>=0.11.4,<1.0
