@@ -32,7 +32,7 @@ openai-whisper>=20231117       # Base Whisper model
 # ML Libraries
 transformers>=4.36.0,<5.0     # Hugging Face transformers
 huggingface-hub>=0.16.4,<1.0
-speechbrain>=0.5.16,<1.0      # Required by pyannote - compatible version
+speechbrain>=1.0.0           # Required by pyannote.audio>=3.3.2
 
 # Utilities
 psutil>=5.9.5,<6.0
