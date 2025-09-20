@@ -1,14 +1,14 @@
 # ECG Audio Analyzer ML API Server Dependencies
-# Optimized for Python 3.7.16 on Amazon Linux 2 with NVIDIA Tesla T4
+# Optimized for Python 3.8+ on Ubuntu with NVIDIA Tesla T4
 
-# Core System Requirements (Python 3.7 compatible)
-numpy==1.21.6            # Python 3.7 compatible version
-scipy==1.7.3             # Compatible with numpy 1.21.6
+# Core System Requirements (Python 3.8+ compatible)
+numpy==1.24.3            # Python 3.8-3.11 compatible version
+scipy==1.10.1            # Compatible with numpy 1.24.3
 
 # PyTorch Stack (GPU optimized for CUDA 11.7)
-torch==1.13.1            # Compatible with CUDA 11.7
-torchaudio==0.13.1       # Matching torch version
-torchvision==0.14.1      # Optional but useful
+torch==2.0.1             # Compatible with Python 3.11 and CUDA 11.7
+torchaudio==2.0.2        # Matching torch version
+torchvision==0.15.2      # Optional but useful
 
 # FastAPI Server
 fastapi==0.104.1         # Latest stable version
@@ -45,7 +45,7 @@ yt-dlp==2023.12.30
 # Additional dependencies for ML pipeline
 einops>=0.6.0           # Tensor operations
 omegaconf>=2.3.0        # Configuration management
-pytorch-lightning==1.6.5 # Training framework
-pytorch-metric-learning==1.7.3
+pytorch-lightning==2.0.0 # Training framework - Python 3.11 compatible
+pytorch-metric-learning==2.0.0
 torch-audiomentations==0.12.0
 torchmetrics==0.11.4
