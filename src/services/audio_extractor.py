@@ -87,6 +87,18 @@ class AudioExtractor:
     def _convert_to_wav(self, input_path: Path, output_path: Path) -> bool:
         """Convert video/audio to WAV using ffmpeg"""
         try:
+            # 입력 파일 크기 확인
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input file does not exist: {input_path}")
+
+            input_size = input_path.stat().st_size
+            if input_size == 0:
+                raise ValueError(f"Input file is empty (0 bytes): {input_path}")
+
+            self.logger.info(
+                f"Converting {input_path} ({input_size/1024/1024:.1f}MB) to WAV"
+            )
+
             stream = ffmpeg.input(str(input_path))
             stream = ffmpeg.output(
                 stream,
@@ -94,12 +106,41 @@ class AudioExtractor:
                 acodec="pcm_s16le",
                 ac=1,
                 ar=self.target_sr,
-                loglevel="warning",
+                loglevel="error",  # 더 상세한 에러 메시지를 위해 'error'로 변경
             )
-            ffmpeg.run(stream, overwrite_output=True, quiet=True)
-            return output_path.exists()
+
+            # stderr 캡처를 위해 run 옵션 수정
+            ffmpeg.run(
+                stream, overwrite_output=True, capture_stdout=True, capture_stderr=True
+            )
+
+            # 출력 파일 크기 확인
+            if not output_path.exists():
+                raise RuntimeError(f"Output file was not created: {output_path}")
+
+            output_size = output_path.stat().st_size
+            if output_size == 0:
+                raise RuntimeError(
+                    f"Output file is empty after conversion: {output_path}"
+                )
+
+            self.logger.info(
+                f"Conversion successful: {output_path} ({output_size/1024/1024:.1f}MB)"
+            )
+            return True
+
+        except ffmpeg.Error as e:
+            stderr_output = e.stderr.decode("utf-8") if e.stderr else "No stderr output"
+            self.logger.error(f"FFmpeg conversion failed: {stderr_output}")
+            # Safe access to returncode attribute
+            if hasattr(e, "returncode"):
+                returncode = getattr(e, "returncode", "unknown")
+                self.logger.error(
+                    f"FFmpeg command failed with return code {returncode}"
+                )
+            return False
         except Exception as e:
-            self.logger.error("conversion_failed", error=str(e))
+            self.logger.error(f"Conversion failed: {str(e)}")
             return False
 
     def extract(

@@ -52,7 +52,7 @@ class WhisperXPipeline:
                 optimized_config["model_size"],
                 device=self.device,
                 compute_type=optimized_config["compute_type"],
-                language=self.language if self.language != "auto" else None
+                language=self.language if self.language != "auto" else None,
             )
 
     def _get_optimized_model_config(self, language: Optional[str]) -> Dict[str, Any]:
@@ -488,6 +488,7 @@ class WhisperXPipeline:
             Dictionary containing transcription results with speaker diarization
         """
         return self.process_audio_with_diarization(audio_path)
+
     def _add_fallback_word_timing(
         self, result: Dict[str, Any], audio: np.ndarray
     ) -> Dict[str, Any]:

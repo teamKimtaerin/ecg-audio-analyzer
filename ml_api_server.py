@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import os
 import warnings
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Callable
 from datetime import datetime
 import tempfile
 import uuid
@@ -78,12 +78,8 @@ class ProcessVideoRequest(BaseModel):
 
     job_id: str
     video_url: str
-    # 백엔드에서 보내는 추가 필드들
     fastapi_base_url: Optional[str] = None  # 동적 콜백 URL
-    enable_gpu: bool = True
-    emotion_detection: bool = True
     language: str = "auto"
-    max_workers: int = 4
 
 
 class ProcessVideoResponse(BaseModel):
@@ -114,8 +110,9 @@ class TranscribeRequest(BaseModel):
     video_path: str  # Deprecated: 하위 호환성을 위해 유지
     audio_path: Optional[str] = None  # 새로운 필드: S3 오디오 파일 경로
     video_url: Optional[str] = None
-    enable_gpu: bool = True
-    emotion_detection: bool = True
+    job_id: Optional[str] = None  # 백엔드에서 받은 job_id 사용
+    enable_gpu: bool = True  # 하위 호환성
+    emotion_detection: bool = True  # 하위 호환성
     language: str = "en"
 
 
@@ -138,10 +135,10 @@ def normalize_timestamp_fields(data):
     """타임스탬프 필드명 정규화 (start_time → start, end_time → end)"""
     if isinstance(data, dict):
         # Root level timestamp fields
-        if 'start_time' in data:
-            data['start'] = data.pop('start_time')
-        if 'end_time' in data:
-            data['end'] = data.pop('end_time')
+        if "start_time" in data:
+            data["start"] = data.pop("start_time")
+        if "end_time" in data:
+            data["end"] = data.pop("end_time")
 
         # Recursively process nested structures
         for key, value in data.items():
@@ -153,11 +150,12 @@ def normalize_timestamp_fields(data):
     return data
 
 
-def create_pipeline(language: str = "en") -> PipelineManager:
+def create_pipeline(language: str = "en", progress_callback: Optional[Callable] = None) -> PipelineManager:
     return PipelineManager(
         base_config=BaseConfig(),
         processing_config=ProcessingConfig(),
         language=language,
+        progress_callback=progress_callback,
     )
 
 
@@ -261,6 +259,44 @@ async def download_from_url(
 ) -> str:
     """URL에서 비디오 다운로드 또는 로컬 파일 확인"""
     try:
+        # s3:// 형식의 S3 경로 처리
+        if url.startswith("s3://"):
+            # s3://bucket/key 형식 파싱
+            s3_parts = url.replace("s3://", "").split("/", 1)
+            if len(s3_parts) == 2:
+                bucket_name = s3_parts[0]
+                key = s3_parts[1]
+
+                logger.info(f"S3 경로 다운로드: {url}")
+
+                # 임시 파일 생성
+                temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+                temp_file.close()
+
+                try:
+                    # boto3로 S3에서 다운로드
+                    s3_client.download_file(bucket_name, key, temp_file.name)
+
+                    # 파일 크기 확인
+                    file_size = Path(temp_file.name).stat().st_size
+                    if file_size == 0:
+                        raise Exception(f"Downloaded file from S3 is empty")
+
+                    logger.info(
+                        f"S3 다운로드 완료: {temp_file.name} ({file_size/1024/1024:.1f}MB)"
+                    )
+                    await send_callback(
+                        job_id,
+                        "processing",
+                        10,
+                        "S3에서 다운로드 완료",
+                        callback_base_url=callback_base_url,
+                    )
+                    return temp_file.name
+                except Exception as e:
+                    logger.error(f"S3 다운로드 실패: {str(e)}")
+                    raise
+
         # 로컬 파일 경로인지 확인
         local_path = Path(url)
         if local_path.exists():
@@ -283,25 +319,84 @@ async def download_from_url(
             callback_base_url=callback_base_url,
         )
 
-        # S3 URL인지 확인하고 boto3로 다운로드 - s3:// 및 https:// 형식 모두 지원
+        # S3 URL 처리 (모든 형식 지원)
         bucket_name = None
         key = None
 
+        # s3:// URI 형식 처리
         if url.startswith("s3://"):
-            # S3 URI 파싱: s3://bucket/key
             s3_uri_pattern = r"s3://([^/]+)/(.+)"
             match = re.match(s3_uri_pattern, url)
             if match:
                 bucket_name = match.group(1)
                 key = match.group(2)
-        elif url.startswith("https://") and ".s3." in url:
-            # S3 HTTPS URL 파싱: https://bucket.s3.region.amazonaws.com/key
-            s3_https_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
-            match = re.match(s3_https_pattern, url)
-            if match:
-                bucket_name = match.group(1)
-                key = match.group(3)
 
+        # S3 HTTPS URL 처리
+        elif "amazonaws.com" in url:
+            # S3 Presigned URL인지 확인 (쿼리 파라미터 포함)
+            if (
+                "AWSAccessKeyId" in url
+                or "X-Amz-Signature" in url
+                or "Signature" in url
+            ):
+                logger.info(f"S3 Presigned URL에서 다운로드: {url[:100]}...")
+
+                # Presigned URL은 직접 HTTP GET으로 다운로드
+                with tempfile.NamedTemporaryFile(
+                    suffix=".mp4", delete=False
+                ) as temp_file:
+                    response = requests.get(url, stream=True, timeout=300)
+                    response.raise_for_status()
+
+                    total_size = int(response.headers.get("content-length", 0))
+                    downloaded = 0
+
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            temp_file.write(chunk)
+                            downloaded += len(chunk)
+
+                            if (
+                                total_size > 0 and downloaded % (1024 * 1024) == 0
+                            ):  # 매 1MB마다 업데이트
+                                progress = 5 + int((downloaded / total_size) * 5)
+                                await send_callback(
+                                    job_id,
+                                    "processing",
+                                    progress,
+                                    f"다운로드 중... ({downloaded/1024/1024:.1f}/{total_size/1024/1024:.1f} MB)",
+                                    callback_base_url=callback_base_url,
+                                )
+
+                    # 파일 크기 확인
+                    temp_file.flush()
+                    file_size = Path(temp_file.name).stat().st_size
+                    if file_size == 0:
+                        raise Exception(f"Downloaded file is empty (0 bytes)")
+
+                    logger.info(
+                        f"S3 Presigned URL 다운로드 완료: {temp_file.name} ({file_size/1024/1024:.1f}MB)"
+                    )
+                    await send_callback(
+                        job_id,
+                        "processing",
+                        10,
+                        "비디오 다운로드 완료",
+                        callback_base_url=callback_base_url,
+                    )
+                    return temp_file.name
+
+            # 일반 S3 URL 처리 (boto3 사용)
+            elif url.startswith("https://") and ".s3." in url:
+                # S3 URL 파싱: https://bucket.s3.region.amazonaws.com/key
+                s3_pattern = r"https://([^.]+)\.s3\.([^.]+)\.amazonaws\.com/(.+)"
+                match = re.match(s3_pattern, url)
+
+                if match:
+                    bucket_name = match.group(1)
+                    key = match.group(3).split("?")[0]  # 쿼리 파라미터 제거
+
+        # boto3를 사용한 S3 다운로드 (s3:// 및 일반 S3 URL)
         if bucket_name and key:
             # S3 bucket이 환경변수로 설정된 경우 해당 값 사용, 아니면 URL에서 파싱된 값 사용
             if S3_BUCKET and S3_BUCKET.strip():
@@ -317,6 +412,11 @@ async def download_from_url(
                 # boto3로 S3에서 다운로드
                 s3_client.download_file(bucket_name, key, temp_file.name)
 
+                # 파일 크기 확인
+                file_size = Path(temp_file.name).stat().st_size
+                if file_size == 0:
+                    raise Exception(f"Downloaded file from S3 is empty")
+
                 await send_callback(
                     job_id,
                     "processing",
@@ -325,7 +425,9 @@ async def download_from_url(
                     callback_base_url=callback_base_url,
                 )
 
-                logger.info(f"S3 다운로드 완료: {temp_file.name}")
+                logger.info(
+                    f"S3 다운로드 완료: {temp_file.name} ({file_size/1024/1024:.1f}MB)"
+                )
                 return temp_file.name
 
             except Exception as e:
@@ -334,7 +436,7 @@ async def download_from_url(
                 logger.error(f"AWS 환경변수 상태: AWS_ACCESS_KEY_ID={'설정됨' if os.getenv('AWS_ACCESS_KEY_ID') else '없음'}, AWS_SECRET_ACCESS_KEY={'설정됨' if os.getenv('AWS_SECRET_ACCESS_KEY') else '없음'}")
                 raise HTTPException(status_code=500, detail=f"S3 파일 다운로드 실패: {str(e)}")
 
-        # 일반 HTTP URL 처리
+        # 일반 HTTP/HTTPS URL 처리
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
             response = requests.get(url, stream=True, timeout=60)
             response.raise_for_status()
@@ -470,21 +572,21 @@ def process_whisperx_segments(
         speakers_stats[speaker_id]["segment_count"] += 1
 
         # Extract timing information from segment
-        start_time = (
+        seg_start = (
             seg.get("start", 0.0) if "start" in seg else seg.get("start_time", 0.0)
         )
-        end_time = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
+        seg_end = seg.get("end", 0.0) if "end" in seg else seg.get("end_time", 0.0)
 
         # 디버그 로깅: 타임스탬프 확인
         logger.debug(
-            f"🔍 세그먼트 {i}: start={start_time}, end={end_time}, keys={list(seg.keys())}"
+            f"🔍 세그먼트 {i}: start={seg_start}, end={seg_end}, keys={list(seg.keys())}"
         )
 
         # Build segment data
         segment_data = {
-            "start_time": start_time,
-            "end_time": end_time,
-            "duration": end_time - start_time if end_time > start_time else 0.0,
+            "start_time": seg_start,
+            "end_time": seg_end,
+            "duration": seg_end - seg_start if seg_end > seg_start else 0.0,
             "speaker_id": speaker_id,
             "acoustic_features": (
                 acoustic_features_list[i]
@@ -535,7 +637,7 @@ def process_whisperx_segments(
                 if words and duration > 0:
                     word_duration = duration / len(words)
                     for word_idx, word in enumerate(words):
-                        word_start = start_time + (word_idx * word_duration)
+                        word_start = seg_start + (word_idx * word_duration)
                         word_end = word_start + word_duration
 
                         word_data = {
@@ -602,14 +704,24 @@ def validate_timestamps(segments: list) -> None:
         logger.info("✅ 모든 세그먼트의 타임스탬프가 유효합니다!")
 
 
-async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
+async def process_audio_core(
+    file_path: str,
+    language: str = "en",
+    progress_callback: Optional[Callable] = None
+) -> Dict[str, Any]:
     import time
 
     start_time = time.time()
 
+    # 진행률 업데이트 헬퍼 함수
+    async def update_progress(progress: int, message: str):
+        if progress_callback:
+            await progress_callback(progress, message)
+
     # 언어 최적화 모드 결정
     processing_mode = "targeted" if language != "auto" else "auto-detect"
     logger.info(f"🎯 처리 모드: {processing_mode} (언어: {language})")
+    await update_progress(15, "처리 모드 설정 완료")
 
     # Pipeline 실행
     file_path_obj = Path(file_path)
@@ -624,15 +736,23 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
     ]
     if is_audio_file:
         logger.info("📄 오디오 파일 직접 처리")
+        await update_progress(20, "오디오 파일 분석 시작")
     else:
         logger.info("🎬 비디오 파일에서 오디오 추출 후 처리")
+        await update_progress(20, "비디오에서 오디오 추출 시작")
 
-    pipeline = create_pipeline(language=language)
+    pipeline = create_pipeline(language=language, progress_callback=progress_callback)
+    await update_progress(25, "ML 모델 준비 중...")
+
+    # 파이프라인 실행 전 진행률 업데이트
+    await update_progress(30, "음성 구간 감지 시작")
 
     result = await pipeline.process_single(
         source=file_path_obj,
         output_path=None,
     )
+
+    await update_progress(70, "음성 인식 완료")
     # 처리 시간 측정
     processing_time = time.time() - start_time
 
@@ -651,12 +771,14 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
         audio_path = Path(pipeline._last_audio_path)
 
     # 세그먼트 처리
+    await update_progress(75, "화자 분리 및 세그먼트 처리 중...")
     processed_segments, speakers_stats = process_whisperx_segments(
         whisperx_result, audio_path
     )
     logger.info(
         f"✅ 세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자"
     )
+    await update_progress(85, "결과 정리 중...")
 
     # 메타데이터 생성 (언어 최적화 정보 포함)
     metadata = {
@@ -741,37 +863,27 @@ async def process_video_with_callback(
     job_id: str,
     video_url: str,
     callback_base_url: Optional[str] = None,
-    language: str = "en",
+    language: str = "auto",
 ):
     """API 명세에 따른 비디오 처리 및 콜백"""
-    start_time = datetime.now()
+    process_start_time = datetime.now()
     video_path = None
 
     try:
-        # Progress milestones
-        milestones = [
-            (10, "비디오 다운로드 완료"),
-            (25, "음성 구간 감지 중..."),
-            (40, "화자 식별 중..."),
-            (60, "음성을 텍스트로 변환 중..."),
-            (75, "감정 분석 중..."),
-            (90, "결과 정리 중..."),
-        ]
-
         # 1. 비디오 다운로드
         logger.info(f"작업 시작: {job_id}")
         video_path = await download_from_url(video_url, job_id, callback_base_url)
         await send_callback(
             job_id,
             "processing",
-            milestones[0][0],
-            milestones[0][1],
+            10,
+            "비디오 다운로드 완료",
             callback_base_url=callback_base_url,
         )
         logger.info("비디오 준비 완료, ML 처리 시작")
 
-        # 2-5. Pipeline 처리 (진행상황 업데이트)
-        for progress, message in milestones[1:4]:
+        # 진행률 콜백 함수 정의
+        async def progress_callback(progress: int, message: str):
             await send_callback(
                 job_id,
                 "processing",
@@ -780,26 +892,21 @@ async def process_video_with_callback(
                 callback_base_url=callback_base_url,
             )
 
-        # 비디오 처리 실행
+        # 비디오 처리 실행 (콜백과 함께)
         logger.info("ML 파이프라인 실행 중...")
-        result = await process_audio_core(video_path, language=language)
+        result = await process_audio_core(
+            video_path,
+            language=language,
+            progress_callback=progress_callback
+        )
         logger.info("ML 파이프라인 처리 완료")
 
-        # 6. 감정 분석
+        # 6. 결과 정리 (pipeline에서 85%까지 처리했으므로 90%부터 시작)
         await send_callback(
             job_id,
             "processing",
-            milestones[4][0],
-            milestones[4][1],
-            callback_base_url=callback_base_url,
-        )
-
-        # 7. 결과 정리
-        await send_callback(
-            job_id,
-            "processing",
-            milestones[5][0],
-            milestones[5][1],
+            90,
+            "최종 결과 정리 중...",
             callback_base_url=callback_base_url,
         )
 
@@ -815,13 +922,17 @@ async def process_video_with_callback(
                 "text": seg["text"],
                 "words": [
                     {
-                        "word": w["word"],
-                        "start": w["start_time"],
-                        "end": w["end_time"],
+                        "word": w.get("word", ""),
+                        "start": w.get("start_time", w.get("start", 0.0)),
+                        "end": w.get("end_time", w.get("end", 0.0)),
                         "acoustic_features": {  # 중첩 객체로 변경
-                            "volume_db": w["acoustic_features"]["volume_db"],
-                            "pitch_hz": w["acoustic_features"]["pitch_hz"],
-                            "spectral_centroid": w["acoustic_features"].get(
+                            "volume_db": w.get("acoustic_features", {}).get(
+                                "volume_db", -20.0
+                            ),
+                            "pitch_hz": w.get("acoustic_features", {}).get(
+                                "pitch_hz", 150.0
+                            ),
+                            "spectral_centroid": w.get("acoustic_features", {}).get(
                                 "spectral_centroid", 1500.0
                             ),
                         },
@@ -833,17 +944,25 @@ async def process_video_with_callback(
 
             # word_segments 생성
             for word in seg.get("words", []):
-                word_segments.append(
-                    {
-                        "word": word["word"],
-                        "start_time": word["start_time"],
-                        "end_time": word["end_time"],
-                        "speaker_id": seg["speaker_id"],
-                        "confidence": 0.95,
-                    }
-                )
+                # 방어적 코드: 두 가지 키 형식 모두 지원
+                word_start = word.get("start_time", word.get("start", 0.0))
+                word_end = word.get("end_time", word.get("end", 0.0))
 
-        processing_time = (datetime.now() - start_time).total_seconds()
+                # 유효성 검사 추가
+                if word_start is not None and word_end is not None:
+                    word_segments.append(
+                        {
+                            "word": word.get("word", ""),
+                            "start_time": word_start,
+                            "end_time": word_end,
+                            "speaker_id": seg.get("speaker_id", "SPEAKER_00"),
+                            "confidence": word.get("confidence", 0.95),
+                        }
+                    )
+                else:
+                    logger.warning(f"단어 타임스탬프 누락: {word}")
+
+        processing_time = (datetime.now() - process_start_time).total_seconds()
 
         # 백엔드가 기대하는 올바른 결과 구조
         final_result = {
@@ -882,7 +1001,9 @@ async def process_video_with_callback(
             callback_base_url=callback_base_url,
         )
 
-        logger.info(f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초")
+        logger.info(
+            f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
+        )
 
         # Job 상태 업데이트
         jobs[job_id] = {
@@ -925,13 +1046,17 @@ async def process_video_with_callback(
 @app.post("/transcribe")
 async def transcribe(request: TranscribeRequest):
     """백엔드 호환 동기 전사 API"""
-    start_time = datetime.now()
+    transcribe_start_time = datetime.now()
 
     try:
         logger.info(f"전사 요청 시작 - video_path: {request.video_path}")
 
-        # 가상의 job_id 생성 (진행상황 추적용)
-        job_id = str(uuid.uuid4())
+        # Job ID 처리: 백엔드에서 받은 job_id 사용, 없으면 생성
+        job_id = request.job_id or str(uuid.uuid4())
+        if request.job_id:
+            logger.info(f"백엔드에서 받은 job_id 사용: {job_id}")
+        else:
+            logger.info(f"자동 생성된 job_id 사용: {job_id}")
 
         # Progress milestones (오디오 우선 처리)
         if request.audio_path:
@@ -939,7 +1064,6 @@ async def transcribe(request: TranscribeRequest):
                 (5, "오디오 파일 검증 중..."),
                 (20, "음성 구간 분석 중..."),
                 (65, "음성을 텍스트로 변환 중..."),
-                (95, "감정 분석 중..."),
                 (100, "분석 완료"),
             ]
         else:
@@ -949,7 +1073,6 @@ async def transcribe(request: TranscribeRequest):
                 (15, "오디오 추출 중..."),
                 (25, "음성 구간 분석 중..."),
                 (65, "음성을 텍스트로 변환 중..."),
-                (95, "감정 분석 중..."),
                 (100, "분석 완료"),
             ]
 
@@ -958,131 +1081,130 @@ async def transcribe(request: TranscribeRequest):
             job_id, "processing", progress_steps[0][0], progress_steps[0][1]
         )
 
-        # 오디오 파일 준비 (오디오 우선, 비디오는 fallback)
-        audio_s3_path = request.audio_path or request.video_path  # 하위 호환성
-        file_extension = (
-            ".wav" if request.audio_path else ".mp4"
-        )  # 오디오면 .wav, 비디오면 .mp4
+        # 파일 경로 준비 (오디오 우선, 비디오는 fallback)
+        file_url = request.audio_path or request.video_path  # 하위 호환성
 
-        with tempfile.NamedTemporaryFile(
-            suffix=file_extension, delete=False
-        ) as temp_file:
-            try:
-                # S3에서 오디오/비디오 파일 다운로드 시도
-                s3_client.download_file(S3_BUCKET, audio_s3_path, temp_file.name)
-                if request.audio_path:
-                    logger.info(f"S3에서 오디오 다운로드 완료: {request.audio_path}")
-                else:
-                    logger.info(f"S3에서 비디오 다운로드 완료 (오디오 추출 필요): {request.video_path}")
-                actual_file_path = temp_file.name
-            except Exception as s3_error:
-                logger.warning(f"S3 다운로드 실패, 로컬 경로 사용: {s3_error}")
-                actual_file_path = audio_s3_path
+        # URL/파일 다운로드 처리
+        try:
+            actual_file_path = await download_from_url(file_url, job_id, None)
+            if request.audio_path:
+                logger.info(f"오디오 파일 준비 완료: {actual_file_path}")
+            else:
+                logger.info(f"비디오 파일 준비 완료: {actual_file_path}")
+        except Exception as download_error:
+            logger.error(f"파일 다운로드/접근 실패: {download_error}")
+            # Fallback: 로컬 경로 시도
+            actual_file_path = file_url
 
-            # 진행상황 업데이트 (첫 번째 단계 이후 분석 전까지)
-            analysis_start_index = (
-                2 if request.audio_path else 3
-            )  # 오디오는 2단계부터, 비디오는 3단계부터
-            for progress, message in progress_steps[1:analysis_start_index]:
+        # 진행상황 업데이트 (첫 번째 단계 이후 분석 전까지)
+        analysis_start_index = (
+            2 if request.audio_path else 3
+        )  # 오디오는 2단계부터, 비디오는 3단계부터
+        for progress, message in progress_steps[1:analysis_start_index]:
+            await send_callback(job_id, "processing", progress, message)
+
+        try:
+            # 진행률 콜백 함수 정의
+            async def transcribe_progress_callback(progress: int, message: str):
                 await send_callback(job_id, "processing", progress, message)
 
-            try:
-                # 오디오/비디오 처리 실행
-                result = await process_audio_core(
-                    actual_file_path, language=request.language
-                )
+            # 오디오/비디오 처리 실행
+            result = await process_audio_core(
+                actual_file_path,
+                language=request.language,
+                progress_callback=transcribe_progress_callback
+            )
 
-                # 감정 분석 진행상황
-                await send_callback(
-                    job_id, "processing", progress_steps[4][0], progress_steps[4][1]
-                )
+            # 분석 완료 진행상황
+            await send_callback(
+                job_id, "processing", progress_steps[3][0], progress_steps[3][1]
+            )
 
-                processing_time = (datetime.now() - start_time).total_seconds()
+            processing_time = (datetime.now() - transcribe_start_time).total_seconds()
 
-                # 간소화된 결과 생성
-                detailed_result = {
-                    "success": True,
-                    "segments": result["segments"],
-                    "speakers": result["speakers"],
-                    "metadata": {
-                        **result["metadata"],
-                        "processing_time": processing_time,
-                        "processed_at": datetime.now().isoformat(),
-                    },
+            # 간소화된 결과 생성
+            detailed_result = {
+                "success": True,
+                "segments": result["segments"],
+                "speakers": result["speakers"],
+                "metadata": {
+                    **result["metadata"],
                     "processing_time": processing_time,
-                    "error": None,
-                    "error_code": None,
-                }
+                    "processed_at": datetime.now().isoformat(),
+                },
+                "processing_time": processing_time,
+                "error": None,
+                "error_code": None,
+            }
 
-                # 결과를 output/ 폴더에 저장
-                import json
+            # 결과를 output/ 폴더에 저장
+            import json
 
-                output_dir = Path("output")
-                output_dir.mkdir(exist_ok=True)
+            output_dir = Path("output")
+            output_dir.mkdir(exist_ok=True)
 
-                # 파일명에서 확장자 제거하고 _analysis.json 추가
-                input_filename = Path(actual_file_path).stem
-                if input_filename.startswith("tmp") or len(input_filename) > 20:
-                    # 임시 파일이거나 긴 이름인 경우 original filename 사용
-                    original_name = Path(request.video_path).stem
-                    input_filename = original_name
+            # 파일명에서 확장자 제거하고 _analysis.json 추가
+            input_filename = Path(actual_file_path).stem
+            if input_filename.startswith("tmp") or len(input_filename) > 20:
+                # 임시 파일이거나 긴 이름인 경우 original filename 사용
+                original_name = Path(request.video_path).stem
+                input_filename = original_name
 
-                output_filename = f"{input_filename}_analysis.json"
-                output_path = output_dir / output_filename
+            output_filename = f"{input_filename}_analysis.json"
+            output_path = output_dir / output_filename
 
-                # numpy 타입 변환 함수
-                def convert_numpy_types(obj):
-                    import numpy as np
+            # numpy 타입 변환 함수
+            def convert_numpy_types(obj):
+                import numpy as np
 
-                    if isinstance(obj, np.integer):
-                        return int(obj)
-                    elif isinstance(obj, np.floating):
-                        return float(obj)
-                    elif isinstance(obj, np.ndarray):
-                        return obj.tolist()
-                    elif isinstance(obj, dict):
-                        return {
-                            key: convert_numpy_types(value)
-                            for key, value in obj.items()
-                        }
-                    elif isinstance(obj, list):
-                        return [convert_numpy_types(item) for item in obj]
-                    return obj
+                if isinstance(obj, np.integer):
+                    return int(obj)
+                elif isinstance(obj, np.floating):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                elif isinstance(obj, dict):
+                    return {
+                        key: convert_numpy_types(value) for key, value in obj.items()
+                    }
+                elif isinstance(obj, list):
+                    return [convert_numpy_types(item) for item in obj]
+                return obj
 
-                # JSON 저장
-                detailed_result_clean = convert_numpy_types(detailed_result)
-                with open(output_path, "w", encoding="utf-8") as f:
-                    json.dump(detailed_result_clean, f, indent=2, ensure_ascii=False)
+            # JSON 저장
+            detailed_result_clean = convert_numpy_types(detailed_result)
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(detailed_result_clean, f, indent=2, ensure_ascii=False)
 
-                logger.info(f"분석 결과 저장: {output_path}")
-                logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
+            logger.info(f"분석 결과 저장: {output_path}")
+            logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
 
-                # 완료 진행상황
-                await send_callback(
-                    job_id, "processing", progress_steps[5][0], progress_steps[5][1]
-                )
+            # 완료 진행상황
+            await send_callback(
+                job_id, "processing", progress_steps[5][0], progress_steps[5][1]
+            )
 
-                logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
-                logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
+            logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
+            logger.info(f"반환할 세그먼트 수: {len(detailed_result['segments'])}")
 
-                # 결과에 저장 경로 정보 추가
-                detailed_result["output_file"] = str(output_path)
+            # 결과에 저장 경로 정보 추가
+            detailed_result["output_file"] = str(output_path)
 
-                return detailed_result
+            return detailed_result
 
-            except Exception as analysis_error:
-                logger.error(f"분석 실패: {analysis_error}")
-                processing_time = (datetime.now() - start_time).total_seconds()
+        except Exception as analysis_error:
+            logger.error(f"분석 실패: {analysis_error}")
+            processing_time = (datetime.now() - transcribe_start_time).total_seconds()
 
-                return {
-                    "success": False,
-                    "error": f"분석 중 오류가 발생했습니다: {str(analysis_error)}",
-                    "error_code": "ANALYSIS_ERROR",
-                    "processing_time": processing_time,
-                }
+            return {
+                "success": False,
+                "error": f"분석 중 오류가 발생했습니다: {str(analysis_error)}",
+                "error_code": "ANALYSIS_ERROR",
+                "processing_time": processing_time,
+            }
 
     except Exception as e:
-        processing_time = (datetime.now() - start_time).total_seconds()
+        processing_time = (datetime.now() - transcribe_start_time).total_seconds()
         logger.error(f"전사 요청 실패 - Error: {str(e)}")
 
         return {
