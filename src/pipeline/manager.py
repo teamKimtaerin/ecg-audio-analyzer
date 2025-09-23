@@ -10,7 +10,7 @@ import psutil
 import torch
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, Callable
 
 from ..services.audio_extractor import AudioExtractor
 from ..models.speech_recognizer import WhisperXPipeline
@@ -40,6 +40,7 @@ class PipelineManager:
         speaker_config: Optional[SpeakerDiarizationConfig] = None,
         whisperx_config: Optional[WhisperXConfig] = None,
         language: str = "en",
+        progress_callback: Optional[Callable] = None,
     ):
         self.base_config = base_config
         self.processing_config = processing_config
@@ -47,6 +48,7 @@ class PipelineManager:
         self.speaker_config = speaker_config or SpeakerDiarizationConfig()
         self.whisperx_config = whisperx_config or WhisperXConfig()
         self.language = language
+        self.progress_callback = progress_callback
 
         self.logger = get_logger().bind_context(component="pipeline_manager")
 
@@ -103,10 +105,20 @@ class PipelineManager:
             )
         return self._whisperx_pipeline
 
-    def _update_progress(self, stage: str):
+    async def _update_progress(self, stage: str, progress_percent: int = None, message: str = None):
         """Update current stage"""
         self.current_stage = stage
         self.logger.info("progress_updated", stage=stage)
+
+        # 콜백이 있으면 호출
+        if self.progress_callback and progress_percent is not None:
+            try:
+                if asyncio.iscoroutinefunction(self.progress_callback):
+                    await self.progress_callback(progress_percent, message or stage)
+                else:
+                    self.progress_callback(progress_percent, message or stage)
+            except Exception as e:
+                self.logger.warning(f"Progress callback failed: {e}")
 
     def _mark_stage_completed(self, stage: str):
         """Mark stage as completed"""
@@ -290,7 +302,7 @@ class PipelineManager:
 
             try:
                 # Stage 1: Audio Extraction
-                self._update_progress("audio_extraction")
+                await self._update_progress("audio_extraction", 35, "오디오 추출 시작")
                 extraction_result = await self._execute_audio_extraction(source)
 
                 # Validate extraction result
@@ -302,7 +314,7 @@ class PipelineManager:
                 self._mark_stage_completed("audio_extraction")
 
                 # Stage 2: WhisperX Pipeline
-                self._update_progress("whisperx_pipeline")
+                await self._update_progress("whisperx_pipeline", 45, "음성 인식 시작")
 
                 if extraction_result.output_path:
                     whisperx_result = await self._execute_whisperx_pipeline(
@@ -328,7 +340,7 @@ class PipelineManager:
                 )
 
                 # Stage 3: Result synthesis
-                self._update_progress("result_synthesis")
+                await self._update_progress("result_synthesis", 65, "결과 합성 중")
                 result = self._create_basic_result(
                     source, extraction_result, whisperx_result
                 )

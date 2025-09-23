@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import os
 import warnings
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Callable
 from datetime import datetime
 import tempfile
 import uuid
@@ -150,11 +150,12 @@ def normalize_timestamp_fields(data):
     return data
 
 
-def create_pipeline(language: str = "en") -> PipelineManager:
+def create_pipeline(language: str = "en", progress_callback: Optional[Callable] = None) -> PipelineManager:
     return PipelineManager(
         base_config=BaseConfig(),
         processing_config=ProcessingConfig(),
         language=language,
+        progress_callback=progress_callback,
     )
 
 
@@ -678,14 +679,24 @@ def validate_timestamps(segments: list) -> None:
         logger.info("✅ 모든 세그먼트의 타임스탬프가 유효합니다!")
 
 
-async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, Any]:
+async def process_audio_core(
+    file_path: str,
+    language: str = "en",
+    progress_callback: Optional[Callable] = None
+) -> Dict[str, Any]:
     import time
 
     start_time = time.time()
 
+    # 진행률 업데이트 헬퍼 함수
+    async def update_progress(progress: int, message: str):
+        if progress_callback:
+            await progress_callback(progress, message)
+
     # 언어 최적화 모드 결정
     processing_mode = "targeted" if language != "auto" else "auto-detect"
     logger.info(f"🎯 처리 모드: {processing_mode} (언어: {language})")
+    await update_progress(15, "처리 모드 설정 완료")
 
     # Pipeline 실행
     file_path_obj = Path(file_path)
@@ -700,15 +711,23 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
     ]
     if is_audio_file:
         logger.info("📄 오디오 파일 직접 처리")
+        await update_progress(20, "오디오 파일 분석 시작")
     else:
         logger.info("🎬 비디오 파일에서 오디오 추출 후 처리")
+        await update_progress(20, "비디오에서 오디오 추출 시작")
 
-    pipeline = create_pipeline(language=language)
+    pipeline = create_pipeline(language=language, progress_callback=progress_callback)
+    await update_progress(25, "ML 모델 준비 중...")
+
+    # 파이프라인 실행 전 진행률 업데이트
+    await update_progress(30, "음성 구간 감지 시작")
 
     result = await pipeline.process_single(
         source=file_path_obj,
         output_path=None,
     )
+
+    await update_progress(70, "음성 인식 완료")
     # 처리 시간 측정
     processing_time = time.time() - start_time
 
@@ -727,12 +746,14 @@ async def process_audio_core(file_path: str, language: str = "en") -> Dict[str, 
         audio_path = Path(pipeline._last_audio_path)
 
     # 세그먼트 처리
+    await update_progress(75, "화자 분리 및 세그먼트 처리 중...")
     processed_segments, speakers_stats = process_whisperx_segments(
         whisperx_result, audio_path
     )
     logger.info(
         f"✅ 세그먼트 처리 완료: {len(processed_segments)}개 세그먼트, {len(speakers_stats)}명 화자"
     )
+    await update_progress(85, "결과 정리 중...")
 
     # 메타데이터 생성 (언어 최적화 정보 포함)
     metadata = {
@@ -824,29 +845,20 @@ async def process_video_with_callback(
     video_path = None
 
     try:
-        # Progress milestones
-        milestones = [
-            (10, "비디오 다운로드 완료"),
-            (25, "음성 구간 감지 중..."),
-            (40, "화자 식별 중..."),
-            (60, "음성을 텍스트로 변환 중..."),
-            (85, "결과 정리 중..."),
-        ]
-
         # 1. 비디오 다운로드
         logger.info(f"작업 시작: {job_id}")
         video_path = await download_from_url(video_url, job_id, callback_base_url)
         await send_callback(
             job_id,
             "processing",
-            milestones[0][0],
-            milestones[0][1],
+            10,
+            "비디오 다운로드 완료",
             callback_base_url=callback_base_url,
         )
         logger.info("비디오 준비 완료, ML 처리 시작")
 
-        # 2-5. Pipeline 처리 (진행상황 업데이트)
-        for progress, message in milestones[1:4]:
+        # 진행률 콜백 함수 정의
+        async def progress_callback(progress: int, message: str):
             await send_callback(
                 job_id,
                 "processing",
@@ -855,17 +867,21 @@ async def process_video_with_callback(
                 callback_base_url=callback_base_url,
             )
 
-        # 비디오 처리 실행
+        # 비디오 처리 실행 (콜백과 함께)
         logger.info("ML 파이프라인 실행 중...")
-        result = await process_audio_core(video_path, language=language)
+        result = await process_audio_core(
+            video_path,
+            language=language,
+            progress_callback=progress_callback
+        )
         logger.info("ML 파이프라인 처리 완료")
 
-        # 6. 결과 정리
+        # 6. 결과 정리 (pipeline에서 85%까지 처리했으므로 90%부터 시작)
         await send_callback(
             job_id,
             "processing",
-            milestones[4][0],
-            milestones[4][1],
+            90,
+            "최종 결과 정리 중...",
             callback_base_url=callback_base_url,
         )
 
@@ -1063,9 +1079,15 @@ async def transcribe(request: TranscribeRequest):
             await send_callback(job_id, "processing", progress, message)
 
         try:
+            # 진행률 콜백 함수 정의
+            async def transcribe_progress_callback(progress: int, message: str):
+                await send_callback(job_id, "processing", progress, message)
+
             # 오디오/비디오 처리 실행
             result = await process_audio_core(
-                actual_file_path, language=request.language
+                actual_file_path,
+                language=request.language,
+                progress_callback=transcribe_progress_callback
             )
 
             # 분석 완료 진행상황
