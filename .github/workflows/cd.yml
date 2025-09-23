@@ -173,7 +173,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ env.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["echo \"🧹 Cleaning up existing processes...\"","sudo pkill -f \"ml_api_server.py\" || true","sudo pkill -f \"python.*ml_api_server\" || true","sleep 2","sudo mkdir -p /opt/ecg-audio-analyzer","sudo chown ubuntu:ubuntu /opt/ecg-audio-analyzer","cd /opt/ecg-audio-analyzer","echo \"Current disk usage:\"","df -h /","echo \"✅ Cleanup completed\""]' \
+            --parameters 'commands=["echo \"🧹 Cleaning up existing processes...\"","sudo pkill -f \"ml_api_server.py\" || true","sudo pkill -f \"python.*ml_api_server\" || true","sleep 2","cd ~/ecg-audio-analyzer","echo \"Current disk usage:\"","df -h /","echo \"✅ Cleanup completed\""]' \
             --output text \
             --query 'Command.CommandId')
 
@@ -189,7 +189,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ env.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["cd /opt/ecg-audio-analyzer","echo \"📦 Downloading latest code from GitHub...\"","rm -rf src/ *.py requirements.txt setup.py pyproject.toml .git Dockerfile .dockerignore venv/","curl -L https://github.com/teamKimtaerin/ecg-audio-analyzer/archive/refs/heads/main.zip -o main.zip","unzip -o main.zip","mv ecg-audio-analyzer-main/* .","rm -rf ecg-audio-analyzer-main/ main.zip","echo \"✅ Code deployment completed\"","ls -la"]' \
+            --parameters 'commands=["cd ~/ecg-audio-analyzer","echo \"📦 Updating code from Git...\"","git fetch origin","git checkout main","git pull origin main","echo \"📋 Syncing to backup directory...\"","rsync -av --exclude=\".git\" --exclude=\"venv\" ~/ecg-audio-analyzer/ ~/ecg-audio-analyzer.backup/","echo \"✅ Code deployment completed\"","ls -la ~/ecg-audio-analyzer.backup/"]' \
             --output text \
             --query 'Command.CommandId')
 
@@ -205,7 +205,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ env.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["cd /opt/ecg-audio-analyzer","echo \"🐳 Stopping existing container...\"","sudo docker stop ecg-audio-analyzer || true","sudo docker rm ecg-audio-analyzer || true","echo \"🐳 Building Docker image...\"","sudo docker build -t ecg-audio-analyzer:latest . 2>&1 | tail -20","echo \"✅ Docker build completed, checking images...\"","sudo docker images | grep ecg-audio-analyzer","echo \"🚀 Starting Docker container...\"","CONTAINER_ID=$(sudo docker run -d --name ecg-audio-analyzer --gpus all -p 8080:8080 --restart unless-stopped -e CUDA_VISIBLE_DEVICES=0 ecg-audio-analyzer:latest)","echo \"Container ID: $CONTAINER_ID\"","sleep 5","echo \"📊 Container status:\"","sudo docker ps -a | grep ecg-audio-analyzer","echo \"📋 Container logs:\"","sudo docker logs ecg-audio-analyzer 2>&1 | tail -20 || echo \"No logs available\"","echo \"🔍 Checking if container is running:\"","sudo docker inspect ecg-audio-analyzer --format=\"{{.State.Status}} - {{.State.ExitCode}}\" || echo \"Container inspect failed\""]' \
+            --parameters 'commands=["cd ~/ecg-audio-analyzer.backup","echo \"🐳 Stopping existing container...\"","sudo docker stop ecg-audio-analyzer || true","sudo docker rm ecg-audio-analyzer || true","echo \"🐳 Building Docker image...\"","sudo docker build -t ecg-audio-analyzer:latest . 2>&1 | tail -20","echo \"✅ Docker build completed, checking images...\"","sudo docker images | grep ecg-audio-analyzer","echo \"🚀 Starting Docker container...\"","CONTAINER_ID=$(sudo docker run -d --name ecg-audio-analyzer --gpus all -p 8080:8080 --restart unless-stopped -e CUDA_VISIBLE_DEVICES=0 ecg-audio-analyzer:latest)","echo \"Container ID: $CONTAINER_ID\"","sleep 5","echo \"📊 Container status:\"","sudo docker ps -a | grep ecg-audio-analyzer","echo \"📋 Container logs:\"","sudo docker logs ecg-audio-analyzer 2>&1 | tail -20 || echo \"No logs available\"","echo \"🔍 Checking if container is running:\"","sudo docker inspect ecg-audio-analyzer --format=\"{{.State.Status}} - {{.State.ExitCode}}\" || echo \"Container inspect failed\""]' \
             --output text \
             --query 'Command.CommandId')
 

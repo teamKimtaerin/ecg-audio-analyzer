@@ -18,8 +18,11 @@ sleep 2
 # Git 상태 확인 및 최신 코드 가져오기
 echo "📦 최신 코드 업데이트..."
 git fetch origin
-git checkout fix/gpu-processing-and-cleanup
-git pull origin fix/gpu-processing-and-cleanup
+git checkout main
+git pull origin main
+
+# 서버는 backup 디렉토리에서 계속 실행
+cd ~/ecg-audio-analyzer.backup
 
 # 가상환경 활성화
 echo "🐍 가상환경 활성화..."
@@ -58,7 +61,7 @@ if pgrep -f "ml_api_server.py" > /dev/null; then
     echo "📋 배포 완료 정보:"
     echo "- 서버 URL: http://54.197.171.76:8080"
     echo "- Health check: http://54.197.171.76:8080/health"
-    echo "- 로그 확인: tail -f ~/ecg-audio-analyzer/server.log"
+    echo "- 로그 확인: tail -f ~/ecg-audio-analyzer.backup/server.log"
     echo "- 서버 중지: pkill -f 'python ml_api_server.py'"
 
 else
