@@ -319,20 +319,8 @@ async def download_from_url(
             callback_base_url=callback_base_url,
         )
 
-        # S3 URL 처리 (모든 형식 지원)
-        bucket_name = None
-        key = None
-
-        # s3:// URI 형식 처리
-        if url.startswith("s3://"):
-            s3_uri_pattern = r"s3://([^/]+)/(.+)"
-            match = re.match(s3_uri_pattern, url)
-            if match:
-                bucket_name = match.group(1)
-                key = match.group(2)
-
-        # S3 HTTPS URL 처리
-        elif "amazonaws.com" in url:
+        # S3 URL 처리 (Presigned URL 포함)
+        if "amazonaws.com" in url:
             # S3 Presigned URL인지 확인 (쿼리 파라미터 포함)
             if (
                 "AWSAccessKeyId" in url
@@ -396,45 +384,32 @@ async def download_from_url(
                     bucket_name = match.group(1)
                     key = match.group(3).split("?")[0]  # 쿼리 파라미터 제거
 
-        # boto3를 사용한 S3 다운로드 (s3:// 및 일반 S3 URL)
-        if bucket_name and key:
-            # S3 bucket이 환경변수로 설정된 경우 해당 값 사용, 아니면 URL에서 파싱된 값 사용
-            if S3_BUCKET and S3_BUCKET.strip():
-                bucket_name = S3_BUCKET
+                    logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
 
-            logger.info(f"S3에서 다운로드 시작: s3://{bucket_name}/{key}")
+                    # 임시 파일 생성
+                    temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+                    temp_file.close()
 
-            # 임시 파일 생성 (with 블록 밖에서)
-            temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-            temp_file.close()  # 파일 핸들 닫기
+                    # boto3로 S3에서 다운로드
+                    s3_client.download_file(bucket_name, key, temp_file.name)
 
-            try:
-                # boto3로 S3에서 다운로드
-                s3_client.download_file(bucket_name, key, temp_file.name)
+                    # 파일 크기 확인
+                    file_size = Path(temp_file.name).stat().st_size
+                    if file_size == 0:
+                        raise Exception(f"Downloaded file from S3 is empty")
 
-                # 파일 크기 확인
-                file_size = Path(temp_file.name).stat().st_size
-                if file_size == 0:
-                    raise Exception(f"Downloaded file from S3 is empty")
+                    await send_callback(
+                        job_id,
+                        "processing",
+                        10,
+                        "S3에서 다운로드 완료",
+                        callback_base_url=callback_base_url,
+                    )
 
-                await send_callback(
-                    job_id,
-                    "processing",
-                    10,
-                    "S3에서 다운로드 완료",
-                    callback_base_url=callback_base_url,
-                )
-
-                logger.info(
-                    f"S3 다운로드 완료: {temp_file.name} ({file_size/1024/1024:.1f}MB)"
-                )
-                return temp_file.name
-
-            except Exception as e:
-                logger.error(f"S3 다운로드 실패: {e}")
-                # 환경변수 정보 로깅
-                logger.error(f"AWS 환경변수 상태: AWS_ACCESS_KEY_ID={'설정됨' if os.getenv('AWS_ACCESS_KEY_ID') else '없음'}, AWS_SECRET_ACCESS_KEY={'설정됨' if os.getenv('AWS_SECRET_ACCESS_KEY') else '없음'}")
-                raise HTTPException(status_code=500, detail=f"S3 파일 다운로드 실패: {str(e)}")
+                    logger.info(
+                        f"S3 다운로드 완료: {temp_file.name} ({file_size/1024/1024:.1f}MB)"
+                    )
+                    return temp_file.name
 
         # 일반 HTTP/HTTPS URL 처리
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
