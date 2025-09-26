@@ -150,7 +150,9 @@ def normalize_timestamp_fields(data):
     return data
 
 
-def create_pipeline(language: str = "en", progress_callback: Optional[Callable] = None) -> PipelineManager:
+def create_pipeline(
+    language: str = "en", progress_callback: Optional[Callable] = None
+) -> PipelineManager:
     return PipelineManager(
         base_config=BaseConfig(),
         processing_config=ProcessingConfig(),
@@ -680,9 +682,7 @@ def validate_timestamps(segments: list) -> None:
 
 
 async def process_audio_core(
-    file_path: str,
-    language: str = "en",
-    progress_callback: Optional[Callable] = None
+    file_path: str, language: str = "en", progress_callback: Optional[Callable] = None
 ) -> Dict[str, Any]:
     import time
 
@@ -870,9 +870,7 @@ async def process_video_with_callback(
         # 비디오 처리 실행 (콜백과 함께)
         logger.info("ML 파이프라인 실행 중...")
         result = await process_audio_core(
-            video_path,
-            language=language,
-            progress_callback=progress_callback
+            video_path, language=language, progress_callback=progress_callback
         )
         logger.info("ML 파이프라인 처리 완료")
 
@@ -1087,12 +1085,12 @@ async def transcribe(request: TranscribeRequest):
             result = await process_audio_core(
                 actual_file_path,
                 language=request.language,
-                progress_callback=transcribe_progress_callback
+                progress_callback=transcribe_progress_callback,
             )
 
-            # 분석 완료 진행상황
+            # 분석 완료 진행상황 (마지막 인덱스 사용)
             await send_callback(
-                job_id, "processing", progress_steps[3][0], progress_steps[3][1]
+                job_id, "processing", progress_steps[-1][0], progress_steps[-1][1]
             )
 
             processing_time = (datetime.now() - transcribe_start_time).total_seconds()
@@ -1154,9 +1152,9 @@ async def transcribe(request: TranscribeRequest):
             logger.info(f"분석 결과 저장: {output_path}")
             logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
 
-            # 완료 진행상황
+            # 완료 진행상황 (마지막 인덱스 사용)
             await send_callback(
-                job_id, "processing", progress_steps[5][0], progress_steps[5][1]
+                job_id, "processing", progress_steps[-1][0], progress_steps[-1][1]
             )
 
             logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")

@@ -28,17 +28,18 @@ class SpeakerDiarizationConfig:
 class WhisperXConfig:
     """Configuration for WhisperX speech recognition and alignment"""
 
-    # Model settings (matches actual implementation)
-    model_size: str = "large-v3"  # Upgraded for better word alignment
+    # Model settings (optimized for large-v2 on T4 GPU)
+    model_size: str = "large-v2"  # More stable than v3, optimal for T4
     language: Optional[str] = "en"
     compute_type: str = "float16"
 
     # Audio processing
     sample_rate: int = 16000
 
-    # GPU optimization
+    # GPU optimization for T4
     device: Optional[str] = None  # Auto-detect
-    batch_size: int = 16
+    batch_size: int = 16  # Optimal for T4 with large-v2
+    dynamic_batching: bool = True  # Enable dynamic batching
 
 
 @dataclass
@@ -105,7 +106,7 @@ class ModelCacheConfig:
 
 @dataclass
 class ModelPerformanceConfig:
-    """Performance optimization settings for all models"""
+    """Performance optimization settings for all models - T4 GPU optimized"""
 
     # General optimization
     enable_torch_compile: bool = True  # PyTorch 2.0 compilation
@@ -118,17 +119,17 @@ class ModelPerformanceConfig:
     low_cpu_mem_usage: bool = True
 
     # Precision settings
-    torch_dtype: str = "float16"  # Use FP16 for all models
+    torch_dtype: str = "float16"  # Use FP16 for T4 GPU
     enable_autocast: bool = True  # Automatic mixed precision
 
-    # Batch processing
+    # Batch processing (T4 optimized for large-v2)
     dynamic_batching: bool = True
-    max_batch_size: int = 32
-    optimal_batch_size: int = 8
+    max_batch_size: int = 32  # Increased for T4 with large-v2
+    optimal_batch_size: int = 16  # Optimal for T4
 
-    # Hardware optimization
-    enable_tf32: bool = True  # Enable TensorFloat-32 on A100
-    enable_flash_attention: bool = True  # If available
+    # Hardware optimization (T4 specific)
+    enable_tf32: bool = False  # T4 doesn't support TF32 (needs compute 8.0+)
+    enable_flash_attention: bool = True  # If xformers available
     cudnn_benchmark: bool = True  # Optimize cuDNN for consistent inputs
 
     # Profiling (development only)

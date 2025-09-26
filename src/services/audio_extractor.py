@@ -3,7 +3,7 @@ Audio Extraction Service - Simplified version
 Convert MP4/URLs to analysis-ready audio format
 """
 
-# cSpell:ignore ytdl outtmpl noplaylist ffprobe acodec samplerate Pylance
+# cSpell:ignore ytdl outtmpl noplaylist ffprobe acodec samplerate Pylance hwaccel
 
 import shutil
 import tempfile
@@ -71,6 +71,34 @@ class AudioExtractor:
 
         self.logger.info("audio_extractor_ready", temp_dir=str(self.temp_dir))
 
+    def _check_gpu_available(self) -> bool:
+        """Check if GPU acceleration is available for ffmpeg"""
+        try:
+            # PyTorch를 사용하여 CUDA 가능 여부 확인
+            import torch
+
+            if not torch.cuda.is_available():
+                return False
+
+            # nvidia-ml-py를 사용하여 GPU 메모리 확인 (선택적)
+            try:
+                import pynvml
+
+                pynvml.nvmlInit()
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                # GPU 메모리가 충분한지 확인 (최소 1GB)
+                if int(meminfo.free) < 1024 * 1024 * 1024:
+                    self.logger.warning("GPU memory low, falling back to CPU")
+                    return False
+                return True
+            except (ImportError, Exception):
+                # pynvml이 없거나 오류가 있으면 기본적으로 CUDA만 확인
+                return True
+        except ImportError:
+            # PyTorch가 없으면 CPU 사용
+            return False
+
     def _get_video_duration(self, video_path: Union[str, Path]) -> float:
         """Get video duration using ffprobe"""
         try:
@@ -81,7 +109,7 @@ class AudioExtractor:
             return 0.0
 
     def _convert_to_wav(self, input_path: Path, output_path: Path) -> bool:
-        """Convert video/audio to WAV using ffmpeg"""
+        """Convert video/audio to WAV using ffmpeg with GPU acceleration"""
         try:
             # 입력 파일 크기 확인
             if not input_path.exists():
@@ -91,9 +119,25 @@ class AudioExtractor:
             if input_size == 0:
                 raise ValueError(f"Input file is empty (0 bytes): {input_path}")
 
-            self.logger.info(f"Converting {input_path} ({input_size/1024/1024:.1f}MB) to WAV")
+            self.logger.info(
+                f"Converting {input_path} ({input_size/1024/1024:.1f}MB) to WAV"
+            )
 
-            stream = ffmpeg.input(str(input_path))
+            # GPU 가속 가능 여부 확인
+            gpu_available = self._check_gpu_available()
+
+            # GPU 가속을 사용한 input stream 생성
+            if gpu_available:
+                self.logger.debug("Using GPU acceleration for video decoding")
+                stream = ffmpeg.input(
+                    str(input_path),
+                    threads=1,  # GPU decoding에는 thread=1이 최적
+                    hwaccel="cuda",
+                )
+            else:
+                self.logger.debug("Using CPU for video decoding")
+                stream = ffmpeg.input(str(input_path))
+
             stream = ffmpeg.output(
                 stream,
                 str(output_path),
@@ -104,7 +148,9 @@ class AudioExtractor:
             )
 
             # stderr 캡처를 위해 run 옵션 수정
-            ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+            ffmpeg.run(
+                stream, overwrite_output=True, capture_stdout=True, capture_stderr=True
+            )
 
             # 출력 파일 크기 확인
             if not output_path.exists():
@@ -112,13 +158,17 @@ class AudioExtractor:
 
             output_size = output_path.stat().st_size
             if output_size == 0:
-                raise RuntimeError(f"Output file is empty after conversion: {output_path}")
+                raise RuntimeError(
+                    f"Output file is empty after conversion: {output_path}"
+                )
 
-            self.logger.info(f"Conversion successful: {output_path} ({output_size/1024/1024:.1f}MB)")
+            self.logger.info(
+                f"Conversion successful: {output_path} ({output_size/1024/1024:.1f}MB)"
+            )
             return True
 
         except ffmpeg.Error as e:
-            stderr_output = e.stderr.decode('utf-8') if e.stderr else 'No stderr output'
+            stderr_output = e.stderr.decode("utf-8") if e.stderr else "No stderr output"
             self.logger.error(f"FFmpeg conversion failed: {stderr_output}")
             return False
         except Exception as e:
