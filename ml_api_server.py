@@ -150,7 +150,9 @@ def normalize_timestamp_fields(data):
     return data
 
 
-def create_pipeline(language: str = "en", progress_callback: Optional[Callable] = None) -> PipelineManager:
+def create_pipeline(
+    language: str = "en", progress_callback: Optional[Callable] = None
+) -> PipelineManager:
     return PipelineManager(
         base_config=BaseConfig(),
         processing_config=ProcessingConfig(),
@@ -630,9 +632,7 @@ def process_whisperx_segments(
 
             # Log fallback usage
             if not segment_data["words"]:
-                logger.warning(
-                    f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'"
-                )
+                logger.warning(f"⚠️ 세그먼트 {i}에서 워드 데이터가 없습니다: '{text[:50]}...'")
             else:
                 logger.info(
                     f"✅ 세그먼트 {i}에서 fallback으로 {len(segment_data['words'])}개 워드 생성"
@@ -680,9 +680,7 @@ def validate_timestamps(segments: list) -> None:
 
 
 async def process_audio_core(
-    file_path: str,
-    language: str = "en",
-    progress_callback: Optional[Callable] = None
+    file_path: str, language: str = "en", progress_callback: Optional[Callable] = None
 ) -> Dict[str, Any]:
     import time
 
@@ -870,9 +868,7 @@ async def process_video_with_callback(
         # 비디오 처리 실행 (콜백과 함께)
         logger.info("ML 파이프라인 실행 중...")
         result = await process_audio_core(
-            video_path,
-            language=language,
-            progress_callback=progress_callback
+            video_path, language=language, progress_callback=progress_callback
         )
         logger.info("ML 파이프라인 처리 완료")
 
@@ -976,9 +972,7 @@ async def process_video_with_callback(
             callback_base_url=callback_base_url,
         )
 
-        logger.info(
-            f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초"
-        )
+        logger.info(f"✅ 분석 완료 - job_id: {job_id}, 처리시간: {processing_time:.2f}초")
 
         # Job 상태 업데이트
         jobs[job_id] = {
@@ -1072,9 +1066,7 @@ async def transcribe(request: TranscribeRequest):
             actual_file_path = file_url
 
         # 진행상황 업데이트 (첫 번째 단계 이후 분석 전까지)
-        analysis_start_index = (
-            2 if request.audio_path else 3
-        )  # 오디오는 2단계부터, 비디오는 3단계부터
+        analysis_start_index = 2 if request.audio_path else 3  # 오디오는 2단계부터, 비디오는 3단계부터
         for progress, message in progress_steps[1:analysis_start_index]:
             await send_callback(job_id, "processing", progress, message)
 
@@ -1087,7 +1079,7 @@ async def transcribe(request: TranscribeRequest):
             result = await process_audio_core(
                 actual_file_path,
                 language=request.language,
-                progress_callback=transcribe_progress_callback
+                progress_callback=transcribe_progress_callback,
             )
 
             # 분석 완료 진행상황 (마지막 인덱스 사용)

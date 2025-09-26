@@ -45,7 +45,7 @@ yt-dlp==2023.12.30
 # Additional dependencies for ML pipeline
 einops>=0.6.0           # Tensor operations
 omegaconf>=2.3.0        # Configuration management
-pytorch-lightning==1.6.5 # Training framework
+pytorch-lightning==1.9.5 # Training framework (updated for pip compatibility)
 pytorch-metric-learning==1.7.3
 torch-audiomentations==0.12.0
 torchmetrics==0.11.4
