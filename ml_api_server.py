@@ -1090,9 +1090,9 @@ async def transcribe(request: TranscribeRequest):
                 progress_callback=transcribe_progress_callback
             )
 
-            # 분석 완료 진행상황
+            # 분석 완료 진행상황 (마지막 인덱스 사용)
             await send_callback(
-                job_id, "processing", progress_steps[3][0], progress_steps[3][1]
+                job_id, "processing", progress_steps[-1][0], progress_steps[-1][1]
             )
 
             processing_time = (datetime.now() - transcribe_start_time).total_seconds()
@@ -1154,9 +1154,9 @@ async def transcribe(request: TranscribeRequest):
             logger.info(f"분석 결과 저장: {output_path}")
             logger.info(f"파일 크기: {output_path.stat().st_size / 1024:.1f}KB")
 
-            # 완료 진행상황
+            # 완료 진행상황 (마지막 인덱스 사용)
             await send_callback(
-                job_id, "processing", progress_steps[5][0], progress_steps[5][1]
+                job_id, "processing", progress_steps[-1][0], progress_steps[-1][1]
             )
 
             logger.info(f"전사 완료 - 처리시간: {processing_time:.2f}초")
