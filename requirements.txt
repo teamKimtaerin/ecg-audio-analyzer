@@ -1,14 +1,14 @@
 # ECG Audio Analyzer ML API Server Dependencies
-# Optimized for Python 3.7.16 on Amazon Linux 2 with NVIDIA Tesla T4
+# Compatible with Python 3.7+ and Python 3.11
 
-# Core System Requirements (Python 3.7 compatible)
-numpy==1.21.6            # Python 3.7 compatible version
-scipy==1.7.3             # Compatible with numpy 1.21.6
+# Core System Requirements (Python 3.7+ compatible)
+numpy>=1.21.6,<2.0.0     # Python 3.7+ compatible version
+scipy>=1.7.3,<2.0.0      # Compatible with numpy
 
-# PyTorch Stack (GPU optimized for CUDA 11.7)
-torch==1.13.1            # Compatible with CUDA 11.7
-torchaudio==0.13.1       # Matching torch version
-torchvision==0.14.1      # Optional but useful
+# PyTorch Stack (GPU optimized, flexible versions)
+torch>=1.13.1,<2.0.0     # Compatible with CUDA 11.7+
+torchaudio>=0.13.1,<1.0.0 # Matching torch version
+torchvision>=0.14.1,<1.0.0 # Optional but useful
 
 # FastAPI Server
 fastapi==0.104.1         # Latest stable version
@@ -18,16 +18,16 @@ httpx==0.25.0
 aiofiles==23.2.1
 
 # Audio Processing
-librosa==0.10.1          # Stable version for Python 3.7
-soundfile==0.12.1
-ffmpeg-python==0.2.0
+librosa>=0.10.1,<1.0.0   # Stable version
+soundfile>=0.12.1,<1.0.0
+ffmpeg-python>=0.2.0
 
 # Speech Recognition & Diarization
 # Note: WhisperX must be installed from GitHub:
 # pip install git+https://github.com/m-bain/whisperx.git@v3.1.1
-faster-whisper==1.0.0    # WhisperX dependency
-pyannote.audio==2.1.1    # Speaker diarization
-openai-whisper==20231117 # Base Whisper model
+faster-whisper>=1.0.0,<2.0.0  # WhisperX dependency
+pyannote.audio>=2.1.1,<3.0.0  # Speaker diarization
+openai-whisper>=20231117       # Base Whisper model
 
 # ML Libraries
 transformers==4.36.0     # Hugging Face transformers
