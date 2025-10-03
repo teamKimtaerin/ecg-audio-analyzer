@@ -1,0 +1,45 @@
+# Base image with CUDA 11.8 and cuDNN 8, matching the stable environment
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies including Python 3.10, pip, and ffmpeg
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
+    ffmpeg \
+    git \
+    libgl1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+RUN useradd --create-home appuser
+WORKDIR /home/appuser/app
+
+# Copy project requirements first to leverage Docker layer caching
+COPY requirements.txt .
+
+# Install Python dependencies using the specified index for PyTorch (GPU version)
+# This uses the requirements.txt optimized for GPU
+RUN python3.10 -m pip install --no-cache-dir --upgrade pip && \
+    python3.10 -m pip install --no-cache-dir -r requirements.txt --index-url https://download.pytorch.org/whl/cu118
+
+# Copy the rest of the application code
+COPY . .
+
+# Change ownership to the app user
+RUN chown -R appuser:appuser /home/appuser/app
+
+# Switch to the non-root user
+USER appuser
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Command to run the application
+CMD ["python3.10", "ml_api_server.py", "--host", "0.0.0.0", "--port", "8080"]
