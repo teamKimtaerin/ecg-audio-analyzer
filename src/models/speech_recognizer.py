@@ -16,6 +16,7 @@ from pathlib import Path
 try:
     # Check if xformers is installed for optimized attention
     import importlib.util
+
     XFORMERS_AVAILABLE = importlib.util.find_spec("xformers") is not None
 except ImportError:
     XFORMERS_AVAILABLE = False
