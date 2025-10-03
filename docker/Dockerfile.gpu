@@ -27,7 +27,7 @@ FROM base AS test
 WORKDIR /app
 
 # Copy requirements to install dependencies
-pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
+RUN python3.10 -m pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
 
 # Install linting tools
 RUN python3.10 -m pip install --no-cache-dir ruff black
