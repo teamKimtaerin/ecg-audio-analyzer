@@ -2993,7 +2993,7 @@
         },
         {
           "word": "he",
-          "start_time": 67.377,
+          "start_time": 67.377, 
           "end_time": 67.457,
           "duration": 0.0799999999999983,
           "acoustic_features": {
@@ -3526,13 +3526,13 @@
     "duration": 104.9,
     "total_segments": 26,
     "unique_speakers": 2,
-    "processing_time": 239.79614,
-    "language_requested": "en",
+    "processing_time": 328.805007,
+    "language_requested": "auto",
     "language_detected": "en",
-    "processing_mode": "targeted",
-    "processed_at": "2025-09-26T04:43:59.396789"
+    "processing_mode": "auto-detect",
+    "processed_at": "2025-10-03T11:14:32.025862"
   },
-  "processing_time": 239.79614,
+  "processing_time": 328.805007,
   "error": null,
   "error_code": null
 }
