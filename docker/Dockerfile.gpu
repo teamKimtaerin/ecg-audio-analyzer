@@ -1,53 +1,32 @@
-# Stage 1: Builder - Installs all dependencies using the large devel image
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS builder
+# Stage 1: Base image with build tools and CUDA SDK
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS base
 
-# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PATH="/usr/local/bin:${PATH}"
-
-# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3.10 \
-    python3.10-venv \
-    python3-pip \
-    ffmpeg \
-    git \
-    libgl1 && \
+    python3.10 python3-pip git ffmpeg libgl1 && \
     rm -rf /var/lib/apt/lists/*
-
-# Update pip
 RUN python3.10 -m pip install --no-cache-dir --upgrade pip
 
-# Install Python dependencies
+# Stage 2: Lint & Format Check (This will be the 'test' target)
+FROM python:3.10-slim AS test
+
+WORKDIR /app
+COPY . .
+RUN pip install ruff black
+RUN ruff check .
+RUN black --check .
+
+# Stage 3: Builder - Installs all application dependencies
+FROM base AS builder
+
 WORKDIR /app
 COPY requirements.txt .
 RUN python3.10 -m pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
 
-
-# Stage 2: Test - Uses the builder stage to run checks
-FROM builder AS test
-
-WORKDIR /app
-
-# Install linting tools
-RUN python3.10 -m pip install --no-cache-dir ruff black
-
-# Copy app code
-COPY . .
-
-# Run checks
-RUN ruff check .
-RUN black --check .
-
-
-# Stage 3: Production - A smaller final image using the runtime base
+# Stage 4: Production - A smaller final image using the runtime base
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS production
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -70,14 +49,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . .
 
-# Change ownership to the app user
+# Change ownership and switch user
 RUN chown -R appuser:appuser /home/appuser/app
-
-# Switch to the non-root user
 USER appuser
 
-# Expose the port the app runs on
 EXPOSE 8080
-
-# Command to run the application
 CMD ["python3.10", "ml_api_server.py", "--host", "0.0.0.0", "--port", "8080"]
