@@ -1,10 +1,11 @@
-# Stage 1: Base image with common dependencies
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS base
+# Stage 1: Builder - Installs all dependencies using the large devel image
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS builder
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/usr/local/bin:${PATH}"
 
 # Install system dependencies
 RUN apt-get update && \
@@ -20,43 +21,53 @@ RUN apt-get update && \
 # Update pip
 RUN python3.10 -m pip install --no-cache-dir --upgrade pip
 
-
-# Stage 2: Test stage to run checks
-FROM base AS test
-
+# Install Python dependencies
 WORKDIR /app
-
-# Copy requirements to install dependencies
 COPY requirements.txt .
 RUN python3.10 -m pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
+
+
+# Stage 2: Test - Uses the builder stage to run checks
+FROM builder AS test
+
+WORKDIR /app
 
 # Install linting tools
 RUN python3.10 -m pip install --no-cache-dir ruff black
 
-# Copy the rest of the application code
+# Copy app code
 COPY . .
 
 # Run checks
-# The user's pyproject.toml excludes ml_api_server.py from ruff, so we respect that.
 RUN ruff check .
-# Black check runs on all files.
 RUN black --check .
 
 
-# Stage 3: Production stage for the final image
-FROM base AS production
+# Stage 3: Production - A smaller final image using the runtime base
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS production
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install only necessary runtime system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.10 \
+    ffmpeg \
+    libgl1 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and set working directory
 RUN useradd --create-home appuser
 WORKDIR /home/appuser/app
 
-# Copy project requirements first to leverage Docker layer caching
-COPY requirements.txt .
+# Copy installed Python packages and binaries from the builder stage
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Install Python dependencies
-RUN python3.10 -m pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
-
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
 # Change ownership to the app user
