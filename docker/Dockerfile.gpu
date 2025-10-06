@@ -1,14 +1,5 @@
-# Stage 1: Base image with build tools and CUDA SDK
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS base
-
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3.10 python3-pip git ffmpeg libgl1 && \
-    rm -rf /var/lib/apt/lists/*
-RUN python3.10 -m pip install --no-cache-dir --upgrade pip
-
-# Stage 2: Lint & Format Check (This will be the 'test' target)
+# Stage 1: Lint & Format Check (This will be the 'test' target)
+# This stage remains unchanged, it's lightweight and works for CI.
 FROM python:3.10-slim AS test
 
 WORKDIR /app
@@ -17,27 +8,21 @@ RUN pip install ruff black
 RUN ruff check .
 RUN black --check .
 
-# Stage 3: Builder - Installs all application dependencies
-FROM base AS builder
 
-WORKDIR /app
-COPY requirements.txt .
-RUN python3.10 -m pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
+# Stage 2: Production Build
+# Use an official PyTorch image that already has torch, cuda, and cudnn.
+# This avoids downloading the largest dependencies and saves significant disk space.
+FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn8-runtime
 
-# Clean up unnecessary files to reduce layer size before copying
-RUN find /usr/local/lib/python3.10/dist-packages/ -type d -name '__pycache__' -exec rm -rf {} + && \
-    find /usr/local/lib/python3.10/dist-packages/ -type f -name '*.pyc' -delete
-
-# Stage 4: Production - A smaller final image using the runtime base
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS production
-
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Install only necessary runtime system dependencies
+# The pytorch image uses python3.10 by default.
+# Install necessary runtime system dependencies.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3.10 \
     ffmpeg \
     libgl1 && \
     rm -rf /var/lib/apt/lists/*
@@ -46,9 +31,10 @@ RUN apt-get update && \
 RUN useradd --create-home appuser
 WORKDIR /home/appuser/app
 
-# Copy installed Python packages and binaries from the builder stage
-COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Upgrade pip and install remaining (smaller) dependencies
+COPY requirements-docker.txt .
+RUN python3.10 -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-docker.txt
 
 # Copy application code
 COPY . .
@@ -57,5 +43,8 @@ COPY . .
 RUN chown -R appuser:appuser /home/appuser/app
 USER appuser
 
+# Expose the port the app runs on
 EXPOSE 8080
+
+# Command to run the application
 CMD ["python3.10", "ml_api_server.py", "--host", "0.0.0.0", "--port", "8080"]

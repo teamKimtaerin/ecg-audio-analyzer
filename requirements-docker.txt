@@ -1,0 +1,54 @@
+# ECG Audio Analyzer ML API Server Dependencies
+# Consolidated and optimized for EC2 GPU (g4dn.xlarge) based on troubleshooting.
+# Python: 3.12
+# CUDA: 11.8
+
+# Core System Requirements
+numpy>=1.24.0,<2.0.0
+scipy>=1.10.0,<2.0.0
+
+# PyTorch Stack (Critical for GPU performance)
+# These versions are confirmed to work with CUDA 11.8 on EC2.
+
+# FastAPI Server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+requests>=2.31.0
+httpx>=0.25.0
+aiofiles>=23.2.0
+
+# Audio Processing
+librosa>=0.10.1
+soundfile>=0.12.1
+ffmpeg-python>=0.2.0
+
+# Speech Recognition & Diarization
+# Note: WhisperX is installed from a specific commit for stability.
+# pip install git+https://github.com/m-bain/whisperx.git@v3.1.1
+faster-whisper>=1.0.0
+ctranslate2==4.4.0      # Required by WhisperX, version locked for compatibility
+pyannote.audio>=3.1.0   # Speaker diarization (updated version)
+openai-whisper>=20231117
+
+# Hugging Face Libraries
+transformers==4.36.0
+huggingface-hub>=0.18.0
+datasets>=2.14.0
+accelerate>=0.24.0
+speechbrain>=0.5.16      # Required by pyannote
+
+# Utilities
+psutil>=5.9.0
+python-dotenv>=1.0.0
+structlog>=23.2.0
+pydantic>=2.5.0
+boto3>=1.34.0
+yt-dlp>=2023.12.30
+
+# Additional ML dependencies
+einops>=0.7.0
+omegaconf>=2.3.0
+
+# GPU Monitoring (for EC2)
+nvidia-ml-py3>=7.352.0
+gpustat>=1.1.0
