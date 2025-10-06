@@ -12,7 +12,7 @@ RUN black --check .
 # Stage 2: Production Build
 # Use an official PyTorch image that already has torch, cuda, and cudnn.
 # This avoids downloading the largest dependencies and saves significant disk space.
-FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn8-runtime
+FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn9-runtime
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
