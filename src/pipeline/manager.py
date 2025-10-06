@@ -105,7 +105,12 @@ class PipelineManager:
             )
         return self._whisperx_pipeline
 
-    async def _update_progress(self, stage: str, progress_percent: int = None, message: str = None):
+    async def _update_progress(
+        self,
+        stage: str,
+        progress_percent: Optional[int] = None,
+        message: Optional[str] = None,
+    ):
         """Update current stage"""
         self.current_stage = stage
         self.logger.info("progress_updated", stage=stage)

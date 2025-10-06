@@ -1,18 +1,15 @@
 # ECG Audio Analyzer ML API Server Dependencies
-# Consolidated and optimized for EC2 GPU (g4dn.xlarge) based on troubleshooting.
+# Consolidated and optimized for EC2 CPU.
 # Python: 3.12
-# CUDA: 11.8
 
 # Core System Requirements
 numpy>=1.24.0,<2.0.0
 scipy>=1.10.0,<2.0.0
 
-# PyTorch Stack (Critical for GPU performance)
-# These versions are confirmed to work with CUDA 11.8 on EC2.
-# Install using: pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu118
-torch==2.5.1
-torchaudio==2.5.1
-torchvision==0.20.1
+# PyTorch Stack (CPU Version)
+torch
+torchaudio
+torchvision
 
 # FastAPI Server
 fastapi>=0.104.0
@@ -52,7 +49,3 @@ yt-dlp>=2023.12.30
 # Additional ML dependencies
 einops>=0.7.0
 omegaconf>=2.3.0
-
-# GPU Monitoring (for EC2)
-nvidia-ml-py3>=7.352.0
-gpustat>=1.1.0

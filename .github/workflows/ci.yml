@@ -139,7 +139,7 @@ jobs:
   # Docker Build Test (Critical for Deployment)
   # =============================================================================
   docker-build-test:
-    name: 🐳 Docker Build Test
+    name: 🐳 Docker Build & Test
     runs-on: ubuntu-latest
     needs: [dependency-test]
     
@@ -174,26 +174,35 @@ jobs:
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🏗️ Build Docker image (test only - CPU compatible)
+      - name: 🏗️ Build and run linting/test stage
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.gpu
+          push: false
+          # Build test stage for CI testing (minimal packages)
+          target: test
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: 🏗️ Build production image for runtime test
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.gpu
           push: false
           load: true
-          tags: ecg-audio-analyzer:test
+          tags: ecg-audio-analyzer:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build test stage for CI testing (minimal packages)
-          target: test
-          # Optimize build for smaller layers and better caching
+          # No target, so it builds the final production stage
           build-args: |
             BUILDKIT_INLINE_CACHE=1
 
-      - name: 🧪 Test Docker container startup
+      - name: 🧪 Test Docker container startup and torch import
         run: |
-          docker run --rm ecg-audio-analyzer:test python --version
-          docker run --rm ecg-audio-analyzer:test python -c "import torch; print('PyTorch version:', torch.__version__)"
+          docker run --rm ecg-audio-analyzer:latest python --version
+          docker run --rm ecg-audio-analyzer:latest python -c "import torch; print('PyTorch version:', torch.__version__)"
 
   # =============================================================================
   # Performance & Security Checks
